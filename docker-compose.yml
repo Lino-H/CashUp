@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  # 数据库服务
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: cashup
+      POSTGRES_USER: cashup
+      POSTGRES_PASSWORD: cashup123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cashup-network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - cashup-network
+
+  # RabbitMQ消息队列
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: cashup
+      RABBITMQ_DEFAULT_PASS: cashup123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - cashup-network
+
+  # Apollo配置中心 (可选)
+  # apollo:
+  #   image: apolloconfig/apollo-quick-start
+  #   ports:
+  #     - "8070:8070"
+  #   networks:
+  #     - cashup-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - user-service
+      - trading-service
+    networks:
+      - cashup-network
+
+  # 用户服务
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup-network
+
+  # 交易服务
+  trading-service:
+    build:
+      context: ./backend/trading-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://cashup:cashup123@rabbitmq:5672
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - cashup-network
+
+  # 策略服务
+  strategy-service:
+    build:
+      context: ./backend/strategy-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup-network
+
+  # 行情服务
+  market-service:
+    build:
+      context: ./backend/market-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup-network
+
+  # 通知服务
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - RABBITMQ_URL=amqp://cashup:cashup123@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - cashup-network
+
+  # 订单服务
+  order-service:
+    build:
+      context: ./backend/order-service
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup-network
+
+  # 配置服务
+  config-service:
+    build:
+      context: ./backend/config-service
+      dockerfile: Dockerfile
+    ports:
+      - "8007:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+    depends_on:
+      - postgres
+    networks:
+      - cashup-network
+
+  # 监控服务
+  monitoring-service:
+    build:
+      context: ./backend/monitoring-service
+      dockerfile: Dockerfile
+    ports:
+      - "8008:8000"
+    environment:
+      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup-network
+
+volumes:
+  postgres_data:
+
+networks:
+  cashup-network:
+    driver: bridge
