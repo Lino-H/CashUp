@@ -7,6 +7,8 @@
 
 ### 项目目标
 构建一个功能完整、高性能、可扩展的量化交易平台，支持多交易所接入、策略管理、风险控制、回测分析和智能通知等核心功能。
+交易所文档地址REST：https://www.gate.com/docs/developers/apiv4/en/#futures
+交易所文档地址WS：https://www.gate.com/docs/developers/futures/ws/en/#gate-futures-websocket-v4
 
 ### 核心价值
 - 🎯 **专业性**：面向专业交易员和量化团队
@@ -266,11 +268,11 @@ docker-compose build [service-name]
 - **业务监控**: 价格、交易量、盈亏、风险指标
 - **告警渠道**: pushplus、wxpusher、qanotify、邮件、Telegram
 
-### 备份策略
-- **数据库**: 暂无计划
-- **配置文件**: 版本控制管理
-- **日志文件**: 保留 30 天，压缩存储
-- **代码**: Git 仓库多地备份
+### 基础设施
+- **数据库**: postgres，已在 docker desktop 中运行
+- **redis**: 已在 docker desktop 中运行
+- **rabbitmq**: 已在 docker desktop 中运行
+- 每次要连接时先检查是否已运行
 
 ## 📝 代码规范和最佳实践
 

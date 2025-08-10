@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+CashUp量化交易系统 - 工具模块
+
+提供通用工具函数和依赖注入
+"""
+
+from .helpers import (
+    generate_config_id,
+    generate_hash,
+    get_current_timestamp,
+    format_timestamp,
+    parse_config_value,
+    serialize_config_value,
+    validate_config_key,
+    normalize_config_key,
+    deep_merge_dict,
+    flatten_dict,
+    unflatten_dict,
+    mask_sensitive_data,
+    calculate_config_diff,
+    validate_json_schema,
+    sanitize_filename,
+    generate_backup_filename,
+    load_file_content,
+    save_file_content,
+    get_file_size,
+    format_file_size,
+    is_valid_uuid,
+    truncate_string,
+    safe_json_loads,
+    safe_json_dumps,
+    retry_on_exception
+)
+
+from .dependencies import (
+    get_db,
+    get_redis,
+    get_config_service,
+    get_template_service,
+    get_current_user,
+    get_optional_user,
+    require_auth,
+    require_admin,
+    require_permission,
+    validate_service_health,
+    apply_rate_limit,
+    apply_strict_rate_limit,
+    Permissions,
+    RateLimiter,
+    # 预定义权限依赖
+    require_config_read,
+    require_config_write,
+    require_config_delete,
+    require_config_admin,
+    require_template_read,
+    require_template_write,
+    require_template_delete,
+    require_template_admin,
+    require_system_admin,
+    require_audit_read,
+    require_batch_operation,
+    require_import_export
+)
+
+__all__ = [
+    # helpers
+    "generate_config_id",
+    "generate_hash",
+    "get_current_timestamp",
+    "format_timestamp",
+    "parse_config_value",
+    "serialize_config_value",
+    "validate_config_key",
+    "normalize_config_key",
+    "deep_merge_dict",
+    "flatten_dict",
+    "unflatten_dict",
+    "mask_sensitive_data",
+    "calculate_config_diff",
+    "validate_json_schema",
+    "sanitize_filename",
+    "generate_backup_filename",
+    "load_file_content",
+    "save_file_content",
+    "get_file_size",
+    "format_file_size",
+    "is_valid_uuid",
+    "truncate_string",
+    "safe_json_loads",
+    "safe_json_dumps",
+    "retry_on_exception",
+    # dependencies
+    "get_db",
+    "get_redis",
+    "get_config_service",
+    "get_template_service",
+    "get_current_user",
+    "get_optional_user",
+    "require_auth",
+    "require_admin",
+    "require_permission",
+    "validate_service_health",
+    "apply_rate_limit",
+    "apply_strict_rate_limit",
+    "Permissions",
+    "RateLimiter",
+    # 预定义权限依赖
+    "require_config_read",
+    "require_config_write",
+    "require_config_delete",
+    "require_config_admin",
+    "require_template_read",
+    "require_template_write",
+    "require_template_delete",
+    "require_template_admin",
+    "require_system_admin",
+    "require_audit_read",
+    "require_batch_operation",
+    "require_import_export"
+]

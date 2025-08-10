@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15
+    container_name: cashup_postgres
+    environment:
+      POSTGRES_DB: cashup_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cashup_network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: cashup_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cashup_network
+
+  # RabbitMQ消息队列
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: cashup_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - cashup_network
+
+  # 用户服务
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: cashup_user_service
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - cashup_network
+
+  # 交易服务
+  trading-service:
+    build:
+      context: .
+      dockerfile: trading-service/Dockerfile
+    container_name: cashup_trading_service
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/1
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - USER_SERVICE_URL=http://user-service:8001
+      - EXCHANGE_SERVICE_URL=http://exchange-service:8003
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - user-service
+      - exchange-service
+    networks:
+      - cashup_network
+
+  # 交易所服务
+  exchange-service:
+    build:
+      context: .
+      dockerfile: exchange-service/Dockerfile
+    container_name: cashup_exchange_service
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/2
+      - GATEIO_API_KEY=${GATEIO_API_KEY:-}
+      - GATEIO_API_SECRET=${GATEIO_API_SECRET:-}
+      - GATEIO_TESTNET=true
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup_network
+
+  # 市场数据服务
+  market-service:
+    build:
+      context: .
+      dockerfile: market-service/Dockerfile
+    container_name: cashup_market_service
+    ports:
+      - "8004:8004"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/3
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - EXCHANGE_SERVICE_URL=http://exchange-service:8003
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - exchange-service
+    networks:
+      - cashup_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  cashup_network:
+    driver: bridge

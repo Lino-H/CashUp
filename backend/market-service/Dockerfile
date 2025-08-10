@@ -8,21 +8,23 @@ RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 将uv添加到PATH
-ENV PATH="/root/.cargo/bin:$PATH"
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx
 
 # 复制项目文件（优先复制依赖文件，利用 Docker 缓存）
-COPY pyproject.toml ./
+COPY market-service/pyproject.toml ./
 
 # 使用uv安装依赖（--no-cache-dir 减少镜像体积）
 RUN uv venv cashup && \
     . cashup/bin/activate && \
     uv pip install --no-cache-dir .
 
+# 复制共享库
+COPY shared ./shared
+
 # 复制应用代码
-COPY . .
+COPY market-service .
 
 # 创建非root用户
 RUN useradd --create-home --shell /bin/bash app \
@@ -33,4 +35,4 @@ USER app
 EXPOSE 8000
 
 # 启动命令
-CMD ["/bin/bash", "-c", "source cashup/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["/bin/bash", "-c", "source cashup/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
