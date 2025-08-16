@@ -517,6 +517,90 @@ class ServiceStatus(BaseModel, MetadataMixin):
     def is_unknown(self) -> bool:
         """是否未知"""
         return self.status == 'unknown'
+
+
+class HealthCheckResult(BaseModel):
+    """健康检查结果模型"""
+    
+    __tablename__ = 'health_check_results'
+    
+    # 关联健康检查
+    health_check_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey('health_checks.id', ondelete='CASCADE'),
+        nullable=False,
+        comment="健康检查ID"
+    )
+    
+    # 检查结果
+    success = Column(
+        Boolean,
+        nullable=False,
+        comment="是否成功"
+    )
+    
+    status = Column(
+        String(20),
+        nullable=False,
+        comment="状态：healthy, warning, critical, unknown"
+    )
+    
+    # 响应信息
+    response_time = Column(
+        Float,
+        nullable=True,
+        comment="响应时间（毫秒）"
+    )
+    
+    status_code = Column(
+        Integer,
+        nullable=True,
+        comment="状态码"
+    )
+    
+    # 错误信息
+    error_message = Column(
+        Text,
+        nullable=True,
+        comment="错误消息"
+    )
+    
+    # 详细信息
+    details = Column(
+        JSONB,
+        nullable=True,
+        comment="详细信息"
+    )
+    
+    # 关系
+    health_check = relationship("HealthCheck")
+    
+    # 索引
+    __table_args__ = (
+        Index('idx_health_check_results_check_id', 'health_check_id'),
+        Index('idx_health_check_results_success', 'success'),
+        Index('idx_health_check_results_status', 'status'),
+        CheckConstraint(
+            "status IN ('healthy', 'warning', 'critical', 'unknown')",
+            name='ck_health_check_results_status'
+        ),
+    )
+    
+    def is_healthy(self) -> bool:
+        """是否健康"""
+        return self.status == 'healthy'
+    
+    def is_warning(self) -> bool:
+        """是否警告"""
+        return self.status == 'warning'
+    
+    def is_critical(self) -> bool:
+        """是否严重"""
+        return self.status == 'critical'
+    
+    def is_unknown(self) -> bool:
+        """是否未知"""
+        return self.status == 'unknown'
     
     def update_status(self, new_status: str, health_score: Optional[float] = None):
         """更新状态"""

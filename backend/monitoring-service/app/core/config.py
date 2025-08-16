@@ -8,7 +8,8 @@ CashUp量化交易系统 - 配置管理
 
 import os
 from typing import Optional, List, Any
-from pydantic import BaseSettings, validator
+from pydantic import validator
+from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 

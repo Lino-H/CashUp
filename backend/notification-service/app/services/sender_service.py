@@ -49,12 +49,13 @@ class SenderService:
         self.channel_senders = {
             ChannelType.EMAIL: self._send_email,
             ChannelType.SMS: self._send_sms,
-            ChannelType.WECHAT: self._send_wechat,
+            ChannelType.WXPUSHER: self._send_wxpusher,
+            ChannelType.QANOTIFY: self._send_qanotify,
+            ChannelType.PUSHPLUS: self._send_pushplus,
             ChannelType.TELEGRAM: self._send_telegram,
-            ChannelType.SLACK: self._send_slack,
-            ChannelType.DISCORD: self._send_discord,
+            ChannelType.WEBSOCKET: self._send_websocket,
             ChannelType.WEBHOOK: self._send_webhook,
-            ChannelType.PUSH: self._send_push,
+            ChannelType.SYSTEM: self._send_system,
         }
         
         # HTTP会话
@@ -726,6 +727,186 @@ class SenderService:
                 "recipient": content['recipient']
             }
         }
+    
+    async def _send_wxpusher(
+        self,
+        channel: NotificationChannel,
+        notification: Notification,
+        content: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        发送WxPusher消息
+        
+        Args:
+            channel: WxPusher渠道
+            notification: 通知对象
+            content: 发送内容
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        config = channel.config
+        app_token = config['app_token']
+        
+        try:
+            # 模拟WxPusher API调用
+            await asyncio.sleep(0.1)
+            
+            return {
+                "message_id": f"wxpusher_{uuid.uuid4().hex[:8]}",
+                "details": {
+                    "provider": "wxpusher",
+                    "recipient": content['recipient']
+                }
+            }
+                    
+        except Exception as e:
+            raise NotificationSendError(f"WxPusher send failed: {str(e)}")
+    
+    async def _send_qanotify(
+        self,
+        channel: NotificationChannel,
+        notification: Notification,
+        content: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        发送QANotify消息
+        
+        Args:
+            channel: QANotify渠道
+            notification: 通知对象
+            content: 发送内容
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        config = channel.config
+        
+        try:
+            # 模拟QANotify API调用
+            await asyncio.sleep(0.1)
+            
+            return {
+                "message_id": f"qanotify_{uuid.uuid4().hex[:8]}",
+                "details": {
+                    "provider": "qanotify",
+                    "recipient": content['recipient']
+                }
+            }
+                    
+        except Exception as e:
+            raise NotificationSendError(f"QANotify send failed: {str(e)}")
+    
+    async def _send_pushplus(
+        self,
+        channel: NotificationChannel,
+        notification: Notification,
+        content: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        发送PushPlus消息
+        
+        Args:
+            channel: PushPlus渠道
+            notification: 通知对象
+            content: 发送内容
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        config = channel.config
+        token = config['token']
+        
+        try:
+            # 模拟PushPlus API调用
+            await asyncio.sleep(0.1)
+            
+            return {
+                "message_id": f"pushplus_{uuid.uuid4().hex[:8]}",
+                "details": {
+                    "provider": "pushplus",
+                    "recipient": content['recipient']
+                }
+            }
+                    
+        except Exception as e:
+            raise NotificationSendError(f"PushPlus send failed: {str(e)}")
+    
+    async def _send_websocket(
+        self,
+        channel: NotificationChannel,
+        notification: Notification,
+        content: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        发送WebSocket消息
+        
+        Args:
+            channel: WebSocket渠道
+            notification: 通知对象
+            content: 发送内容
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        try:
+            # 通过WebSocket服务发送消息
+            if hasattr(self, 'websocket_service') and self.websocket_service:
+                await self.websocket_service.send_notification(
+                    content['recipient'],
+                    {
+                        "type": "notification",
+                        "data": {
+                            "id": str(notification.id),
+                            "subject": content['subject'],
+                            "content": content['content'],
+                            "metadata": content['metadata']
+                        }
+                    }
+                )
+            
+            return {
+                "message_id": f"websocket_{uuid.uuid4().hex[:8]}",
+                "details": {
+                    "provider": "websocket",
+                    "recipient": content['recipient']
+                }
+            }
+                    
+        except Exception as e:
+            raise NotificationSendError(f"WebSocket send failed: {str(e)}")
+    
+    async def _send_system(
+        self,
+        channel: NotificationChannel,
+        notification: Notification,
+        content: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        发送系统消息
+        
+        Args:
+            channel: 系统渠道
+            notification: 通知对象
+            content: 发送内容
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        try:
+            # 系统消息通常只是记录到数据库或日志
+            logger.info(f"System notification sent: {content['subject']} to {content['recipient']}")
+            
+            return {
+                "message_id": f"system_{uuid.uuid4().hex[:8]}",
+                "details": {
+                    "provider": "system",
+                    "recipient": content['recipient']
+                }
+            }
+                    
+        except Exception as e:
+            raise NotificationSendError(f"System send failed: {str(e)}")
     
     async def _update_channel_stats(
         self,

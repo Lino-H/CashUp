@@ -59,12 +59,12 @@ services:
   # 用户服务
   user-service:
     build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: user-service/Dockerfile
     ports:
-      - "8001:8000"
+      - "8001:8001"
     environment:
-      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
@@ -78,7 +78,7 @@ services:
       context: ./backend
       dockerfile: exchange-service/Dockerfile
     ports:
-      - "8003:8003"
+      - "8003:8000"
     environment:
       - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
@@ -94,7 +94,7 @@ services:
       context: ./backend
       dockerfile: trading-service/Dockerfile
     ports:
-      - "8002:8002"
+      - "8002:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
@@ -111,10 +111,10 @@ services:
   # 策略服务
   strategy-service:
     build:
-      context: ./backend/strategy-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: strategy-service/Dockerfile
     ports:
-      - "8004:8000"
+      - "8005:8005"
     environment:
       - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
@@ -130,7 +130,7 @@ services:
       context: ./backend
       dockerfile: market-service/Dockerfile
     ports:
-      - "8005:8000"
+      - "8004:8000"
     environment:
       - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
@@ -145,12 +145,12 @@ services:
   # 通知服务
   notification-service:
     build:
-      context: ./backend/notification-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
     ports:
       - "8006:8000"
     environment:
-      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - RABBITMQ_URL=amqp://cashup:cashup123@rabbitmq:5672
     depends_on:
       - postgres
@@ -161,12 +161,12 @@ services:
   # 订单服务
   order-service:
     build:
-      context: ./backend/order-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: order-service/Dockerfile
     ports:
       - "8007:8000"
     environment:
-      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
@@ -177,26 +177,28 @@ services:
   # 配置服务
   config-service:
     build:
-      context: ./backend/config-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: config-service/Dockerfile
     ports:
       - "8008:8000"
     environment:
-      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
+      - redis
     networks:
       - cashup-network
 
   # 监控服务
   monitoring-service:
     build:
-      context: ./backend/monitoring-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: monitoring-service/Dockerfile
     ports:
       - "8009:8000"
     environment:
-      - DATABASE_URL=postgresql://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres

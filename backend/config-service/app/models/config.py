@@ -260,7 +260,7 @@ class Config(Base):
         comment="标签"
     )
     
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON,
         nullable=True,
         comment="元数据"
@@ -364,7 +364,7 @@ class Config(Base):
             "updated_at": self.updated_at.isoformat(),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "tags": self.tags,
-            "metadata": self.metadata
+            "metadata": self.meta_data
         }
 
 

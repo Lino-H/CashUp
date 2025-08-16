@@ -185,9 +185,9 @@ class Balance(Base):
     
     # 索引
     __table_args__ = (
-        Index('idx_user_asset_type', 'user_id', 'asset', 'balance_type', unique=True),
-        Index('idx_user_active', 'user_id', 'is_active'),
-        Index('idx_asset_active', 'asset', 'is_active'),
+        Index('idx_balance_user_asset_type', 'user_id', 'asset', 'balance_type', unique=True),
+        Index('idx_balance_user_active', 'user_id', 'is_active'),
+        Index('idx_balance_asset_active', 'asset', 'is_active'),
         Index('idx_balance_type', 'balance_type'),
     )
     

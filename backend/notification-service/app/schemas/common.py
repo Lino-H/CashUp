@@ -42,7 +42,7 @@ class PaginationParams(BaseModel):
     page: int = Field(default=1, ge=1, description="页码")
     size: int = Field(default=20, ge=1, le=100, description="每页大小")
     sort_by: Optional[str] = Field(default=None, description="排序字段")
-    sort_order: Optional[str] = Field(default="desc", regex="^(asc|desc)$", description="排序方向")
+    sort_order: Optional[str] = Field(default="desc", pattern="^(asc|desc)$", description="排序方向")
     
     @property
     def offset(self) -> int:
@@ -108,6 +108,13 @@ class HealthResponse(BaseModel):
     uptime: float = Field(description="运行时间（秒）")
     dependencies: Dict[str, Any] = Field(default_factory=dict, description="依赖服务状态")
     metrics: Dict[str, Any] = Field(default_factory=dict, description="性能指标")
+
+
+class HealthCheckResponse(HealthResponse):
+    """
+    健康检查响应模式（别名）
+    """
+    pass
 
 
 class FilterParams(BaseModel):
@@ -179,7 +186,7 @@ class ExportRequest(BaseModel):
     """
     导出请求模式
     """
-    format: str = Field(default="csv", regex="^(csv|excel|json)$", description="导出格式")
+    format: str = Field(default="csv", pattern="^(csv|excel|json)$", description="导出格式")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="过滤条件")
     fields: Optional[List[str]] = Field(default=None, description="导出字段")
     filename: Optional[str] = Field(default=None, description="文件名")
@@ -201,7 +208,7 @@ class ImportRequest(BaseModel):
     导入请求模式
     """
     file_url: str = Field(description="文件URL")
-    format: str = Field(default="csv", regex="^(csv|excel|json)$", description="文件格式")
+    format: str = Field(default="csv", pattern="^(csv|excel|json)$", description="文件格式")
     options: Optional[Dict[str, Any]] = Field(default=None, description="导入选项")
     validate_only: bool = Field(default=False, description="仅验证不导入")
 

@@ -116,6 +116,26 @@ class ConfigCacheError(ConfigServiceException):
         self.cache_operation = cache_operation
 
 
+class ConfigConflictError(ConfigServiceException):
+    """
+    配置冲突异常
+    """
+    
+    def __init__(self, message: str, conflicting_key: str = None, details: Dict[str, Any] = None):
+        super().__init__(message, "CONFIG_CONFLICT_ERROR", details)
+        self.conflicting_key = conflicting_key
+
+
+class ConfigDatabaseError(ConfigServiceException):
+    """
+    配置数据库异常
+    """
+    
+    def __init__(self, message: str, operation: str = None, details: Dict[str, Any] = None):
+        super().__init__(message, "CONFIG_DATABASE_ERROR", details)
+        self.operation = operation
+
+
 # 异常处理器
 async def config_service_exception_handler(request: Request, exc: ConfigServiceException) -> JSONResponse:
     """

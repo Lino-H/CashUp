@@ -334,3 +334,56 @@ class HealthCheckTrendResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# 添加缺失的类定义
+class HealthSummaryResponse(BaseModel):
+    """健康状态摘要响应模式"""
+    overall_status: HealthStatusEnum = Field(..., description="整体状态")
+    total_services: int = Field(..., description="总服务数")
+    healthy_services: int = Field(..., description="健康服务数")
+    unhealthy_services: int = Field(..., description="不健康服务数")
+    total_checks: int = Field(..., description="总检查数")
+    healthy_checks: int = Field(..., description="健康检查数")
+    unhealthy_checks: int = Field(..., description="不健康检查数")
+    system_uptime: float = Field(..., description="系统可用性")
+    last_updated: datetime = Field(..., description="最后更新时间")
+    
+    class Config:
+        from_attributes = True
+
+
+class HealthHistoryResponse(BaseModel):
+    """健康历史响应模式"""
+    id: int = Field(..., description="历史ID")
+    service_name: str = Field(..., description="服务名称")
+    status: HealthStatusEnum = Field(..., description="状态")
+    message: Optional[str] = Field(None, description="消息")
+    timestamp: datetime = Field(..., description="时间戳")
+    
+    class Config:
+        from_attributes = True
+
+
+class HealthConfigResponse(BaseModel):
+    """健康配置响应模式"""
+    check_interval: int = Field(..., description="检查间隔(秒)")
+    timeout: int = Field(..., description="超时时间(秒)")
+    retries: int = Field(..., description="重试次数")
+    enabled: bool = Field(..., description="是否启用")
+    
+    class Config:
+        from_attributes = True
+
+
+class HealthTestRequest(BaseModel):
+    """健康测试请求模式"""
+    service_name: str = Field(..., description="服务名称")
+    endpoint: str = Field(..., description="测试端点")
+    timeout: Optional[int] = Field(30, description="超时时间(秒)")
+
+
+class HealthBatchRequest(BaseModel):
+    """健康批量请求模式"""
+    service_names: List[str] = Field(..., description="服务名称列表")
+    force_check: bool = Field(False, description="是否强制检查")

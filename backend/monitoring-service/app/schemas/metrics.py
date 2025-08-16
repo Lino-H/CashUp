@@ -297,3 +297,119 @@ class MetricComparisonResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# 列表响应模式
+class MetricListResponse(BaseModel):
+    """指标列表响应模式"""
+    items: List[MetricResponse] = Field(..., description="指标列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页")
+    size: int = Field(..., description="页大小")
+    pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricValueListResponse(BaseModel):
+    """指标值列表响应模式"""
+    items: List[MetricValueResponse] = Field(..., description="指标值列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页")
+    size: int = Field(..., description="页大小")
+    pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricAggregationResponse(BaseModel):
+    """指标聚合响应模式"""
+    metric_id: int = Field(..., description="指标ID")
+    metric_name: str = Field(..., description="指标名称")
+    aggregation_type: str = Field(..., description="聚合类型")
+    time_series: List[Dict[str, Any]] = Field(..., description="时间序列数据")
+    summary: Dict[str, Any] = Field(..., description="汇总信息")
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricStatsResponse(BaseModel):
+    """指标统计响应模式"""
+    metric_id: int = Field(..., description="指标ID")
+    metric_name: str = Field(..., description="指标名称")
+    count: int = Field(..., description="数据点数量")
+    min_value: Optional[float] = Field(None, description="最小值")
+    max_value: Optional[float] = Field(None, description="最大值")
+    avg_value: Optional[float] = Field(None, description="平均值")
+    sum_value: Optional[float] = Field(None, description="总和")
+    std_dev: Optional[float] = Field(None, description="标准差")
+    percentiles: Optional[Dict[str, float]] = Field(None, description="百分位数")
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricCollectionTrigger(BaseModel):
+    """指标采集触发器模式"""
+    metric_ids: List[int] = Field(..., description="指标ID列表", min_items=1)
+    trigger_type: str = Field(..., description="触发类型")
+    immediate: bool = Field(False, description="是否立即执行")
+    schedule: Optional[str] = Field(None, description="计划时间")
+    
+    @validator('trigger_type')
+    def validate_trigger_type(cls, v):
+        """验证触发类型"""
+        valid_types = ['manual', 'scheduled', 'event']
+        if v not in valid_types:
+            raise ValueError(f'Invalid trigger type. Must be one of: {valid_types}')
+        return v
+
+
+class MetricQuery(BaseModel):
+    """指标查询参数"""
+    name: Optional[str] = Field(None, description="指标名称")
+    metric_type: Optional[str] = Field(None, description="指标类型")
+    category: Optional[str] = Field(None, description="指标分类")
+    source: Optional[str] = Field(None, description="数据源")
+    status: Optional[str] = Field(None, description="状态")
+    enabled: Optional[bool] = Field(None, description="是否启用")
+    tags: Optional[Dict[str, str]] = Field(None, description="标签")
+    created_after: Optional[datetime] = Field(None, description="创建时间起始")
+    created_before: Optional[datetime] = Field(None, description="创建时间结束")
+    order_by: Optional[str] = Field("created_at", description="排序字段")
+    order_desc: bool = Field(True, description="是否降序")
+    offset: int = Field(0, ge=0, description="偏移量")
+    limit: int = Field(20, ge=1, le=100, description="限制数量")
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricAggregateQuery(BaseModel):
+    """指标聚合查询参数"""
+    metric_id: int = Field(..., description="指标ID")
+    aggregation_type: str = Field(..., description="聚合类型")
+    time_range: str = Field(..., description="时间范围")
+    start_time: Optional[datetime] = Field(None, description="开始时间")
+    end_time: Optional[datetime] = Field(None, description="结束时间")
+    group_by: Optional[List[str]] = Field(None, description="分组字段")
+    filters: Optional[Dict[str, Any]] = Field(None, description="过滤条件")
+    
+    class Config:
+        from_attributes = True
+
+
+class AggregationType:
+    """聚合类型枚举"""
+    AVG = "avg"
+    SUM = "sum"
+    MIN = "min"
+    MAX = "max"
+    COUNT = "count"
+    P50 = "p50"
+    P90 = "p90"
+    P95 = "p95"
+    P99 = "p99"

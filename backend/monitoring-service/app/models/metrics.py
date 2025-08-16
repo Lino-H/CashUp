@@ -521,3 +521,176 @@ class MetricThreshold(BaseModel, StatusMixin):
         elif self.operator == '!=':
             return value != self.threshold_value
         return False
+
+
+class MetricAlert(BaseModel, TimestampMixin, StatusMixin):
+    """指标告警模型"""
+    
+    __tablename__ = 'metric_alerts'
+    
+    # 关联指标
+    metric_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey('metrics.id', ondelete='CASCADE'),
+        nullable=False,
+        comment="指标ID"
+    )
+    
+    # 告警名称
+    name = Column(
+        String(255),
+        nullable=False,
+        comment="告警名称"
+    )
+    
+    # 告警级别
+    severity = Column(
+        String(50),
+        nullable=False,
+        default='warning',
+        comment="告警级别：info, warning, critical"
+    )
+    
+    # 告警规则
+    rule_expression = Column(
+        Text,
+        nullable=False,
+        comment="告警规则表达式"
+    )
+    
+    # 告警条件
+    conditions = Column(
+        JSONB,
+        nullable=True,
+        comment="告警条件"
+    )
+    
+    # 触发时间
+    triggered_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="触发时间"
+    )
+    
+    # 恢复时间
+    resolved_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="恢复时间"
+    )
+    
+    # 告警状态
+    alert_status = Column(
+        String(50),
+        nullable=False,
+        default='pending',
+        comment="告警状态：pending, firing, resolved"
+    )
+    
+    # 告警消息
+    message = Column(
+        Text,
+        nullable=True,
+        comment="告警消息"
+    )
+    
+    # 标签
+    labels = Column(
+        JSONB,
+        nullable=True,
+        comment="标签"
+    )
+    
+    # 注释
+    annotations = Column(
+        JSONB,
+        nullable=True,
+        comment="注释"
+    )
+    
+    # 关系
+    metric = relationship("Metric")
+    
+    # 索引
+    __table_args__ = (
+        Index('idx_metric_alerts_metric_id', 'metric_id'),
+        Index('idx_metric_alerts_severity', 'severity'),
+        Index('idx_metric_alerts_status', 'alert_status'),
+        Index('idx_metric_alerts_triggered_at', 'triggered_at'),
+        Index('idx_metric_alerts_resolved_at', 'resolved_at'),
+        CheckConstraint(
+            "severity IN ('info', 'warning', 'critical')",
+            name='ck_metric_alerts_severity'
+        ),
+        CheckConstraint(
+            "alert_status IN ('pending', 'firing', 'resolved')",
+            name='ck_metric_alerts_status'
+        ),
+    )
+    
+    def get_conditions(self) -> Dict[str, Any]:
+        """获取告警条件"""
+        return self.conditions or {}
+    
+    def set_conditions(self, conditions: Dict[str, Any]):
+        """设置告警条件"""
+        self.conditions = conditions
+    
+    def get_labels(self) -> Dict[str, str]:
+        """获取标签"""
+        return self.labels or {}
+    
+    def set_labels(self, labels: Dict[str, str]):
+        """设置标签"""
+        self.labels = labels
+    
+    def get_annotations(self) -> Dict[str, str]:
+        """获取注释"""
+        return self.annotations or {}
+    
+    def set_annotations(self, annotations: Dict[str, str]):
+        """设置注释"""
+        self.annotations = annotations
+    
+    def is_firing(self) -> bool:
+        """是否正在告警"""
+        return self.alert_status == 'firing'
+    
+    def is_resolved(self) -> bool:
+        """是否已恢复"""
+        return self.alert_status == 'resolved'
+    
+    def is_pending(self) -> bool:
+        """是否待处理"""
+        return self.alert_status == 'pending'
+    
+    def trigger(self, message: str = None):
+        """触发告警"""
+        self.alert_status = 'firing'
+        self.triggered_at = func.now()
+        if message:
+            self.message = message
+    
+    def resolve(self, message: str = None):
+        """恢复告警"""
+        self.alert_status = 'resolved'
+        self.resolved_at = func.now()
+        if message:
+            self.message = message
+
+
+# 枚举类型
+class MetricType:
+    """指标类型枚举"""
+    GAUGE = 'gauge'
+    COUNTER = 'counter'
+    HISTOGRAM = 'histogram'
+    SUMMARY = 'summary'
+
+
+class MetricStatus:
+    """指标状态枚举"""
+    ACTIVE = 'active'
+    INACTIVE = 'inactive'
+    DISABLED = 'disabled'
+    ERROR = 'error'

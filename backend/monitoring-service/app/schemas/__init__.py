@@ -10,15 +10,21 @@ from .metrics import (
     MetricCreate,
     MetricUpdate,
     MetricResponse,
+    MetricListResponse,
     MetricValueCreate,
     MetricValueResponse,
+    MetricValueListResponse,
+    MetricValueBatchCreate,
     MetricAlertCreate,
     MetricAlertUpdate,
     MetricAlertResponse,
     MetricQueryRequest,
     MetricAggregateRequest,
+    MetricAggregationResponse,
     MetricBatchRequest,
-    MetricStatisticsResponse
+    MetricStatisticsResponse,
+    MetricStatsResponse,
+    MetricCollectionTrigger
 )
 
 from .alerts import (
@@ -72,12 +78,12 @@ from .system import (
     SystemConfigResponse,
     SystemConfigUpdate,
     SystemStatusResponse,
-    SystemResourceResponse,
+    SystemResourcesResponse,
     SystemLogResponse,
-    SystemBackupRequest,
+    SystemBackupCreate,
     SystemBackupResponse,
-    SystemMaintenanceRequest,
-    SystemMaintenanceResponse,
+    SystemMaintenanceTaskCreate,
+    SystemMaintenanceTaskResponse,
     SystemPerformanceResponse,
     SystemSecurityResponse
 )
@@ -87,15 +93,21 @@ __all__ = [
     "MetricCreate",
     "MetricUpdate",
     "MetricResponse",
+    "MetricListResponse",
     "MetricValueCreate",
     "MetricValueResponse",
+    "MetricValueListResponse",
+    "MetricValueBatchCreate",
     "MetricAlertCreate",
     "MetricAlertUpdate",
     "MetricAlertResponse",
     "MetricQueryRequest",
     "MetricAggregateRequest",
+    "MetricAggregationResponse",
     "MetricBatchRequest",
     "MetricStatisticsResponse",
+    "MetricStatsResponse",
+    "MetricCollectionTrigger",
     
     # Alerts schemas
     "AlertCreate",
@@ -145,12 +157,12 @@ __all__ = [
     "SystemConfigResponse",
     "SystemConfigUpdate",
     "SystemStatusResponse",
-    "SystemResourceResponse",
+    "SystemResourcesResponse",
     "SystemLogResponse",
-    "SystemBackupRequest",
+    "SystemBackupCreate",
     "SystemBackupResponse",
-    "SystemMaintenanceRequest",
-    "SystemMaintenanceResponse",
+    "SystemMaintenanceTaskCreate",
+    "SystemMaintenanceTaskResponse",
     "SystemPerformanceResponse",
     "SystemSecurityResponse"
 ]

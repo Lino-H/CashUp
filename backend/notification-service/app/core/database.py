@@ -101,6 +101,12 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return SessionLocal
 
 
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """获取数据库会话 - 别名函数"""
+    async for session in get_database_session():
+        yield session
+
+
 async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
     """
     获取数据库会话
@@ -175,4 +181,10 @@ async def check_database_health() -> bool:
     """
     try:
         session_factory = get_session_factory()
-        async with session_
+        async with session_factory() as session:
+            # 执行简单查询测试连接
+            await session.execute("SELECT 1")
+            return True
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        return False

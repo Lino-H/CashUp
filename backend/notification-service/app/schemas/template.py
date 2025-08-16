@@ -344,7 +344,7 @@ class TemplateExport(BaseModel):
     """
     template_ids: Optional[List[UUID]] = Field(default=None, description="模板ID列表")
     filters: Optional[TemplateFilter] = Field(default=None, description="过滤条件")
-    format: str = Field(default="json", regex="^(json|yaml|csv)$", description="导出格式")
+    format: str = Field(default="json", pattern="^(json|yaml|csv)$", description="导出格式")
     include_metadata: bool = Field(default=True, description="是否包含元数据")
     include_stats: bool = Field(default=False, description="是否包含统计信息")
 
@@ -366,7 +366,7 @@ class TemplateImport(BaseModel):
     模板导入请求模式
     """
     file_url: str = Field(description="文件URL")
-    format: str = Field(default="json", regex="^(json|yaml|csv)$", description="文件格式")
+    format: str = Field(default="json", pattern="^(json|yaml|csv)$", description="文件格式")
     overwrite_existing: bool = Field(default=False, description="是否覆盖已存在的模板")
     validate_only: bool = Field(default=False, description="仅验证不导入")
     import_config: Optional[Dict[str, Any]] = Field(default=None, description="导入配置")

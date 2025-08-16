@@ -23,14 +23,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 import uvicorn
 
-from app.core.config import get_config
+from app.core.config import get_settings
 from app.core.database import init_database, close_database, create_tables
 from app.core.cache import init_cache, close_cache
 from app.core.logging import setup_logging, get_logger
 from app.core.exceptions import (
     monitoring_exception_handler,
     http_exception_handler,
-    validation_exception_handler,
     general_exception_handler
 )
 from app.api import api_router
@@ -43,7 +42,7 @@ from app.services.metrics_service import MetricsService
 from app.core.exceptions import MonitoringException
 
 # 获取配置
-config = get_config()
+config = get_settings()
 
 # 设置日志
 setup_logging()

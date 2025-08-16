@@ -715,3 +715,24 @@ class NotificationChannel(BaseModel, SoftDeleteMixin, StatusMixin):
     def increment_failed(self):
         """增加失败计数"""
         self.total_failed += 1
+
+
+# 为了兼容性，创建AlertChannel别名
+AlertChannel = NotificationChannel
+
+
+# 枚举类型
+class AlertStatus:
+    """告警状态枚举"""
+    PENDING = 'pending'
+    FIRING = 'firing'
+    RESOLVED = 'resolved'
+    SILENCED = 'silenced'
+    ACKNOWLEDGED = 'acknowledged'
+
+
+class AlertSeverity:
+    """告警严重级别枚举"""
+    CRITICAL = 'critical'
+    WARNING = 'warning'
+    INFO = 'info'

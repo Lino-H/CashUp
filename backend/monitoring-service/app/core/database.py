@@ -20,6 +20,13 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
+# 导入所有模型以确保它们被注册
+try:
+    from app.models import *  # noqa
+except ImportError:
+    # 如果模型还未定义，忽略导入错误
+    pass
+
 # 创建基础模型类
 Base = declarative_base()
 
@@ -187,8 +194,7 @@ def create_tables():
         if engine is None:
             raise RuntimeError("Database engine not initialized")
         
-        # 导入所有模型以确保它们被注册
-        from app.models import *  # noqa
+        # 模型已在模块顶部导入
         
         # 创建所有表
         Base.metadata.create_all(bind=engine)
@@ -205,8 +211,7 @@ def drop_tables():
         if engine is None:
             raise RuntimeError("Database engine not initialized")
         
-        # 导入所有模型以确保它们被注册
-        from app.models import *  # noqa
+        # 模型已在模块顶部导入
         
         # 删除所有表
         Base.metadata.drop_all(bind=engine)

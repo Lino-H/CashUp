@@ -232,6 +232,21 @@ class ConfigTemplateListResponse(BaseModel):
     pages: int = Field(..., description="总页数")
 
 
+class ConfigTemplateFilter(BaseModel):
+    """
+    配置模板过滤模式
+    """
+    name: Optional[str] = Field(None, description="模板名称")
+    type: Optional[ConfigType] = Field(None, description="模板类型")
+    category: Optional[str] = Field(None, description="模板分类")
+    is_active: Optional[bool] = Field(None, description="是否激活")
+    is_default: Optional[bool] = Field(None, description="是否默认模板")
+    version: Optional[str] = Field(None, description="模板版本")
+    created_after: Optional[datetime] = Field(None, description="创建时间起")
+    created_before: Optional[datetime] = Field(None, description="创建时间止")
+    search: Optional[str] = Field(None, description="搜索关键词")
+
+
 # 配置版本相关模式
 class ConfigVersionResponse(BaseModel):
     """
@@ -363,4 +378,33 @@ class ConfigImportResponse(BaseModel):
     failed_count: int = Field(..., description="失败数量")
     backup_id: Optional[str] = Field(None, description="备份ID")
     details: List[Dict[str, Any]] = Field(default_factory=list, description="导入详情")
+    errors: List[str] = Field(default_factory=list, description="错误列表")
+
+
+class ConfigStatsResponse(BaseModel):
+    """
+    配置统计响应模式
+    """
+    total_configs: int = Field(..., description="总配置数")
+    active_configs: int = Field(..., description="激活配置数")
+    inactive_configs: int = Field(..., description="未激活配置数")
+    expired_configs: int = Field(..., description="过期配置数")
+    by_type: Dict[str, int] = Field(..., description="按类型统计")
+    by_scope: Dict[str, int] = Field(..., description="按作用域统计")
+    by_status: Dict[str, int] = Field(..., description="按状态统计")
+    recent_changes: int = Field(..., description="最近变更数")
+
+
+class ConfigExportResponse(BaseModel):
+    """
+    配置导出响应模式
+    """
+    success: bool = Field(..., description="是否成功")
+    exported_count: int = Field(..., description="导出数量")
+    file_path: Optional[str] = Field(None, description="导出文件路径")
+    download_url: Optional[str] = Field(None, description="下载链接")
+    format: ConfigFormat = Field(..., description="导出格式")
+    size: int = Field(..., description="文件大小")
+    checksum: Optional[str] = Field(None, description="文件校验和")
+    expires_at: Optional[datetime] = Field(None, description="过期时间")
     errors: List[str] = Field(default_factory=list, description="错误列表")

@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
-from ...core.auth import get_current_user_from_token
+from ...core.auth import get_current_user_from_token, get_current_user
 from ...services.websocket_service import websocket_service, ConnectionManager
 from ...schemas.common import BaseResponse
 

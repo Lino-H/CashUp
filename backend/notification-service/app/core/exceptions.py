@@ -117,6 +117,78 @@ class RateLimitError(NotificationServiceException):
         )
 
 
+class InvalidNotificationError(NotificationServiceException):
+    """
+    无效通知异常
+    """
+    def __init__(self, message: str, field: str = None):
+        super().__init__(
+            message=message,
+            error_code="INVALID_NOTIFICATION",
+            details={"field": field} if field else {}
+        )
+
+
+class NotificationExpiredError(NotificationServiceException):
+    """
+    通知过期异常
+    """
+    def __init__(self, notification_id: str):
+        super().__init__(
+            message=f"Notification with ID {notification_id} has expired",
+            error_code="NOTIFICATION_EXPIRED",
+            details={"notification_id": notification_id}
+        )
+
+
+class InvalidTemplateError(NotificationServiceException):
+    """
+    无效模板异常
+    """
+    def __init__(self, message: str, template_id: str = None):
+        super().__init__(
+            message=message,
+            error_code="INVALID_TEMPLATE",
+            details={"template_id": template_id} if template_id else {}
+        )
+
+
+class InvalidChannelConfigError(NotificationServiceException):
+    """
+    无效通道配置异常
+    """
+    def __init__(self, message: str, channel_type: str = None):
+        super().__init__(
+            message=message,
+            error_code="INVALID_CHANNEL_CONFIG",
+            details={"channel_type": channel_type} if channel_type else {}
+        )
+
+
+class ChannelTestError(NotificationServiceException):
+    """
+    通道测试异常
+    """
+    def __init__(self, message: str, channel_type: str = None):
+        super().__init__(
+            message=message,
+            error_code="CHANNEL_TEST_ERROR",
+            details={"channel_type": channel_type} if channel_type else {}
+        )
+
+
+class ChannelNotAvailableError(NotificationServiceException):
+    """
+    通道不可用异常
+    """
+    def __init__(self, message: str, channel_type: str = None):
+        super().__init__(
+            message=message,
+            error_code="CHANNEL_NOT_AVAILABLE",
+            details={"channel_type": channel_type} if channel_type else {}
+        )
+
+
 class DatabaseError(NotificationServiceException):
     """
     数据库异常

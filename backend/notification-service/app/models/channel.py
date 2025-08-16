@@ -9,7 +9,7 @@ CashUp量化交易系统 - 通知渠道模型
 import uuid
 import enum
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from sqlalchemy import (
     String, Integer, DateTime, Boolean, Text, Enum, JSON,
     Index, CheckConstraint
@@ -209,7 +209,7 @@ class NotificationChannel(Base):
     )
     
     # 元数据
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON,
         nullable=True,
         comment="元数据"

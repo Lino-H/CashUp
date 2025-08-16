@@ -20,9 +20,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from .core.config import get_config
-from .core.database import init_db
-from .core.logging import setup_logging
+from .core.config import settings
+from .core.database import init_database
+# from .core.logging import setup_logging
 from .api.v1 import api_router
 from .services import (
     notification_service,
@@ -37,11 +37,11 @@ import time
 import uuid
 
 # 设置日志
-setup_logging()
+# setup_logging()
 logger = logging.getLogger(__name__)
 
 # 获取配置
-config = get_config()
+config = settings
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -100,7 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         # 初始化数据库
         logger.info("Initializing database...")
-        await init_db()
+        await init_database()
         
         # 初始化服务
         logger.info("Initializing services...")

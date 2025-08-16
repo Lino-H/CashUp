@@ -29,6 +29,15 @@ class RedisManager:
         self._redis: Optional[Redis] = None
         self._connection_pool = None
     
+    async def init_redis(self) -> Redis:
+        """
+        初始化Redis连接
+        
+        Returns:
+            Redis: Redis连接实例
+        """
+        return await self.connect()
+    
     async def connect(self) -> Redis:
         """
         建立Redis连接

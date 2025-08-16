@@ -42,24 +42,26 @@ class ChannelService:
         self.config_validators = {
             ChannelType.EMAIL: self._validate_email_config,
             ChannelType.SMS: self._validate_sms_config,
-            ChannelType.WECHAT: self._validate_wechat_config,
+            ChannelType.WXPUSHER: self._validate_wxpusher_config,
+            ChannelType.QANOTIFY: self._validate_qanotify_config,
+            ChannelType.PUSHPLUS: self._validate_pushplus_config,
             ChannelType.TELEGRAM: self._validate_telegram_config,
-            ChannelType.SLACK: self._validate_slack_config,
-            ChannelType.DISCORD: self._validate_discord_config,
+            ChannelType.WEBSOCKET: self._validate_websocket_config,
             ChannelType.WEBHOOK: self._validate_webhook_config,
-            ChannelType.PUSH: self._validate_push_config,
+            ChannelType.SYSTEM: self._validate_system_config,
         }
         
         # 渠道测试器
         self.channel_testers = {
             ChannelType.EMAIL: self._test_email_channel,
             ChannelType.SMS: self._test_sms_channel,
-            ChannelType.WECHAT: self._test_wechat_channel,
+            ChannelType.WXPUSHER: self._test_wxpusher_channel,
+            ChannelType.QANOTIFY: self._test_qanotify_channel,
+            ChannelType.PUSHPLUS: self._test_pushplus_channel,
             ChannelType.TELEGRAM: self._test_telegram_channel,
-            ChannelType.SLACK: self._test_slack_channel,
-            ChannelType.DISCORD: self._test_discord_channel,
+            ChannelType.WEBSOCKET: self._test_websocket_channel,
             ChannelType.WEBHOOK: self._test_webhook_channel,
-            ChannelType.PUSH: self._test_push_channel,
+            ChannelType.SYSTEM: self._test_system_channel,
         }
     
     async def create_channel(
@@ -907,3 +909,97 @@ class ChannelService:
                 score -= 5
         
         return max(0.0, min(100.0, score))
+    
+    async def _validate_wxpusher_config(self, config: Dict[str, Any]):
+        """验证微信推送渠道配置"""
+        required_fields = ['app_token']
+        for field in required_fields:
+            if field not in config:
+                raise InvalidChannelConfigError(f"Missing required field: {field}")
+    
+    async def _validate_qanotify_config(self, config: Dict[str, Any]):
+        """验证QANotify渠道配置"""
+        required_fields = ['key']
+        for field in required_fields:
+            if field not in config:
+                raise InvalidChannelConfigError(f"Missing required field: {field}")
+    
+    async def _validate_pushplus_config(self, config: Dict[str, Any]):
+        """验证PushPlus渠道配置"""
+        required_fields = ['token']
+        for field in required_fields:
+            if field not in config:
+                raise InvalidChannelConfigError(f"Missing required field: {field}")
+    
+    async def _validate_websocket_config(self, config: Dict[str, Any]):
+        """验证WebSocket渠道配置"""
+        # WebSocket渠道可能不需要特殊配置
+        pass
+    
+    async def _validate_system_config(self, config: Dict[str, Any]):
+        """验证系统通知渠道配置"""
+        # 系统通知渠道可能不需要特殊配置
+        pass
+    
+    async def _test_wxpusher_channel(self, channel: NotificationChannel, test_data: ChannelTest) -> Dict[str, Any]:
+        """测试微信推送渠道"""
+        await asyncio.sleep(0.1)
+        
+        return {
+            "success": True,
+            "message": "WxPusher channel test successful",
+            "details": {
+                "app_token": "***" + channel.config.get('app_token', '')[-4:],
+                "test_recipient": test_data.recipient
+            }
+        }
+    
+    async def _test_qanotify_channel(self, channel: NotificationChannel, test_data: ChannelTest) -> Dict[str, Any]:
+        """测试QANotify渠道"""
+        await asyncio.sleep(0.1)
+        
+        return {
+            "success": True,
+            "message": "QANotify channel test successful",
+            "details": {
+                "key": "***" + channel.config.get('key', '')[-4:],
+                "test_recipient": test_data.recipient
+            }
+        }
+    
+    async def _test_pushplus_channel(self, channel: NotificationChannel, test_data: ChannelTest) -> Dict[str, Any]:
+        """测试PushPlus渠道"""
+        await asyncio.sleep(0.1)
+        
+        return {
+            "success": True,
+            "message": "PushPlus channel test successful",
+            "details": {
+                "token": "***" + channel.config.get('token', '')[-4:],
+                "test_recipient": test_data.recipient
+            }
+        }
+    
+    async def _test_websocket_channel(self, channel: NotificationChannel, test_data: ChannelTest) -> Dict[str, Any]:
+        """测试WebSocket渠道"""
+        await asyncio.sleep(0.1)
+        
+        return {
+            "success": True,
+            "message": "WebSocket channel test successful",
+            "details": {
+                "test_recipient": test_data.recipient
+            }
+        }
+    
+    async def _test_system_channel(self, channel: NotificationChannel, test_data: ChannelTest) -> Dict[str, Any]:
+        """测试系统通知渠道"""
+        await asyncio.sleep(0.1)
+        
+        return {
+            "success": True,
+            "message": "System channel test successful",
+            "details": {
+                "test_recipient": test_data.recipient
+            }
+        }

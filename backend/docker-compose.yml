@@ -47,11 +47,12 @@ services:
     build:
       context: .
       dockerfile: user-service/Dockerfile
+    image: cashup-user-service:v1
     container_name: cashup_user_service
     ports:
       - "8001:8001"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
       - REDIS_URL=redis://redis:6379/0
       - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
     depends_on:
@@ -66,11 +67,12 @@ services:
     build:
       context: .
       dockerfile: trading-service/Dockerfile
+    image: cashup-trading-service:v1
     container_name: cashup_trading_service
     ports:
       - "8002:8002"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
       - REDIS_URL=redis://redis:6379/1
       - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
       - USER_SERVICE_URL=http://user-service:8001
@@ -89,11 +91,12 @@ services:
     build:
       context: .
       dockerfile: exchange-service/Dockerfile
+    image: cashup-exchange-service:v1
     container_name: cashup_exchange_service
     ports:
-      - "8003:8003"
+      - "8003:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
       - REDIS_URL=redis://redis:6379/2
       - GATEIO_API_KEY=${GATEIO_API_KEY:-}
       - GATEIO_API_SECRET=${GATEIO_API_SECRET:-}
@@ -109,11 +112,12 @@ services:
     build:
       context: .
       dockerfile: market-service/Dockerfile
+    image: cashup-market-service:v1
     container_name: cashup_market_service
     ports:
       - "8004:8004"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/cashup_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
       - REDIS_URL=redis://redis:6379/3
       - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
       - EXCHANGE_SERVICE_URL=http://exchange-service:8003
@@ -122,6 +126,112 @@ services:
       - redis
       - rabbitmq
       - exchange-service
+    networks:
+      - cashup_network
+
+  # 策略服务
+  strategy-service:
+    build:
+      context: .
+      dockerfile: strategy-service/Dockerfile
+    image: cashup-strategy-service:v1
+    container_name: cashup_strategy_service
+    ports:
+      - "8005:8005"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/4
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - USER_SERVICE_URL=http://user-service:8001
+      - TRADING_SERVICE_URL=http://trading-service:8002
+      - MARKET_SERVICE_URL=http://market-service:8004
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - user-service
+      - trading-service
+      - market-service
+    networks:
+      - cashup_network
+
+  # 订单服务
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    image: cashup-order-service:v1
+    container_name: cashup_order_service
+    ports:
+      - "8006:8005"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/5
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - USER_SERVICE_URL=http://user-service:8001
+      - TRADING_SERVICE_URL=http://trading-service:8002
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - user-service
+      - trading-service
+    networks:
+      - cashup_network
+
+  # 通知服务
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    image: cashup-notification-service:v1
+    container_name: cashup_notification_service
+    ports:
+      - "8010:8007"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/6
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - cashup_network
+
+  # 配置服务
+  config-service:
+    build:
+      context: .
+      dockerfile: config-service/Dockerfile
+    image: cashup-config-service:v1
+    container_name: cashup_config_service
+    ports:
+      - "8008:8008"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/7
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cashup_network
+
+  # 监控服务
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: monitoring-service/Dockerfile
+    image: cashup-monitoring-service:v1
+    container_name: cashup_monitoring_service
+    ports:
+      - "8009:8009"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/cashup_db
+      - REDIS_URL=redis://redis:6379/8
+    depends_on:
+      - postgres
+      - redis
     networks:
       - cashup_network
 

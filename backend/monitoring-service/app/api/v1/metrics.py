@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_permissions
+from app.core.security import get_current_user, require_permission
 from app.core.logging import get_logger, audit_log
 from app.schemas.metrics import (
     MetricCreate, MetricUpdate, MetricResponse, MetricListResponse,
@@ -36,7 +36,7 @@ def get_metrics_service(db: Session = Depends(get_db)) -> MetricsService:
 
 
 @router.get("/", response_model=MetricListResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def list_metrics(
     pagination: PaginationParams = Depends(),
     name: Optional[str] = Query(None, description="指标名称过滤"),
@@ -85,7 +85,7 @@ async def list_metrics(
 
 
 @router.post("/", response_model=MetricResponse, status_code=201)
-@require_permissions(["metrics:write"])
+@require_permission("metrics:write")
 @audit_log("create_metric", "metric")
 async def create_metric(
     metric_data: MetricCreate,
@@ -117,7 +117,7 @@ async def create_metric(
 
 
 @router.get("/{metric_id}", response_model=MetricResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def get_metric(
     metric_id: int = Path(..., description="指标ID"),
     service: MetricsService = Depends(get_metrics_service),
@@ -147,7 +147,7 @@ async def get_metric(
 
 
 @router.put("/{metric_id}", response_model=MetricResponse)
-@require_permissions(["metrics:write"])
+@require_permission("metrics:write")
 @audit_log("update_metric", "metric")
 async def update_metric(
     metric_id: int = Path(..., description="指标ID"),
@@ -183,7 +183,7 @@ async def update_metric(
 
 
 @router.delete("/{metric_id}", status_code=204)
-@require_permissions(["metrics:delete"])
+@require_permission("metrics:delete")
 @audit_log("delete_metric", "metric")
 async def delete_metric(
     metric_id: int = Path(..., description="指标ID"),
@@ -212,7 +212,7 @@ async def delete_metric(
 
 
 @router.post("/{metric_id}/values", response_model=MetricValueResponse, status_code=201)
-@require_permissions(["metrics:write"])
+@require_permission("metrics:write")
 async def add_metric_value(
     metric_id: int = Path(..., description="指标ID"),
     value_data: MetricValueCreate = None,
@@ -243,7 +243,7 @@ async def add_metric_value(
 
 
 @router.post("/values/batch", status_code=201)
-@require_permissions(["metrics:write"])
+@require_permission("metrics:write")
 async def add_metric_values_batch(
     batch_data: MetricValueBatchCreate,
     service: MetricsService = Depends(get_metrics_service),
@@ -272,7 +272,7 @@ async def add_metric_values_batch(
 
 
 @router.get("/{metric_id}/values", response_model=MetricValueListResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def get_metric_values(
     metric_id: int = Path(..., description="指标ID"),
     time_range: TimeRangeParams = Depends(),
@@ -307,7 +307,7 @@ async def get_metric_values(
 
 
 @router.get("/{metric_id}/aggregation", response_model=MetricAggregationResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def get_metric_aggregation(
     metric_id: int = Path(..., description="指标ID"),
     time_range: TimeRangeParams = Depends(),
@@ -347,7 +347,7 @@ async def get_metric_aggregation(
 
 
 @router.get("/prometheus", response_class=PlainTextResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def get_prometheus_metrics(
     service: MetricsService = Depends(get_metrics_service),
     current_user: User = Depends(get_current_user)
@@ -372,7 +372,7 @@ async def get_prometheus_metrics(
 
 
 @router.post("/collect", status_code=202)
-@require_permissions(["metrics:write"])
+@require_permission("metrics:write")
 @audit_log("trigger_metric_collection", "metrics")
 async def trigger_metric_collection(
     collection_data: MetricCollectionTrigger,
@@ -406,7 +406,7 @@ async def trigger_metric_collection(
 
 
 @router.get("/stats", response_model=MetricStatsResponse)
-@require_permissions(["metrics:read"])
+@require_permission("metrics:read")
 async def get_metrics_stats(
     service: MetricsService = Depends(get_metrics_service),
     current_user: User = Depends(get_current_user)
@@ -431,13 +431,13 @@ async def get_metrics_stats(
 
 
 @router.delete("/cleanup", status_code=202)
-@require_permissions(["metrics:admin"])
+@require_permission("metrics:admin")
 @audit_log("cleanup_metrics", "metrics")
 async def cleanup_expired_data(
-    days: int = Query(30, description="保留天数"),
     background_tasks: BackgroundTasks,
     service: MetricsService = Depends(get_metrics_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    days: int = Query(30, description="保留天数")
 ):
     """清理过期数据"""
     try:

@@ -55,7 +55,6 @@ class TemplateService:
         """
         设置自定义Jinja2过滤器
         """
-        @self.jinja_env.filter('currency')
         def currency_filter(value, currency='USD'):
             """货币格式化过滤器"""
             try:
@@ -63,7 +62,6 @@ class TemplateService:
             except (ValueError, TypeError):
                 return str(value)
         
-        @self.jinja_env.filter('percentage')
         def percentage_filter(value, decimals=2):
             """百分比格式化过滤器"""
             try:
@@ -71,7 +69,6 @@ class TemplateService:
             except (ValueError, TypeError):
                 return str(value)
         
-        @self.jinja_env.filter('datetime_format')
         def datetime_format_filter(value, format='%Y-%m-%d %H:%M:%S'):
             """日期时间格式化过滤器"""
             if isinstance(value, str):
@@ -83,6 +80,11 @@ class TemplateService:
             if isinstance(value, datetime):
                 return value.strftime(format)
             return str(value)
+        
+        # 注册过滤器
+        self.jinja_env.filters['currency'] = currency_filter
+        self.jinja_env.filters['percentage'] = percentage_filter
+        self.jinja_env.filters['datetime_format'] = datetime_format_filter
     
     async def create_template(
         self,

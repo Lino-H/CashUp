@@ -53,6 +53,10 @@ class Settings(BaseSettings):
         default=["*"],
         description="允许的主机列表"
     )
+    CORS_ORIGINS: List[str] = Field(
+        default=["*"],
+        description="CORS允许的源列表"
+    )
     
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", description="日志级别")
@@ -265,6 +269,16 @@ def get_settings() -> Settings:
     return settings
 
 
+def get_config() -> Settings:
+    """
+    获取配置实例
+    
+    Returns:
+        Settings: 配置实例
+    """
+    return settings
+
+
 def get_database_url() -> str:
     """
     获取数据库连接URL
@@ -273,6 +287,11 @@ def get_database_url() -> str:
         str: 数据库URL
     """
     if settings.DATABASE_URL:
+        # 如果是PostgreSQL URL，确保使用asyncpg驱动
+        if settings.DATABASE_URL.startswith("postgresql://"):
+            return settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif settings.DATABASE_URL.startswith("postgres://"):
+            return settings.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
         return settings.DATABASE_URL
     
     # 默认使用SQLite数据库

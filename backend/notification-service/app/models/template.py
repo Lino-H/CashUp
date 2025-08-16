@@ -178,7 +178,7 @@ class NotificationTemplate(Base):
     )
     
     # 元数据
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON,
         nullable=True,
         comment="元数据"

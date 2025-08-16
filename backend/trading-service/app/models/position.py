@@ -219,10 +219,10 @@ class Position(Base):
     
     # 索引
     __table_args__ = (
-        Index('idx_user_symbol', 'user_id', 'symbol', unique=True),
-        Index('idx_user_active', 'user_id', 'is_active'),
-        Index('idx_strategy_active', 'strategy_id', 'is_active'),
-        Index('idx_symbol_active', 'symbol', 'is_active'),
+        Index('idx_position_user_symbol', 'user_id', 'symbol', unique=True),
+        Index('idx_position_user_active', 'user_id', 'is_active'),
+        Index('idx_position_strategy_active', 'strategy_id', 'is_active'),
+        Index('idx_position_symbol_active', 'symbol', 'is_active'),
     )
     
     def __repr__(self) -> str:

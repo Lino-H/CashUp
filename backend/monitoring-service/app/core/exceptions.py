@@ -175,6 +175,41 @@ class MetricsError(MonitoringException):
         )
 
 
+class MetricsCollectionError(MetricsError):
+    """指标采集异常"""
+    
+    def __init__(self, message: str, metric_name: str = None, source: str = None, **kwargs):
+        details = kwargs.get('details', {})
+        if source:
+            details['source'] = source
+        
+        super().__init__(
+            message=message,
+            metric_name=metric_name,
+            details=details,
+            status_code=kwargs.get('status_code', HTTP_500_INTERNAL_SERVER_ERROR)
+        )
+        self.error_code = "METRICS_COLLECTION_ERROR"
+
+
+class DataStorageError(MonitoringException):
+    """数据存储异常"""
+    
+    def __init__(self, message: str, operation: str = None, table: str = None, **kwargs):
+        details = kwargs.get('details', {})
+        if operation:
+            details['operation'] = operation
+        if table:
+            details['table'] = table
+        
+        super().__init__(
+            message=message,
+            error_code="DATA_STORAGE_ERROR",
+            details=details,
+            status_code=kwargs.get('status_code', HTTP_500_INTERNAL_SERVER_ERROR)
+        )
+
+
 class AlertsError(MonitoringException):
     """告警相关异常"""
     
@@ -189,6 +224,23 @@ class AlertsError(MonitoringException):
             details=details,
             status_code=kwargs.get('status_code', HTTP_400_BAD_REQUEST)
         )
+
+
+class AlertProcessingError(AlertsError):
+    """告警处理异常"""
+    
+    def __init__(self, message: str, alert_id: str = None, processing_stage: str = None, **kwargs):
+        details = kwargs.get('details', {})
+        if processing_stage:
+            details['processing_stage'] = processing_stage
+        
+        super().__init__(
+            message=message,
+            alert_id=alert_id,
+            details=details,
+            status_code=kwargs.get('status_code', HTTP_500_INTERNAL_SERVER_ERROR)
+        )
+        self.error_code = "ALERT_PROCESSING_ERROR"
 
 
 class HealthCheckError(MonitoringException):

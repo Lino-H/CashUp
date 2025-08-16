@@ -636,4 +636,5 @@ class DashboardConfig(BaseModel, MetadataMixin):
             self.config_value = value
             self.is_encrypted = True
         else:
-            self.config_value =
+            self.config_value = value
+            self.is_encrypted = False

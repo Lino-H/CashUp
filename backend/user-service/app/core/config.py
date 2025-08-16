@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     
     # 数据库配置
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://cashup:cashup123@localhost:5432/cashup_user",
+        default="postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup_user",
         description="数据库连接URL"
     )
     DATABASE_ECHO: bool = Field(default=False, description="是否打印SQL语句")
