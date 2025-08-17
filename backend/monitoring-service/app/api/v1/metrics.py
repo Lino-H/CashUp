@@ -23,7 +23,7 @@ from app.schemas.metrics import (
 )
 from app.schemas.common import PaginationParams, TimeRangeParams
 from app.services.metrics_service import MetricsService
-from app.models.user import User
+from app.core.security import User
 
 # 创建路由器
 router = APIRouter()

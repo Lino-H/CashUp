@@ -314,6 +314,77 @@ class AlertStatisticsResponse(BaseModel):
         from_attributes = True
 
 
+class AlertListResponse(BaseModel):
+    """告警列表响应模式"""
+    alerts: List[AlertResponse] = Field(..., description="告警列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class AlertRuleListResponse(BaseModel):
+    """告警规则列表响应模式"""
+    rules: List[AlertRuleResponse] = Field(..., description="告警规则列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+# 通知渠道别名
+NotificationChannelCreate = AlertChannelCreate
+NotificationChannelUpdate = AlertChannelUpdate
+NotificationChannelResponse = AlertChannelResponse
+
+
+class NotificationChannelListResponse(BaseModel):
+    """通知渠道列表响应模式"""
+    channels: List[AlertChannelResponse] = Field(..., description="通知渠道列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class AlertResolveRequest(BaseModel):
+    """告警解决请求模式"""
+    operator: str = Field(..., description="操作人", max_length=100)
+    reason: Optional[str] = Field(None, description="解决原因", max_length=500)
+    resolution_notes: Optional[str] = Field(None, description="解决备注", max_length=1000)
+
+
+class AlertStatsResponse(BaseModel):
+    """告警统计响应模式"""
+    total_alerts: int = Field(..., description="总告警数")
+    active_alerts: int = Field(..., description="活跃告警数")
+    resolved_alerts: int = Field(..., description="已解决告警数")
+    acknowledged_alerts: int = Field(..., description="已确认告警数")
+    critical_alerts: int = Field(..., description="严重告警数")
+    high_alerts: int = Field(..., description="高级告警数")
+    medium_alerts: int = Field(..., description="中级告警数")
+    low_alerts: int = Field(..., description="低级告警数")
+    
+    class Config:
+        from_attributes = True
+
+
+class NotificationTestRequest(BaseModel):
+    """通知测试请求模式"""
+    channel_id: int = Field(..., description="通知渠道ID")
+    message: str = Field(..., description="测试消息", max_length=500)
+    operator: str = Field(..., description="操作人", max_length=100)
+
+
 class AlertTrendResponse(BaseModel):
     """告警趋势响应模式"""
     time_series: List[Dict[str, Any]] = Field(..., description="时间序列数据")

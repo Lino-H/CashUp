@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     port: int = 8005
     
     # 数据库配置
-    database_url: str = "postgresql+asyncpg://postgres:password@postgres:5432/cashup_db"
+    database_url: str = "postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup"
     database_pool_size: int = 10
     database_max_overflow: int = 20
     

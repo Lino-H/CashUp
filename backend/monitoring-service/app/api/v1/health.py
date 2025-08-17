@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, BackgroundTa
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_permissions
+from app.core.security import get_current_user, require_permission
 from app.core.logging import get_logger, audit_log
 from app.schemas.health import (
     HealthCheckCreate, HealthCheckUpdate, HealthCheckResponse, HealthCheckListResponse,
@@ -23,7 +23,7 @@ from app.schemas.health import (
 )
 from app.schemas.common import PaginationParams, TimeRangeParams
 from app.services.health_service import HealthService
-from app.models.user import User
+from app.core.security import User
 
 # 创建路由器
 router = APIRouter()
@@ -38,7 +38,7 @@ def get_health_service(db: Session = Depends(get_db)) -> HealthService:
 # ==================== 健康检查配置管理 ====================
 
 @router.get("/checks", response_model=HealthCheckListResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def list_health_checks(
     pagination: PaginationParams = Depends(),
     check_type: Optional[str] = Query(None, description="检查类型过滤"),
@@ -75,7 +75,7 @@ async def list_health_checks(
 
 
 @router.post("/checks", response_model=HealthCheckResponse, status_code=201)
-@require_permissions(["health:write"])
+@require_permission("health:write")
 @audit_log("create_health_check", "health_check")
 async def create_health_check(
     check_data: HealthCheckCreate,
@@ -107,7 +107,7 @@ async def create_health_check(
 
 
 @router.get("/checks/{check_id}", response_model=HealthCheckResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_health_check(
     check_id: int = Path(..., description="检查ID"),
     service: HealthService = Depends(get_health_service),
@@ -137,7 +137,7 @@ async def get_health_check(
 
 
 @router.put("/checks/{check_id}", response_model=HealthCheckResponse)
-@require_permissions(["health:write"])
+@require_permission("health:write")
 @audit_log("update_health_check", "health_check")
 async def update_health_check(
     check_id: int = Path(..., description="检查ID"),
@@ -173,7 +173,7 @@ async def update_health_check(
 
 
 @router.delete("/checks/{check_id}", status_code=204)
-@require_permissions(["health:delete"])
+@require_permission("health:delete")
 @audit_log("delete_health_check", "health_check")
 async def delete_health_check(
     check_id: int = Path(..., description="检查ID"),
@@ -204,7 +204,7 @@ async def delete_health_check(
 # ==================== 健康检查执行 ====================
 
 @router.post("/checks/{check_id}/execute")
-@require_permissions(["health:execute"])
+@require_permission("health:execute")
 @audit_log("execute_health_check", "health_check")
 async def execute_health_check(
     check_id: int = Path(..., description="检查ID"),
@@ -240,7 +240,7 @@ async def execute_health_check(
 
 
 @router.post("/checks/execute/batch")
-@require_permissions(["health:execute"])
+@require_permission("health:execute")
 @audit_log("batch_execute_health_checks", "health_checks")
 async def batch_execute_health_checks(
     batch_data: HealthCheckBatchRequest,
@@ -276,7 +276,7 @@ async def batch_execute_health_checks(
 # ==================== 服务状态管理 ====================
 
 @router.get("/services", response_model=ServiceStatusListResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def list_service_status(
     pagination: PaginationParams = Depends(),
     status: Optional[str] = Query(None, description="状态过滤"),
@@ -313,7 +313,7 @@ async def list_service_status(
 
 
 @router.get("/services/{service_name}", response_model=ServiceStatusResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_service_status(
     service_name: str = Path(..., description="服务名称"),
     service: HealthService = Depends(get_health_service),
@@ -343,7 +343,7 @@ async def get_service_status(
 
 
 @router.put("/services/{service_name}", response_model=ServiceStatusResponse)
-@require_permissions(["health:write"])
+@require_permission("health:write")
 @audit_log("update_service_status", "service_status")
 async def update_service_status(
     service_name: str = Path(..., description="服务名称"),
@@ -375,7 +375,7 @@ async def update_service_status(
 
 
 @router.post("/services/refresh", status_code=202)
-@require_permissions(["health:execute"])
+@require_permission("health:execute")
 @audit_log("refresh_service_status", "service_status")
 async def refresh_service_status(
     background_tasks: BackgroundTasks,
@@ -404,7 +404,7 @@ async def refresh_service_status(
 # ==================== 系统健康状态 ====================
 
 @router.get("/system", response_model=SystemHealthResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_system_health(
     service: HealthService = Depends(get_health_service),
     current_user: User = Depends(get_current_user)
@@ -431,7 +431,7 @@ async def get_system_health(
 # ==================== 健康检查历史 ====================
 
 @router.get("/history", response_model=HealthCheckHistoryListResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_health_check_history(
     pagination: PaginationParams = Depends(),
     time_range: TimeRangeParams = Depends(),
@@ -471,7 +471,7 @@ async def get_health_check_history(
 
 
 @router.get("/history/{history_id}", response_model=HealthCheckHistoryResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_health_check_history_detail(
     history_id: int = Path(..., description="历史记录ID"),
     service: HealthService = Depends(get_health_service),
@@ -503,7 +503,7 @@ async def get_health_check_history_detail(
 # ==================== 统计信息 ====================
 
 @router.get("/stats", response_model=HealthCheckStatsResponse)
-@require_permissions(["health:read"])
+@require_permission("health:read")
 async def get_health_check_stats(
     time_range: TimeRangeParams = Depends(),
     service: HealthService = Depends(get_health_service),
@@ -534,7 +534,7 @@ async def get_health_check_stats(
 # ==================== 健康检查任务管理 ====================
 
 @router.post("/tasks/start", status_code=202)
-@require_permissions(["health:admin"])
+@require_permission("health:admin")
 @audit_log("start_health_check_tasks", "health_tasks")
 async def start_health_check_tasks(
     background_tasks: BackgroundTasks,
@@ -561,7 +561,7 @@ async def start_health_check_tasks(
 
 
 @router.post("/tasks/stop", status_code=202)
-@require_permissions(["health:admin"])
+@require_permission("health:admin")
 @audit_log("stop_health_check_tasks", "health_tasks")
 async def stop_health_check_tasks(
     service: HealthService = Depends(get_health_service),

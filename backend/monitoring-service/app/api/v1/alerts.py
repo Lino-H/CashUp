@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, BackgroundTa
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_permissions
+from app.core.security import get_current_user, require_permission
 from app.core.logging import get_logger, audit_log
 from app.schemas.alerts import (
     AlertCreate, AlertUpdate, AlertResponse, AlertListResponse,
@@ -24,7 +24,7 @@ from app.schemas.alerts import (
 )
 from app.schemas.common import PaginationParams, TimeRangeParams
 from app.services.alerts_service import AlertsService
-from app.models.user import User
+from app.core.security import User
 
 # 创建路由器
 router = APIRouter()
@@ -39,7 +39,7 @@ def get_alerts_service(db: Session = Depends(get_db)) -> AlertsService:
 # ==================== 告警管理 ====================
 
 @router.get("/", response_model=AlertListResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def list_alerts(
     pagination: PaginationParams = Depends(),
     status: Optional[str] = Query(None, description="告警状态过滤"),
@@ -82,7 +82,7 @@ async def list_alerts(
 
 
 @router.post("/", response_model=AlertResponse, status_code=201)
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("create_alert", "alert")
 async def create_alert(
     alert_data: AlertCreate,
@@ -114,7 +114,7 @@ async def create_alert(
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def get_alert(
     alert_id: int = Path(..., description="告警ID"),
     service: AlertsService = Depends(get_alerts_service),
@@ -144,7 +144,7 @@ async def get_alert(
 
 
 @router.put("/{alert_id}", response_model=AlertResponse)
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("update_alert", "alert")
 async def update_alert(
     alert_id: int = Path(..., description="告警ID"),
@@ -180,7 +180,7 @@ async def update_alert(
 
 
 @router.delete("/{alert_id}", status_code=204)
-@require_permissions(["alerts:delete"])
+@require_permission("alerts:delete")
 @audit_log("delete_alert", "alert")
 async def delete_alert(
     alert_id: int = Path(..., description="告警ID"),
@@ -211,11 +211,11 @@ async def delete_alert(
 # ==================== 告警操作 ====================
 
 @router.post("/{alert_id}/acknowledge")
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("acknowledge_alert", "alert")
 async def acknowledge_alert(
-    alert_id: int = Path(..., description="告警ID"),
     ack_data: AlertAcknowledgeRequest,
+    alert_id: int = Path(..., description="告警ID"),
     service: AlertsService = Depends(get_alerts_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -244,11 +244,11 @@ async def acknowledge_alert(
 
 
 @router.post("/{alert_id}/resolve")
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("resolve_alert", "alert")
 async def resolve_alert(
-    alert_id: int = Path(..., description="告警ID"),
     resolve_data: AlertResolveRequest,
+    alert_id: int = Path(..., description="告警ID"),
     service: AlertsService = Depends(get_alerts_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -277,11 +277,11 @@ async def resolve_alert(
 
 
 @router.post("/{alert_id}/silence")
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("silence_alert", "alert")
 async def silence_alert(
-    alert_id: int = Path(..., description="告警ID"),
     silence_data: AlertSilenceRequest,
+    alert_id: int = Path(..., description="告警ID"),
     service: AlertsService = Depends(get_alerts_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -316,11 +316,11 @@ async def silence_alert(
 
 
 @router.post("/{alert_id}/escalate")
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("escalate_alert", "alert")
 async def escalate_alert(
-    alert_id: int = Path(..., description="告警ID"),
     escalate_data: AlertEscalateRequest,
+    alert_id: int = Path(..., description="告警ID"),
     service: AlertsService = Depends(get_alerts_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -355,7 +355,7 @@ async def escalate_alert(
 
 
 @router.post("/batch")
-@require_permissions(["alerts:write"])
+@require_permission("alerts:write")
 @audit_log("batch_alert_operation", "alerts")
 async def batch_alert_operation(
     batch_data: AlertBatchRequest,
@@ -394,7 +394,7 @@ async def batch_alert_operation(
 # ==================== 告警规则管理 ====================
 
 @router.get("/rules", response_model=AlertRuleListResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def list_alert_rules(
     pagination: PaginationParams = Depends(),
     enabled_only: bool = Query(True, description="仅显示启用的规则"),
@@ -426,7 +426,7 @@ async def list_alert_rules(
 
 
 @router.post("/rules", response_model=AlertRuleResponse, status_code=201)
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 @audit_log("create_alert_rule", "alert_rule")
 async def create_alert_rule(
     rule_data: AlertRuleCreate,
@@ -457,7 +457,7 @@ async def create_alert_rule(
 
 
 @router.get("/rules/{rule_id}", response_model=AlertRuleResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def get_alert_rule(
     rule_id: int = Path(..., description="规则ID"),
     service: AlertsService = Depends(get_alerts_service),
@@ -487,7 +487,7 @@ async def get_alert_rule(
 
 
 @router.put("/rules/{rule_id}", response_model=AlertRuleResponse)
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 @audit_log("update_alert_rule", "alert_rule")
 async def update_alert_rule(
     rule_id: int = Path(..., description="规则ID"),
@@ -523,7 +523,7 @@ async def update_alert_rule(
 
 
 @router.delete("/rules/{rule_id}", status_code=204)
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 @audit_log("delete_alert_rule", "alert_rule")
 async def delete_alert_rule(
     rule_id: int = Path(..., description="规则ID"),
@@ -552,7 +552,7 @@ async def delete_alert_rule(
 
 
 @router.post("/rules/{rule_id}/test")
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 async def test_alert_rule(
     rule_id: int = Path(..., description="规则ID"),
     service: AlertsService = Depends(get_alerts_service),
@@ -584,7 +584,7 @@ async def test_alert_rule(
 # ==================== 通知渠道管理 ====================
 
 @router.get("/channels", response_model=NotificationChannelListResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def list_notification_channels(
     pagination: PaginationParams = Depends(),
     channel_type: Optional[str] = Query(None, description="渠道类型过滤"),
@@ -619,7 +619,7 @@ async def list_notification_channels(
 
 
 @router.post("/channels", response_model=NotificationChannelResponse, status_code=201)
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 @audit_log("create_notification_channel", "notification_channel")
 async def create_notification_channel(
     channel_data: NotificationChannelCreate,
@@ -651,10 +651,10 @@ async def create_notification_channel(
 
 
 @router.post("/channels/{channel_id}/test")
-@require_permissions(["alerts:admin"])
+@require_permission("alerts:admin")
 async def test_notification_channel(
-    channel_id: int = Path(..., description="渠道ID"),
     test_data: NotificationTestRequest,
+    channel_id: int = Path(..., description="渠道ID"),
     service: AlertsService = Depends(get_alerts_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -684,7 +684,7 @@ async def test_notification_channel(
 # ==================== 统计信息 ====================
 
 @router.get("/stats", response_model=AlertStatsResponse)
-@require_permissions(["alerts:read"])
+@require_permission("alerts:read")
 async def get_alerts_stats(
     time_range: TimeRangeParams = Depends(),
     service: AlertsService = Depends(get_alerts_service),

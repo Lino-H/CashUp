@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 import io
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_permissions
+from app.core.security import get_current_user, require_permission
 from app.core.logging import get_logger, audit_log
 from app.schemas.system import (
     SystemInfoResponse, SystemStatusResponse, SystemResourceResponse,
@@ -26,7 +26,7 @@ from app.schemas.system import (
 )
 from app.schemas.common import PaginationParams, TimeRangeParams
 from app.services.system_service import SystemService
-from app.models.user import User
+from app.core.security import User
 
 # 创建路由器
 router = APIRouter()
@@ -41,7 +41,7 @@ def get_system_service(db: Session = Depends(get_db)) -> SystemService:
 # ==================== 系统信息 ====================
 
 @router.get("/info", response_model=SystemInfoResponse)
-@require_permissions(["system:read"])
+@require_permission("system:read")
 async def get_system_info(
     service: SystemService = Depends(get_system_service),
     current_user: User = Depends(get_current_user)
@@ -63,7 +63,7 @@ async def get_system_info(
 
 
 @router.get("/status", response_model=SystemStatusResponse)
-@require_permissions(["system:read"])
+@require_permission("system:read")
 async def get_system_status(
     service: SystemService = Depends(get_system_service),
     current_user: User = Depends(get_current_user)
@@ -85,7 +85,7 @@ async def get_system_status(
 
 
 @router.get("/resources", response_model=SystemResourceResponse)
-@require_permissions(["system:read"])
+@require_permission("system:read")
 async def get_system_resources(
     service: SystemService = Depends(get_system_service),
     current_user: User = Depends(get_current_user)
@@ -107,7 +107,7 @@ async def get_system_resources(
 
 
 @router.get("/performance", response_model=SystemPerformanceResponse)
-@require_permissions(["system:read"])
+@require_permission("system:read")
 async def get_system_performance(
     time_range: TimeRangeParams = Depends(),
     service: SystemService = Depends(get_system_service),
@@ -139,7 +139,7 @@ async def get_system_performance(
 # ==================== 系统配置 ====================
 
 @router.get("/config", response_model=SystemConfigResponse)
-@require_permissions(["system:config:read"])
+@require_permission("system:config:read")
 async def get_system_config(
     service: SystemService = Depends(get_system_service),
     current_user: User = Depends(get_current_user)
@@ -161,7 +161,7 @@ async def get_system_config(
 
 
 @router.put("/config", response_model=SystemConfigResponse)
-@require_permissions(["system:config:write"])
+@require_permission("system:config:write")
 @audit_log("update_system_config", "system_config")
 async def update_system_config(
     config_data: SystemConfigUpdate,
@@ -191,7 +191,7 @@ async def update_system_config(
 
 
 @router.post("/config/reload", status_code=204)
-@require_permissions(["system:config:write"])
+@require_permission("system:config:write")
 @audit_log("reload_system_config", "system_config")
 async def reload_system_config(
     service: SystemService = Depends(get_system_service),
@@ -212,7 +212,7 @@ async def reload_system_config(
 
 
 @router.post("/config/validate")
-@require_permissions(["system:config:read"])
+@require_permission("system:config:read")
 async def validate_system_config(
     config_data: SystemConfigUpdate,
     service: SystemService = Depends(get_system_service),
@@ -240,7 +240,7 @@ async def validate_system_config(
 # ==================== 系统日志 ====================
 
 @router.get("/logs", response_model=SystemLogListResponse)
-@require_permissions(["system:logs:read"])
+@require_permission("system:logs:read")
 async def get_system_logs(
     pagination: PaginationParams = Depends(),
     time_range: TimeRangeParams = Depends(),
@@ -283,7 +283,7 @@ async def get_system_logs(
 
 
 @router.get("/logs/{log_id}", response_model=SystemLogResponse)
-@require_permissions(["system:logs:read"])
+@require_permission("system:logs:read")
 async def get_system_log(
     log_id: int = Path(..., description="日志ID"),
     service: SystemService = Depends(get_system_service),
@@ -313,7 +313,7 @@ async def get_system_log(
 
 
 @router.post("/logs/export")
-@require_permissions(["system:logs:export"])
+@require_permission("system:logs:export")
 @audit_log("export_system_logs", "system_logs")
 async def export_system_logs(
     time_range: TimeRangeParams = Depends(),
@@ -363,7 +363,7 @@ async def export_system_logs(
 # ==================== 系统备份 ====================
 
 @router.get("/backups", response_model=SystemBackupListResponse)
-@require_permissions(["system:backup:read"])
+@require_permission("system:backup:read")
 async def list_system_backups(
     pagination: PaginationParams = Depends(),
     backup_type: Optional[str] = Query(None, description="备份类型过滤"),
@@ -395,7 +395,7 @@ async def list_system_backups(
 
 
 @router.post("/backups", response_model=SystemBackupResponse, status_code=201)
-@require_permissions(["system:backup:write"])
+@require_permission("system:backup:write")
 @audit_log("create_system_backup", "system_backup")
 async def create_system_backup(
     backup_data: SystemBackupCreate,
@@ -432,7 +432,7 @@ async def create_system_backup(
 
 
 @router.get("/backups/{backup_id}", response_model=SystemBackupResponse)
-@require_permissions(["system:backup:read"])
+@require_permission("system:backup:read")
 async def get_system_backup(
     backup_id: int = Path(..., description="备份ID"),
     service: SystemService = Depends(get_system_service),
@@ -462,7 +462,7 @@ async def get_system_backup(
 
 
 @router.post("/backups/{backup_id}/restore", status_code=204)
-@require_permissions(["system:backup:restore"])
+@require_permission("system:backup:restore")
 @audit_log("restore_system_backup", "system_backup")
 async def restore_system_backup(
     backup_id: int = Path(..., description="备份ID"),
@@ -492,7 +492,7 @@ async def restore_system_backup(
 # ==================== 系统维护 ====================
 
 @router.get("/maintenance", response_model=SystemMaintenanceListResponse)
-@require_permissions(["system:maintenance:read"])
+@require_permission("system:maintenance:read")
 async def get_maintenance_tasks(
     pagination: PaginationParams = Depends(),
     task_type: Optional[str] = Query(None, description="任务类型过滤"),
@@ -529,7 +529,7 @@ async def get_maintenance_tasks(
 
 
 @router.post("/maintenance/{task_type}/execute", response_model=SystemMaintenanceResponse)
-@require_permissions(["system:maintenance:execute"])
+@require_permission("system:maintenance:execute")
 @audit_log("execute_maintenance_task", "system_maintenance")
 async def execute_maintenance_task(
     task_type: str = Path(..., description="任务类型"),
@@ -562,7 +562,7 @@ async def execute_maintenance_task(
 # ==================== 系统安全 ====================
 
 @router.get("/security", response_model=SystemSecurityResponse)
-@require_permissions(["system:security:read"])
+@require_permission("system:security:read")
 async def get_security_status(
     service: SystemService = Depends(get_system_service),
     current_user: User = Depends(get_current_user)
@@ -584,7 +584,7 @@ async def get_security_status(
 
 
 @router.post("/security/scan", response_model=SystemSecurityResponse)
-@require_permissions(["system:security:scan"])
+@require_permission("system:security:scan")
 @audit_log("security_scan", "system_security")
 async def perform_security_scan(
     scan_request: SystemSecurityScanRequest,
@@ -620,7 +620,7 @@ async def perform_security_scan(
 # ==================== 系统操作 ====================
 
 @router.post("/restart", status_code=204)
-@require_permissions(["system:admin"])
+@require_permission("system:admin")
 @audit_log("restart_system", "system_operation")
 async def restart_system(
     operation_request: SystemOperationRequest,
@@ -649,7 +649,7 @@ async def restart_system(
 
 
 @router.post("/shutdown", status_code=204)
-@require_permissions(["system:admin"])
+@require_permission("system:admin")
 @audit_log("shutdown_system", "system_operation")
 async def shutdown_system(
     operation_request: SystemOperationRequest,
@@ -678,7 +678,7 @@ async def shutdown_system(
 
 
 @router.post("/cleanup", status_code=204)
-@require_permissions(["system:maintenance:execute"])
+@require_permission("system:maintenance:execute")
 @audit_log("cleanup_system", "system_operation")
 async def cleanup_system(
     cleanup_request: SystemCleanupRequest,

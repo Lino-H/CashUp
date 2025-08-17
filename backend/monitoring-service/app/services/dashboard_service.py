@@ -18,12 +18,13 @@ from sqlalchemy import and_, or_, func, desc, asc
 from app.core.database import get_db
 from app.core.cache import CacheManager
 from app.core.exceptions import DashboardError, ServiceUnavailableError
-from app.models.dashboard import Dashboard, DashboardWidget, DashboardConfig, DashboardType, WidgetType, RefreshInterval
+from app.models.dashboard import Dashboard, DashboardComponent, DashboardConfig
 from app.schemas.dashboard import (
     DashboardCreate, DashboardUpdate, DashboardWidgetCreate, DashboardWidgetUpdate,
-    DashboardConfigCreate, DashboardConfigUpdate, DashboardCreateFromTemplate,
+    DashboardConfigCreate, DashboardConfigUpdate, DashboardTemplateCreateRequest,
     DashboardCloneRequest, DashboardShareRequest, DashboardExportRequest,
-    DashboardImportRequest, DashboardDataRequest, WidgetDataRequest
+    DashboardImportRequest, DashboardDataRequest, WidgetDataRequest,
+    DashboardTypeEnum, WidgetTypeEnum, RefreshIntervalEnum
 )
 
 logger = logging.getLogger(__name__)
@@ -68,17 +69,17 @@ class DashboardService:
             # 如果有组件数据，创建组件
             if dashboard_data.widgets:
                 for widget_data in dashboard_data.widgets:
-                    widget = DashboardWidget(
+                    widget = DashboardComponent(
                         dashboard_id=dashboard.id,
                         name=widget_data.name,
-                        widget_type=widget_data.widget_type,
-                        position=widget_data.position,
-                        size=widget_data.size,
-                        config=widget_data.config or {},
+                        component_type=widget_data.widget_type,
+                        position_x=widget_data.position.get('x', 0),
+                        position_y=widget_data.position.get('y', 0),
+                        width=widget_data.size.get('width', 6),
+                        height=widget_data.size.get('height', 4),
+                        query_config=widget_data.config or {},
                         data_source=widget_data.data_source,
-                        query=widget_data.query,
-                        refresh_interval=widget_data.refresh_interval,
-                        enabled=widget_data.enabled
+                        refresh_interval=widget_data.refresh_interval
                     )
                     db.add(widget)
                 
@@ -109,8 +110,8 @@ class DashboardService:
         
         if dashboard:
             # 获取关联的组件
-            dashboard.widgets = db.query(DashboardWidget).filter(
-                DashboardWidget.dashboard_id == dashboard_id
+            dashboard.components = db.query(DashboardComponent).filter(
+                DashboardComponent.dashboard_id == dashboard_id
             ).all()
             
             # 缓存结果
@@ -119,7 +120,7 @@ class DashboardService:
         return dashboard
     
     async def get_dashboards(self, db: Session, 
-                            dashboard_type: Optional[DashboardType] = None,
+                            dashboard_type: Optional[DashboardTypeEnum] = None,
                             owner: Optional[str] = None,
                             is_public: Optional[bool] = None,
                             tags: Optional[List[str]] = None,
@@ -193,7 +194,7 @@ class DashboardService:
                 return False
             
             # 删除相关的组件
-            db.query(DashboardWidget).filter(DashboardWidget.dashboard_id == dashboard_id).delete()
+            db.query(DashboardComponent).filter(DashboardComponent.dashboard_id == dashboard_id).delete()
             
             # 删除相关的配置
             db.query(DashboardConfig).filter(DashboardConfig.dashboard_id == dashboard_id).delete()
@@ -220,7 +221,7 @@ class DashboardService:
             raise DashboardError(f"Failed to delete dashboard: {e}")
     
     # 仪表板组件管理
-    async def create_dashboard_widget(self, db: Session, widget_data: DashboardWidgetCreate) -> DashboardWidget:
+    async def create_dashboard_widget(self, db: Session, widget_data: DashboardWidgetCreate) -> DashboardComponent:
         """创建仪表板组件"""
         try:
             # 检查仪表板是否存在
@@ -229,17 +230,17 @@ class DashboardService:
                 raise ValueError(f"Dashboard with ID {widget_data.dashboard_id} not found")
             
             # 创建组件
-            widget = DashboardWidget(
+            widget = DashboardComponent(
                 dashboard_id=widget_data.dashboard_id,
                 name=widget_data.name,
-                widget_type=widget_data.widget_type,
-                position=widget_data.position,
-                size=widget_data.size,
-                config=widget_data.config or {},
+                component_type=widget_data.widget_type,
+                position_x=widget_data.position.get('x', 0),
+                position_y=widget_data.position.get('y', 0),
+                width=widget_data.size.get('width', 6),
+                height=widget_data.size.get('height', 4),
+                query_config=widget_data.config or {},
                 data_source=widget_data.data_source,
-                query=widget_data.query,
-                refresh_interval=widget_data.refresh_interval,
-                enabled=widget_data.enabled
+                refresh_interval=widget_data.refresh_interval
             )
             
             db.add(widget)
@@ -262,7 +263,7 @@ class DashboardService:
             logger.error(f"Failed to create dashboard widget: {e}")
             raise DashboardError(f"Failed to create dashboard widget: {e}")
     
-    async def get_dashboard_widget(self, db: Session, widget_id: int) -> Optional[DashboardWidget]:
+    async def get_dashboard_widget(self, db: Session, widget_id: int) -> Optional[DashboardComponent]:
         """获取仪表板组件详情"""
         cache_key = f"dashboards:widget:{widget_id}"
         
@@ -272,7 +273,7 @@ class DashboardService:
             return cached_widget
         
         # 从数据库获取
-        widget = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id).first()
+        widget = db.query(DashboardComponent).filter(DashboardComponent.id == widget_id).first()
         
         if widget:
             # 缓存结果
@@ -280,7 +281,7 @@ class DashboardService:
         
         return widget
     
-    async def get_dashboard_widgets(self, db: Session, dashboard_id: int) -> List[DashboardWidget]:
+    async def get_dashboard_widgets(self, db: Session, dashboard_id: int) -> List[DashboardComponent]:
         """获取仪表板的所有组件"""
         cache_key = f"dashboards:widgets:{dashboard_id}"
         
@@ -290,19 +291,19 @@ class DashboardService:
             return cached_widgets
         
         # 从数据库获取
-        widgets = db.query(DashboardWidget).filter(
-            DashboardWidget.dashboard_id == dashboard_id
-        ).order_by(DashboardWidget.position).all()
+        widgets = db.query(DashboardComponent).filter(
+            DashboardComponent.dashboard_id == dashboard_id
+        ).order_by(DashboardComponent.position).all()
         
         # 缓存结果
         await self.cache.set(cache_key, widgets, ttl=300)
         
         return widgets
     
-    async def update_dashboard_widget(self, db: Session, widget_id: int, widget_data: DashboardWidgetUpdate) -> Optional[DashboardWidget]:
+    async def update_dashboard_widget(self, db: Session, widget_id: int, widget_data: DashboardWidgetUpdate) -> Optional[DashboardComponent]:
         """更新仪表板组件"""
         try:
-            widget = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id).first()
+            widget = db.query(DashboardComponent).filter(DashboardComponent.id == widget_id).first()
             if not widget:
                 return None
             
@@ -337,7 +338,7 @@ class DashboardService:
     async def delete_dashboard_widget(self, db: Session, widget_id: int) -> bool:
         """删除仪表板组件"""
         try:
-            widget = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id).first()
+            widget = db.query(DashboardComponent).filter(DashboardComponent.id == widget_id).first()
             if not widget:
                 return False
             
@@ -493,8 +494,8 @@ class DashboardService:
             template_list = []
             for template in templates:
                 # 获取模板的组件
-                widgets = db.query(DashboardWidget).filter(
-                    DashboardWidget.dashboard_id == template.id
+                widgets = db.query(DashboardComponent).filter(
+            DashboardComponent.dashboard_id == template.id
                 ).all()
                 
                 template_data = {
@@ -533,7 +534,7 @@ class DashboardService:
             logger.error(f"Failed to get dashboard templates: {e}")
             raise DashboardError(f"Failed to get dashboard templates: {e}")
     
-    async def create_dashboard_from_template(self, db: Session, request: DashboardCreateFromTemplate) -> Dashboard:
+    async def create_dashboard_from_template(self, db: Session, request: DashboardTemplateCreateRequest) -> Dashboard:
         """基于模板创建仪表板"""
         try:
             # 获取模板
@@ -565,12 +566,12 @@ class DashboardService:
             db.refresh(dashboard)
             
             # 复制模板的组件
-            template_widgets = db.query(DashboardWidget).filter(
-                DashboardWidget.dashboard_id == template.id
+            template_widgets = db.query(DashboardComponent).filter(
+            DashboardComponent.dashboard_id == template.id
             ).all()
             
             for template_widget in template_widgets:
-                widget = DashboardWidget(
+                widget = DashboardComponent(
                     dashboard_id=dashboard.id,
                     name=template_widget.name,
                     widget_type=template_widget.widget_type,
@@ -631,12 +632,12 @@ class DashboardService:
             db.refresh(cloned)
             
             # 克隆组件
-            original_widgets = db.query(DashboardWidget).filter(
-                DashboardWidget.dashboard_id == dashboard_id
+            original_widgets = db.query(DashboardComponent).filter(
+            DashboardComponent.dashboard_id == dashboard_id
             ).all()
             
             for original_widget in original_widgets:
-                widget = DashboardWidget(
+                widget = DashboardComponent(
                     dashboard_id=cloned.id,
                     name=original_widget.name,
                     widget_type=original_widget.widget_type,
@@ -715,8 +716,8 @@ class DashboardService:
                 raise ValueError(f"Dashboard with ID {dashboard_id} not found")
             
             # 获取组件
-            widgets = db.query(DashboardWidget).filter(
-                DashboardWidget.dashboard_id == dashboard_id
+            widgets = db.query(DashboardComponent).filter(
+            DashboardComponent.dashboard_id == dashboard_id
             ).all()
             
             # 构建导出数据
@@ -812,7 +813,7 @@ class DashboardService:
             
             # 创建组件
             for widget_data in widgets_data:
-                widget = DashboardWidget(
+                widget = DashboardComponent(
                     dashboard_id=dashboard.id,
                     name=widget_data["name"],
                     widget_type=WidgetType(widget_data["widget_type"]),
@@ -848,10 +849,10 @@ class DashboardService:
                 raise ValueError(f"Dashboard with ID {dashboard_id} not found")
             
             # 获取组件
-            widgets = db.query(DashboardWidget).filter(
+            widgets = db.query(DashboardComponent).filter(
                 and_(
-                    DashboardWidget.dashboard_id == dashboard_id,
-                    DashboardWidget.enabled == True
+                    DashboardComponent.dashboard_id == dashboard_id,
+                    DashboardComponent.enabled == True
                 )
             ).all()
             
@@ -882,7 +883,7 @@ class DashboardService:
     async def get_widget_data(self, db: Session, widget_id: int, request: WidgetDataRequest) -> Dict[str, Any]:
         """获取组件数据"""
         try:
-            widget = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id).first()
+            widget = db.query(DashboardComponent).filter(DashboardComponent.id == widget_id).first()
             if not widget:
                 raise ValueError(f"Widget with ID {widget_id} not found")
             
@@ -902,29 +903,29 @@ class DashboardService:
             logger.error(f"Failed to get widget data: {e}")
             raise DashboardError(f"Failed to get widget data: {e}")
     
-    async def _get_widget_data(self, widget: DashboardWidget, time_range: Optional[Dict[str, Any]] = None, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _get_widget_data(self, widget: DashboardComponent, time_range: Optional[Dict[str, Any]] = None, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """获取单个组件的数据"""
         try:
             # 根据组件类型和数据源获取数据
             # 这里应该实现具体的数据获取逻辑
             
             # 示例实现
-            if widget.widget_type == WidgetType.CHART:
+            if widget.component_type == WidgetTypeEnum.CHART:
                 return await self._get_chart_data(widget, time_range, filters)
-            elif widget.widget_type == WidgetType.TABLE:
+            elif widget.component_type == WidgetTypeEnum.TABLE:
                 return await self._get_table_data(widget, time_range, filters)
-            elif widget.widget_type == WidgetType.METRIC:
+            elif widget.component_type == WidgetTypeEnum.METRIC:
                 return await self._get_metric_data(widget, time_range, filters)
-            elif widget.widget_type == WidgetType.GAUGE:
+            elif widget.component_type == WidgetTypeEnum.GAUGE:
                 return await self._get_gauge_data(widget, time_range, filters)
             else:
-                return {"message": f"Data for widget type {widget.widget_type} not implemented"}
+                return {"message": f"Data for widget type {widget.component_type} not implemented"}
             
         except Exception as e:
             logger.error(f"Failed to get widget data: {e}")
             return {"error": str(e)}
     
-    async def _get_chart_data(self, widget: DashboardWidget, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _get_chart_data(self, widget: DashboardComponent, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """获取图表数据"""
         # 示例实现
         return {
@@ -938,7 +939,7 @@ class DashboardService:
             }
         }
     
-    async def _get_table_data(self, widget: DashboardWidget, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _get_table_data(self, widget: DashboardComponent, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """获取表格数据"""
         # 示例实现
         return {
@@ -952,7 +953,7 @@ class DashboardService:
             }
         }
     
-    async def _get_metric_data(self, widget: DashboardWidget, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _get_metric_data(self, widget: DashboardComponent, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """获取指标数据"""
         # 示例实现
         return {
@@ -965,7 +966,7 @@ class DashboardService:
             }
         }
     
-    async def _get_gauge_data(self, widget: DashboardWidget, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _get_gauge_data(self, widget: DashboardComponent, time_range: Optional[Dict[str, Any]], filters: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """获取仪表盘数据"""
         # 示例实现
         return {

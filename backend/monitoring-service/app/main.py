@@ -23,7 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 import uvicorn
 
-from app.core.config import get_settings
+from app.core.config import get_settings, validate_config, print_config
 from app.core.database import init_database, close_database, create_tables
 from app.core.cache import init_cache, close_cache
 from app.core.logging import setup_logging, get_logger
@@ -219,9 +219,9 @@ app = FastAPI(
     title="CashUp Monitoring Service",
     description="CashUp量化交易系统监控服务API",
     version="1.0.0",
-    docs_url="/docs" if config.app.debug else None,
-    redoc_url="/redoc" if config.app.debug else None,
-    openapi_url="/openapi.json" if config.app.debug else None,
+    docs_url="/docs" if config.DEBUG else None,
+    redoc_url="/redoc" if config.DEBUG else None,
+    openapi_url="/openapi.json" if config.DEBUG else None,
     lifespan=lifespan
 )
 
@@ -238,32 +238,30 @@ app.add_middleware(SecurityMiddleware)
 app.add_middleware(MonitoringMiddleware)
 
 # 限流中间件
-if config.api.rate_limit_enabled:
+if config.RATE_LIMIT_ENABLED:
     app.add_middleware(
         RateLimitMiddleware,
-        calls=config.api.rate_limit_calls,
-        period=config.api.rate_limit_period
+        calls=config.RATE_LIMIT_REQUESTS,
+        period=config.RATE_LIMIT_WINDOW
     )
 
 # GZIP压缩中间件
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 信任主机中间件
-if config.security.trusted_hosts:
+if config.ALLOWED_HOSTS and config.ALLOWED_HOSTS != ["*"]:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=config.security.trusted_hosts
+        allowed_hosts=config.ALLOWED_HOSTS
     )
 
 # CORS中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.cors.allow_origins,
-    allow_credentials=config.cors.allow_credentials,
-    allow_methods=config.cors.allow_methods,
-    allow_headers=config.cors.allow_headers,
-    expose_headers=config.cors.expose_headers,
-    max_age=config.cors.max_age
+    allow_origins=config.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 
@@ -272,7 +270,7 @@ app.add_middleware(
 # 自定义异常处理器
 app.add_exception_handler(MonitoringException, monitoring_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(RequestValidationError, http_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 
@@ -281,7 +279,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 # 注册API路由
 app.include_router(
     api_router,
-    prefix=config.api.prefix
+    prefix=config.API_V1_STR
 )
 
 
@@ -348,7 +346,7 @@ async def liveness_check():
 
 # ==================== Prometheus指标 ====================
 
-if config.monitoring.prometheus_enabled:
+if config.PROMETHEUS_ENABLED:
     # 初始化Prometheus指标收集器
     instrumentator = Instrumentator(
         should_group_status_codes=True,
@@ -382,24 +380,27 @@ def create_app() -> FastAPI:
 def main():
     """主函数"""
     try:
-        # 检查环境
-        if not config.validate_environment():
-            logger.error("Environment validation failed")
+        # 验证配置
+        errors = validate_config()
+        if errors:
+            logger.error("Configuration validation failed:")
+            for error in errors:
+                logger.error(f"  - {error}")
             sys.exit(1)
         
         # 打印配置信息
-        if config.app.debug:
-            config.print_config()
+        if config.DEBUG:
+            print_config()
         
         # 启动服务器
         uvicorn.run(
             "app.main:app",
-            host=config.app.host,
-            port=config.app.port,
-            reload=config.app.debug,
-            workers=1 if config.app.debug else config.app.workers,
-            log_level=config.logging.level.lower(),
-            access_log=config.logging.access_log,
+            host=config.HOST,
+            port=config.PORT,
+            reload=config.DEBUG,
+            workers=1 if config.DEBUG else config.WORKER_PROCESSES,
+            log_level=config.LOG_LEVEL.lower(),
+            access_log=True,
             use_colors=True,
             server_header=False,
             date_header=False

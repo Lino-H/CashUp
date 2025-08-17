@@ -19,7 +19,8 @@ from sqlalchemy import and_, or_, func, desc, asc
 from app.core.database import get_db
 from app.core.cache import CacheManager
 from app.core.exceptions import HealthCheckError, ServiceUnavailableError
-from app.models.health import HealthCheck, ServiceStatus, HealthCheckResult, HealthStatus, ServiceType, CheckType
+from app.models.health import HealthCheck, ServiceStatus, HealthCheckResult
+from app.schemas.health import HealthStatusEnum, ServiceTypeEnum, CheckTypeEnum
 from app.schemas.health import (
     HealthCheckCreate, HealthCheckUpdate, ServiceStatusCreate, ServiceStatusUpdate,
     HealthCheckExecuteRequest, HealthCheckBatchExecuteRequest
@@ -105,8 +106,8 @@ class HealthService:
     
     async def get_health_checks(self, db: Session, 
                                service_name: Optional[str] = None,
-                               service_type: Optional[ServiceType] = None,
-                               check_type: Optional[CheckType] = None,
+                               service_type: Optional[ServiceTypeEnum] = None,
+                               check_type: Optional[CheckTypeEnum] = None,
                                enabled: Optional[bool] = None,
                                limit: int = 100,
                                offset: int = 0) -> Tuple[List[HealthCheck], int]:
@@ -347,13 +348,13 @@ class HealthService:
             
             # 计算整体状态
             if not results:
-                overall_status = HealthStatus.UNKNOWN
-            elif all(r.status == HealthStatus.HEALTHY for r in results):
-                overall_status = HealthStatus.HEALTHY
-            elif any(r.status == HealthStatus.UNHEALTHY for r in results):
-                overall_status = HealthStatus.UNHEALTHY
+                overall_status = HealthStatusEnum.UNKNOWN
+            elif all(r.status == HealthStatusEnum.HEALTHY for r in results):
+                overall_status = HealthStatusEnum.HEALTHY
+            elif any(r.status == HealthStatusEnum.UNHEALTHY for r in results):
+                overall_status = HealthStatusEnum.UNHEALTHY
             else:
-                overall_status = HealthStatus.DEGRADED
+                overall_status = HealthStatusEnum.DEGRADED
             
             # 更新服务状态
             service_status = await self.update_service_status(
@@ -363,7 +364,7 @@ class HealthService:
                     metadata={
                         "last_refresh": datetime.utcnow().isoformat(),
                         "check_count": len(results),
-                        "healthy_checks": sum(1 for r in results if r.status == HealthStatus.HEALTHY)
+                        "healthy_checks": sum(1 for r in results if r.status == HealthStatusEnum.HEALTHY)
                     }
                 )
             )
@@ -395,24 +396,24 @@ class HealthService:
             
             # 计算系统状态
             if not services:
-                system_status = HealthStatus.UNKNOWN
-            elif all(s.status == HealthStatus.HEALTHY for s in services):
-                system_status = HealthStatus.HEALTHY
-            elif any(s.status == HealthStatus.UNHEALTHY for s in services):
-                system_status = HealthStatus.UNHEALTHY
+                system_status = HealthStatusEnum.UNKNOWN
+            elif all(s.status == HealthStatusEnum.HEALTHY for s in services):
+                system_status = HealthStatusEnum.HEALTHY
+            elif any(s.status == HealthStatusEnum.UNHEALTHY for s in services):
+                system_status = HealthStatusEnum.UNHEALTHY
             else:
-                system_status = HealthStatus.DEGRADED
+                system_status = HealthStatusEnum.DEGRADED
             
             # 统计信息
             total_services = len(services)
-            healthy_services = sum(1 for s in services if s.status == HealthStatus.HEALTHY)
-            unhealthy_services = sum(1 for s in services if s.status == HealthStatus.UNHEALTHY)
-            degraded_services = sum(1 for s in services if s.status == HealthStatus.DEGRADED)
+            healthy_services = sum(1 for s in services if s.status == HealthStatusEnum.HEALTHY)
+            unhealthy_services = sum(1 for s in services if s.status == HealthStatusEnum.UNHEALTHY)
+            degraded_services = sum(1 for s in services if s.status == HealthStatusEnum.DEGRADED)
             
             # 检查统计
             total_checks = len(recent_results)
-            successful_checks = sum(1 for r in recent_results if r.status == HealthStatus.HEALTHY)
-            failed_checks = sum(1 for r in recent_results if r.status == HealthStatus.UNHEALTHY)
+            successful_checks = sum(1 for r in recent_results if r.status == HealthStatusEnum.HEALTHY)
+            failed_checks = sum(1 for r in recent_results if r.status == HealthStatusEnum.UNHEALTHY)
             
             # 平均响应时间
             avg_response_time = 0
@@ -462,7 +463,7 @@ class HealthService:
     async def get_health_check_history(self, db: Session, 
                                       check_id: Optional[int] = None,
                                       service_name: Optional[str] = None,
-                                      status: Optional[HealthStatus] = None,
+                                      status: Optional[HealthStatusEnum] = None,
                                       start_time: Optional[datetime] = None,
                                       end_time: Optional[datetime] = None,
                                       limit: int = 100,
@@ -523,7 +524,7 @@ class HealthService:
             
             # 成功率统计
             total_recent = len(recent_results)
-            successful_recent = sum(1 for r in recent_results if r.status == HealthStatus.HEALTHY)
+            successful_recent = sum(1 for r in recent_results if r.status == HealthStatusEnum.HEALTHY)
             success_rate = (successful_recent / total_recent * 100) if total_recent > 0 else 0
             
             # 平均响应时间
@@ -579,13 +580,13 @@ class HealthService:
         
         try:
             # 根据检查类型执行不同的检查逻辑
-            if health_check.check_type == CheckType.HTTP:
+            if health_check.check_type == CheckTypeEnum.HTTP:
                 result = await self._execute_http_check(health_check, check_timeout)
-            elif health_check.check_type == CheckType.TCP:
+            elif health_check.check_type == CheckTypeEnum.TCP:
                 result = await self._execute_tcp_check(health_check, check_timeout)
-            elif health_check.check_type == CheckType.DATABASE:
+            elif health_check.check_type == CheckTypeEnum.DATABASE:
                 result = await self._execute_database_check(health_check, check_timeout)
-            elif health_check.check_type == CheckType.CUSTOM:
+            elif health_check.check_type == CheckTypeEnum.CUSTOM:
                 result = await self._execute_custom_check(health_check, check_timeout)
             else:
                 raise ValueError(f"Unsupported check type: {health_check.check_type}")
@@ -620,7 +621,7 @@ class HealthService:
             
             check_result = HealthCheckResult(
                 health_check_id=health_check.id,
-                status=HealthStatus.UNHEALTHY,
+                status=HealthStatusEnum.UNHEALTHY,
                 response_time=response_time,
                 error_message=str(e),
                 metadata={"exception_type": type(e).__name__}
@@ -629,7 +630,7 @@ class HealthService:
             db.add(check_result)
             
             health_check.last_check_at = datetime.utcnow()
-            health_check.last_status = HealthStatus.UNHEALTHY
+            health_check.last_status = HealthStatusEnum.UNHEALTHY
             
             db.commit()
             db.refresh(check_result)
@@ -653,7 +654,7 @@ class HealthService:
                     expected_status = health_check.expected_status or 200
                     if response.status != expected_status:
                         return {
-                            "status": HealthStatus.UNHEALTHY,
+                            "status": HealthStatusEnum.UNHEALTHY,
                             "error_message": f"Expected status {expected_status}, got {response.status}",
                             "response_data": response_text[:1000]  # 限制响应数据长度
                         }
@@ -662,13 +663,13 @@ class HealthService:
                     if health_check.expected_response:
                         if health_check.expected_response not in response_text:
                             return {
-                                "status": HealthStatus.UNHEALTHY,
+                                "status": HealthStatusEnum.UNHEALTHY,
                                 "error_message": f"Expected response content not found",
                                 "response_data": response_text[:1000]
                             }
                     
                     return {
-                        "status": HealthStatus.HEALTHY,
+                        "status": HealthStatusEnum.HEALTHY,
                         "response_data": response_text[:1000],
                         "metadata": {
                             "status_code": response.status,
@@ -678,12 +679,12 @@ class HealthService:
                     
         except asyncio.TimeoutError:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": f"Request timeout after {timeout}s"
             }
         except Exception as e:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": str(e)
             }
     
@@ -712,7 +713,7 @@ class HealthService:
             await writer.wait_closed()
             
             return {
-                "status": HealthStatus.HEALTHY,
+                "status": HealthStatusEnum.HEALTHY,
                 "metadata": {
                     "host": host,
                     "port": port
@@ -721,12 +722,12 @@ class HealthService:
             
         except asyncio.TimeoutError:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": f"Connection timeout after {timeout}s"
             }
         except Exception as e:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": str(e)
             }
     
@@ -736,7 +737,7 @@ class HealthService:
             # 这里应该根据数据库类型实现具体的检查逻辑
             # 示例实现
             return {
-                "status": HealthStatus.HEALTHY,
+                "status": HealthStatusEnum.HEALTHY,
                 "metadata": {
                     "check_type": "database",
                     "endpoint": health_check.endpoint
@@ -745,7 +746,7 @@ class HealthService:
             
         except Exception as e:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": str(e)
             }
     
@@ -755,7 +756,7 @@ class HealthService:
             # 这里应该实现自定义检查逻辑
             # 可以执行脚本、调用API等
             return {
-                "status": HealthStatus.HEALTHY,
+                "status": HealthStatusEnum.HEALTHY,
                 "metadata": {
                     "check_type": "custom",
                     "endpoint": health_check.endpoint
@@ -764,7 +765,7 @@ class HealthService:
             
         except Exception as e:
             return {
-                "status": HealthStatus.UNHEALTHY,
+                "status": HealthStatusEnum.UNHEALTHY,
                 "error_message": str(e)
             }
     

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # 数据库配置
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/exchange_db"
+    DATABASE_URL: str = "postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup"
     
     # JWT配置
     SECRET_KEY: str = "your-secret-key-here"

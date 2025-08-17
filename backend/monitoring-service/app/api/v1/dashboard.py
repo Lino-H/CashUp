@@ -15,7 +15,7 @@ import io
 import json
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_permissions
+from app.core.security import get_current_user, require_permission
 from app.core.logging import get_logger, audit_log
 from app.schemas.dashboard import (
     DashboardCreate, DashboardUpdate, DashboardResponse, DashboardListResponse,
@@ -29,7 +29,7 @@ from app.schemas.dashboard import (
 )
 from app.schemas.common import PaginationParams, TimeRangeParams
 from app.services.dashboard_service import DashboardService
-from app.models.user import User
+from app.core.security import User
 
 # 创建路由器
 router = APIRouter()
@@ -44,7 +44,7 @@ def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
 # ==================== 仪表板管理 ====================
 
 @router.get("/", response_model=DashboardListResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def list_dashboards(
     pagination: PaginationParams = Depends(),
     dashboard_type: Optional[str] = Query(None, description="仪表板类型过滤"),
@@ -90,7 +90,7 @@ async def list_dashboards(
 
 
 @router.post("/", response_model=DashboardResponse, status_code=201)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("create_dashboard", "dashboard")
 async def create_dashboard(
     dashboard_data: DashboardCreate,
@@ -124,7 +124,7 @@ async def create_dashboard(
 
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_dashboard(
     dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
@@ -161,7 +161,7 @@ async def get_dashboard(
 
 
 @router.put("/{dashboard_id}", response_model=DashboardResponse)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("update_dashboard", "dashboard")
 async def update_dashboard(
     dashboard_id: int = Path(..., description="仪表板ID"),
@@ -203,7 +203,7 @@ async def update_dashboard(
 
 
 @router.delete("/{dashboard_id}", status_code=204)
-@require_permissions(["dashboard:delete"])
+@require_permission("dashboard:delete")
 @audit_log("delete_dashboard", "dashboard")
 async def delete_dashboard(
     dashboard_id: int = Path(..., description="仪表板ID"),
@@ -240,7 +240,7 @@ async def delete_dashboard(
 # ==================== 仪表板组件管理 ====================
 
 @router.get("/{dashboard_id}/components", response_model=DashboardComponentListResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def list_dashboard_components(
     dashboard_id: int = Path(..., description="仪表板ID"),
     pagination: PaginationParams = Depends(),
@@ -287,7 +287,7 @@ async def list_dashboard_components(
 
 
 @router.post("/{dashboard_id}/components", response_model=DashboardComponentResponse, status_code=201)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("create_dashboard_component", "dashboard_component")
 async def create_dashboard_component(
     dashboard_id: int = Path(..., description="仪表板ID"),
@@ -333,7 +333,7 @@ async def create_dashboard_component(
 
 
 @router.get("/components/{component_id}", response_model=DashboardComponentResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_dashboard_component(
     component_id: int = Path(..., description="组件ID"),
     service: DashboardService = Depends(get_dashboard_service),
@@ -370,7 +370,7 @@ async def get_dashboard_component(
 
 
 @router.put("/components/{component_id}", response_model=DashboardComponentResponse)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("update_dashboard_component", "dashboard_component")
 async def update_dashboard_component(
     component_id: int = Path(..., description="组件ID"),
@@ -413,7 +413,7 @@ async def update_dashboard_component(
 
 
 @router.delete("/components/{component_id}", status_code=204)
-@require_permissions(["dashboard:delete"])
+@require_permission("dashboard:delete")
 @audit_log("delete_dashboard_component", "dashboard_component")
 async def delete_dashboard_component(
     component_id: int = Path(..., description="组件ID"),
@@ -451,7 +451,7 @@ async def delete_dashboard_component(
 # ==================== 仪表板配置管理 ====================
 
 @router.get("/{dashboard_id}/config", response_model=DashboardConfigResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_dashboard_config(
     dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
@@ -489,7 +489,7 @@ async def get_dashboard_config(
 
 
 @router.post("/{dashboard_id}/config", response_model=DashboardConfigResponse, status_code=201)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("create_dashboard_config", "dashboard_config")
 async def create_dashboard_config(
     dashboard_id: int = Path(..., description="仪表板ID"),
@@ -533,7 +533,7 @@ async def create_dashboard_config(
 
 
 @router.put("/{dashboard_id}/config", response_model=DashboardConfigResponse)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("update_dashboard_config", "dashboard_config")
 async def update_dashboard_config(
     dashboard_id: int = Path(..., description="仪表板ID"),
@@ -576,7 +576,7 @@ async def update_dashboard_config(
 # ==================== 仪表板模板 ====================
 
 @router.get("/templates", response_model=DashboardTemplateListResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def list_dashboard_templates(
     pagination: PaginationParams = Depends(),
     template_type: Optional[str] = Query(None, description="模板类型过滤"),
@@ -608,7 +608,7 @@ async def list_dashboard_templates(
 
 
 @router.get("/templates/{template_id}", response_model=DashboardTemplateResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_dashboard_template(
     template_id: int = Path(..., description="模板ID"),
     service: DashboardService = Depends(get_dashboard_service),
@@ -638,7 +638,7 @@ async def get_dashboard_template(
 
 
 @router.post("/from-template", response_model=DashboardResponse, status_code=201)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("create_dashboard_from_template", "dashboard")
 async def create_dashboard_from_template(
     template_data: DashboardFromTemplateRequest,
@@ -678,11 +678,11 @@ async def create_dashboard_from_template(
 # ==================== 仪表板操作 ====================
 
 @router.post("/{dashboard_id}/clone", response_model=DashboardResponse, status_code=201)
-@require_permissions(["dashboard:write"])
+@require_permission("dashboard:write")
 @audit_log("clone_dashboard", "dashboard")
 async def clone_dashboard(
-    dashboard_id: int = Path(..., description="仪表板ID"),
     clone_data: DashboardCloneRequest,
+    dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -725,11 +725,11 @@ async def clone_dashboard(
 
 
 @router.post("/{dashboard_id}/share", response_model=DashboardShareResponse)
-@require_permissions(["dashboard:share"])
+@require_permission("dashboard:share")
 @audit_log("share_dashboard", "dashboard")
 async def share_dashboard(
-    dashboard_id: int = Path(..., description="仪表板ID"),
     share_data: DashboardShareRequest,
+    dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -771,11 +771,11 @@ async def share_dashboard(
 
 
 @router.post("/{dashboard_id}/export")
-@require_permissions(["dashboard:export"])
+@require_permission("dashboard:export")
 @audit_log("export_dashboard", "dashboard")
 async def export_dashboard(
-    dashboard_id: int = Path(..., description="仪表板ID"),
     export_data: DashboardExportRequest,
+    dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -825,7 +825,7 @@ async def export_dashboard(
 
 
 @router.post("/import", response_model=DashboardResponse, status_code=201)
-@require_permissions(["dashboard:import"])
+@require_permission("dashboard:import")
 @audit_log("import_dashboard", "dashboard")
 async def import_dashboard(
     file: UploadFile = File(..., description="仪表板文件"),
@@ -865,10 +865,10 @@ async def import_dashboard(
 # ==================== 仪表板数据 ====================
 
 @router.post("/{dashboard_id}/data", response_model=DashboardDataResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_dashboard_data(
-    dashboard_id: int = Path(..., description="仪表板ID"),
     data_request: DashboardDataRequest,
+    dashboard_id: int = Path(..., description="仪表板ID"),
     service: DashboardService = Depends(get_dashboard_service),
     current_user: User = Depends(get_current_user)
 ):
@@ -910,10 +910,10 @@ async def get_dashboard_data(
 
 
 @router.post("/components/{component_id}/data", response_model=ComponentDataResponse)
-@require_permissions(["dashboard:read"])
+@require_permission("dashboard:read")
 async def get_component_data(
-    component_id: int = Path(..., description="组件ID"),
     data_request: ComponentDataRequest,
+    component_id: int = Path(..., description="组件ID"),
     service: DashboardService = Depends(get_dashboard_service),
     current_user: User = Depends(get_current_user)
 ):

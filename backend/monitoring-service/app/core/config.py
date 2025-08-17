@@ -147,6 +147,12 @@ def get_settings() -> Settings:
     return Settings()
 
 
+# 别名函数，保持兼容性
+def get_config() -> Settings:
+    """获取配置实例（别名）"""
+    return get_settings()
+
+
 # 全局配置实例
 settings = get_settings()
 

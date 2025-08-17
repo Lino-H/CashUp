@@ -11,8 +11,8 @@ from .metrics import Metric, MetricValue, MetricTag
 from .alerts import Alert, AlertRule, AlertHistory, NotificationChannel
 from .health import HealthCheck, ServiceStatus, HealthCheckHistory
 from .dashboard import Dashboard, DashboardComponent, DashboardTemplate
-from .system import SystemConfig, SystemLog, SystemBackup, SystemTask
-from .user import User, UserSession, UserRole, Permission
+from .system import SystemConfig, SystemLog, SystemBackup
+# from .user import User, UserSession, UserRole, Permission  # User module not implemented yet
 
 __all__ = [
     # 基础模型
@@ -45,11 +45,10 @@ __all__ = [
     'SystemConfig',
     'SystemLog',
     'SystemBackup',
-    'SystemTask',
     
-    # 用户模型
-    'User',
-    'UserSession',
-    'UserRole',
-    'Permission',
+    # 用户模型 (not implemented yet)
+    # 'User',
+    # 'UserSession',
+    # 'UserRole',
+    # 'Permission',
 ]

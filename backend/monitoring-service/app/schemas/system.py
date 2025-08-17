@@ -463,3 +463,37 @@ class SystemOperationResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# 为了兼容性，添加别名
+SystemResourceResponse = SystemResourcesResponse
+
+# 列表响应类
+class SystemLogListResponse(BaseModel):
+    """系统日志列表响应"""
+    logs: List[SystemLogResponse]
+    total: int
+    page: int = 1
+    size: int = 20
+    pages: int
+
+class SystemBackupListResponse(BaseModel):
+    """系统备份列表响应"""
+    backups: List[SystemBackupResponse]
+    total: int
+    page: int = 1
+    size: int = 20
+    pages: int
+
+class SystemMaintenanceListResponse(BaseModel):
+    """系统维护任务列表响应"""
+    tasks: List[SystemMaintenanceTaskResponse]
+    total: int
+    page: int = 1
+    size: int = 20
+    pages: int
+
+# 其他缺失的响应类
+SystemMaintenanceResponse = SystemMaintenanceTaskResponse
+SystemPerformanceResponse = SystemResourcesResponse
+SystemCleanupRequest = SystemOperationRequest

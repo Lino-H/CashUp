@@ -387,3 +387,56 @@ class HealthBatchRequest(BaseModel):
     """健康批量请求模式"""
     service_names: List[str] = Field(..., description="服务名称列表")
     force_check: bool = Field(False, description="是否强制检查")
+
+
+class HealthCheckListResponse(BaseModel):
+    """健康检查列表响应模式"""
+    checks: List[HealthCheckResponse] = Field(..., description="健康检查列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class ServiceStatusListResponse(BaseModel):
+    """服务状态列表响应模式"""
+    services: List[ServiceStatusResponse] = Field(..., description="服务状态列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class HealthCheckHistoryListResponse(BaseModel):
+    """健康检查历史列表响应模式"""
+    history: List[HealthCheckHistoryResponse] = Field(..., description="健康检查历史列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页大小")
+    total_pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class HealthCheckStatsResponse(BaseModel):
+    """健康检查统计响应模式"""
+    total_checks: int = Field(..., description="总检查数")
+    healthy_checks: int = Field(..., description="健康检查数")
+    unhealthy_checks: int = Field(..., description="不健康检查数")
+    avg_response_time: float = Field(..., description="平均响应时间(秒)")
+    uptime_percentage: float = Field(..., description="可用性百分比")
+    last_updated: datetime = Field(..., description="最后更新时间")
+    
+    class Config:
+        from_attributes = True
+
+
+# 别名定义
+HealthCheckBatchRequest = HealthCheckBatchExecuteRequest

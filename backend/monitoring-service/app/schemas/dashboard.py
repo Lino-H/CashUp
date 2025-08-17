@@ -417,3 +417,51 @@ class WidgetDataResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class DashboardListResponse(BaseModel):
+    """仪表板列表响应模式"""
+    dashboards: List[DashboardResponse] = Field(..., description="仪表板列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    size: int = Field(..., description="每页大小")
+    pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+# 为了兼容性，添加一些别名
+ComponentDataRequest = WidgetDataRequest
+ComponentDataResponse = WidgetDataResponse
+DashboardComponentCreate = DashboardWidgetCreate
+DashboardComponentUpdate = DashboardWidgetUpdate
+DashboardComponentResponse = DashboardWidgetResponse
+
+
+class DashboardComponentListResponse(BaseModel):
+    """仪表板组件列表响应模式"""
+    components: List[DashboardWidgetResponse] = Field(..., description="组件列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    size: int = Field(..., description="每页大小")
+    pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+class DashboardTemplateListResponse(BaseModel):
+    """仪表板模板列表响应模式"""
+    templates: List[DashboardTemplateResponse] = Field(..., description="模板列表")
+    total: int = Field(..., description="总数量")
+    page: int = Field(..., description="当前页码")
+    size: int = Field(..., description="每页大小")
+    pages: int = Field(..., description="总页数")
+    
+    class Config:
+        from_attributes = True
+
+
+# 为了兼容性，添加别名
+DashboardFromTemplateRequest = DashboardTemplateCreateRequest
