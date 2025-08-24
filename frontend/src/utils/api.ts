@@ -2,7 +2,12 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { message } from 'antd'
 
 // API基础配置
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
+const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'http://localhost:8001'
+const TRADING_API_URL = import.meta.env.VITE_TRADING_API_URL || 'http://localhost:8002'
+const EXCHANGE_API_URL = import.meta.env.VITE_EXCHANGE_API_URL || 'http://localhost:8003'
+const ORDER_API_URL = import.meta.env.VITE_ORDER_API_URL || 'http://localhost:8006'
+const MONITORING_API_URL = import.meta.env.VITE_MONITORING_API_URL || 'http://localhost:8009'
 const API_TIMEOUT = 30000
 
 // 创建axios实例
@@ -252,13 +257,82 @@ export class ApiService {
   }
 }
 
+// 创建不同服务的API实例
+const userApi = axios.create({
+  baseURL: USER_API_URL,
+  timeout: API_TIMEOUT,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+const tradingApi = axios.create({
+  baseURL: TRADING_API_URL,
+  timeout: API_TIMEOUT,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+const exchangeApi = axios.create({
+  baseURL: EXCHANGE_API_URL,
+  timeout: API_TIMEOUT,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+const orderApi = axios.create({
+  baseURL: ORDER_API_URL,
+  timeout: API_TIMEOUT,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+const monitoringApi = axios.create({
+  baseURL: MONITORING_API_URL,
+  timeout: API_TIMEOUT,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+// 拦截器配置函数
+const setupInterceptors = (apiInstance: any) => {
+  // 请求拦截器
+  apiInstance.interceptors.request.use(
+    (config: any) => {
+      const token = localStorage.getItem('access_token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      config.headers['X-Request-ID'] = generateRequestId()
+      return config
+    },
+    (error: any) => Promise.reject(error)
+  )
+
+  // 响应拦截器
+  apiInstance.interceptors.response.use(
+    (response: any) => response,
+    (error: any) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        window.location.href = '/login'
+        message.error('登录已过期，请重新登录')
+      }
+      return Promise.reject(error)
+    }
+  )
+}
+
+// 为所有API实例添加拦截器
+setupInterceptors(userApi)
+setupInterceptors(tradingApi)
+setupInterceptors(exchangeApi)
+setupInterceptors(orderApi)
+setupInterceptors(monitoringApi)
+
 // 具体业务API服务
 
 // 用户服务
 export class UserService {
   // 登录
   static async login(email: string, password: string) {
-    return ApiService.post('/api/v1/auth/login', { email, password })
+    const response = await userApi.post('/auth/login', { email, password })
+    return response.data
   }
   
   // 注册
@@ -268,25 +342,29 @@ export class UserService {
     username: string
     invite_code?: string
   }) {
-    return ApiService.post('/api/v1/auth/register', userData)
+    const response = await userApi.post('/auth/register', userData)
+    return response.data
   }
   
   // 获取用户信息
   static async getUserProfile() {
-    return ApiService.get('/api/v1/users/profile')
+    const response = await userApi.get('/users/profile')
+    return response.data
   }
   
   // 更新用户信息
   static async updateUserProfile(userData: any) {
-    return ApiService.put('/api/v1/users/profile', userData)
+    const response = await userApi.put('/users/profile', userData)
+    return response.data
   }
   
   // 修改密码
   static async changePassword(oldPassword: string, newPassword: string) {
-    return ApiService.post('/api/v1/users/change-password', {
+    const response = await userApi.post('/users/change-password', {
       old_password: oldPassword,
       new_password: newPassword
     })
+    return response.data
   }
 }
 
@@ -299,37 +377,44 @@ export class StrategyService {
     status?: string
     type?: string
   }) {
-    return ApiService.get('/api/v1/strategies', params)
+    const response = await tradingApi.get('/strategies', { params })
+    return response.data
   }
   
   // 获取策略详情
   static async getStrategy(id: string) {
-    return ApiService.get(`/api/v1/strategies/${id}`)
+    const response = await tradingApi.get(`/strategies/${id}`)
+    return response.data
   }
   
   // 创建策略
   static async createStrategy(strategyData: any) {
-    return ApiService.post('/api/v1/strategies', strategyData)
+    const response = await tradingApi.post('/strategies', strategyData)
+    return response.data
   }
   
   // 更新策略
   static async updateStrategy(id: string, strategyData: any) {
-    return ApiService.put(`/api/v1/strategies/${id}`, strategyData)
+    const response = await tradingApi.put(`/strategies/${id}`, strategyData)
+    return response.data
   }
   
   // 删除策略
   static async deleteStrategy(id: string) {
-    return ApiService.delete(`/api/v1/strategies/${id}`)
+    const response = await tradingApi.delete(`/strategies/${id}`)
+    return response.data
   }
   
   // 启动策略
   static async startStrategy(id: string) {
-    return ApiService.post(`/api/v1/strategies/${id}/start`)
+    const response = await tradingApi.post(`/strategies/${id}/start`)
+    return response.data
   }
   
   // 停止策略
   static async stopStrategy(id: string) {
-    return ApiService.post(`/api/v1/strategies/${id}/stop`)
+    const response = await tradingApi.post(`/strategies/${id}/stop`)
+    return response.data
   }
   
   // 回测策略
@@ -338,7 +423,8 @@ export class StrategyService {
     end_date: string
     initial_capital: number
   }) {
-    return ApiService.post(`/api/v1/strategies/${id}/backtest`, params)
+    const response = await tradingApi.post(`/strategies/${id}/backtest`, params)
+    return response.data
   }
 }
 
@@ -346,12 +432,14 @@ export class StrategyService {
 export class TradingService {
   // 获取账户余额
   static async getBalance() {
-    return ApiService.get('/api/v1/trading/balance')
+    const response = await tradingApi.get('/balance')
+    return response.data
   }
   
   // 获取持仓
   static async getPositions() {
-    return ApiService.get('/api/v1/trading/positions')
+    const response = await tradingApi.get('/positions')
+    return response.data
   }
   
   // 获取订单
@@ -361,7 +449,8 @@ export class TradingService {
     page?: number
     size?: number
   }) {
-    return ApiService.get('/api/v1/trading/orders', params)
+    const response = await orderApi.get('/orders', { params })
+    return response.data
   }
   
   // 创建订单
@@ -372,17 +461,20 @@ export class TradingService {
     quantity: number
     price?: number
   }) {
-    return ApiService.post('/api/v1/trading/orders', orderData)
+    const response = await orderApi.post('/orders', orderData)
+    return response.data
   }
   
   // 取消订单
   static async cancelOrder(orderId: string) {
-    return ApiService.delete(`/api/v1/trading/orders/${orderId}`)
+    const response = await orderApi.delete(`/orders/${orderId}`)
+    return response.data
   }
   
   // 平仓
   static async closePosition(positionId: string) {
-    return ApiService.post(`/api/v1/trading/positions/${positionId}/close`)
+    const response = await tradingApi.post(`/positions/${positionId}/close`)
+    return response.data
   }
   
   // 获取交易历史
@@ -393,7 +485,8 @@ export class TradingService {
     page?: number
     size?: number
   }) {
-    return ApiService.get('/api/v1/trading/trades', params)
+    const response = await tradingApi.get('/trades', { params })
+    return response.data
   }
 }
 
@@ -404,20 +497,22 @@ export class MarketService {
     symbols?: string[]
     interval?: string
   }) {
-    return ApiService.get('/api/v1/market/data', params)
+    const response = await exchangeApi.get('/market/data', { params })
+    return response.data
   }
   
   // 获取K线数据
   static async getKlineData(symbol: string, interval: string, limit?: number) {
-    return ApiService.get(`/api/v1/market/klines/${symbol}`, {
-      interval,
-      limit
+    const response = await exchangeApi.get(`/market/klines/${symbol}`, {
+      params: { interval, limit }
     })
+    return response.data
   }
   
   // 获取技术指标
   static async getIndicators(symbol: string, indicator: string, params?: any) {
-    return ApiService.get(`/api/v1/market/indicators/${symbol}/${indicator}`, params)
+    const response = await exchangeApi.get(`/market/indicators/${symbol}/${indicator}`, { params })
+    return response.data
   }
 }
 
@@ -425,7 +520,8 @@ export class MarketService {
 export class RiskService {
   // 获取风险指标
   static async getRiskMetrics() {
-    return ApiService.get('/api/v1/risk/metrics')
+    const response = await monitoringApi.get('/risk/metrics')
+    return response.data
   }
   
   // 获取风险预警
@@ -435,12 +531,14 @@ export class RiskService {
     page?: number
     size?: number
   }) {
-    return ApiService.get('/api/v1/risk/alerts', params)
+    const response = await monitoringApi.get('/risk/alerts', { params })
+    return response.data
   }
   
   // 更新风险设置
   static async updateRiskSettings(settings: any) {
-    return ApiService.put('/api/v1/risk/settings', settings)
+    const response = await monitoringApi.put('/risk/settings', settings)
+    return response.data
   }
 }
 
@@ -453,21 +551,24 @@ export class NotificationService {
     page?: number
     size?: number
   }) {
-    return ApiService.get('/api/v1/notifications', params)
+    const response = await monitoringApi.get('/notifications', { params })
+    return response.data
   }
   
   // 标记通知为已读
   static async markAsRead(notificationIds: string[]) {
-    return ApiService.post('/api/v1/notifications/mark-read', {
+    const response = await monitoringApi.post('/notifications/mark-read', {
       notification_ids: notificationIds
     })
+    return response.data
   }
   
   // 删除通知
   static async deleteNotifications(notificationIds: string[]) {
-    return ApiService.post('/api/v1/notifications/delete', {
+    const response = await monitoringApi.post('/notifications/delete', {
       notification_ids: notificationIds
     })
+    return response.data
   }
   
   // 发送自定义通知
@@ -477,7 +578,8 @@ export class NotificationService {
     type: string
     recipients?: string[]
   }) {
-    return ApiService.post('/api/v1/notifications/send', notificationData)
+    const response = await monitoringApi.post('/notifications/send', notificationData)
+    return response.data
   }
 }
 

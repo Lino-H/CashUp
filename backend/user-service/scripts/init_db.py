@@ -18,7 +18,7 @@ from app.core.database import init_db, get_db
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
 from app.models.user import User, Role, Permission, UserRole, UserStatus
-from app.core.security import get_password_hash
+from app.core.security import hash_password
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,28 +45,28 @@ async def create_default_roles_and_permissions():
             
             # 创建权限
             permissions_data = [
-                {"name": "user:read", "description": "查看用户信息"},
-                {"name": "user:write", "description": "修改用户信息"},
-                {"name": "user:delete", "description": "删除用户"},
-                {"name": "user:admin", "description": "用户管理"},
-                {"name": "trading:read", "description": "查看交易信息"},
-                {"name": "trading:write", "description": "执行交易操作"},
-                {"name": "trading:admin", "description": "交易管理"},
-                {"name": "strategy:read", "description": "查看策略信息"},
-                {"name": "strategy:write", "description": "创建和修改策略"},
-                {"name": "strategy:admin", "description": "策略管理"},
-                {"name": "portfolio:read", "description": "查看投资组合"},
-                {"name": "portfolio:write", "description": "修改投资组合"},
-                {"name": "portfolio:admin", "description": "投资组合管理"},
-                {"name": "risk:read", "description": "查看风险信息"},
-                {"name": "risk:write", "description": "修改风险设置"},
-                {"name": "risk:admin", "description": "风险管理"},
-                {"name": "market:read", "description": "查看市场数据"},
-                {"name": "market:admin", "description": "市场数据管理"},
-                {"name": "notification:read", "description": "查看通知"},
-                {"name": "notification:write", "description": "发送通知"},
-                {"name": "notification:admin", "description": "通知管理"},
-                {"name": "system:admin", "description": "系统管理"}
+                {"name": "user:read", "display_name": "查看用户", "description": "查看用户信息", "resource": "user", "action": "read"},
+                {"name": "user:write", "display_name": "修改用户", "description": "修改用户信息", "resource": "user", "action": "write"},
+                {"name": "user:delete", "display_name": "删除用户", "description": "删除用户", "resource": "user", "action": "delete"},
+                {"name": "user:admin", "display_name": "用户管理", "description": "用户管理", "resource": "user", "action": "admin"},
+                {"name": "trading:read", "display_name": "查看交易", "description": "查看交易信息", "resource": "trading", "action": "read"},
+                {"name": "trading:write", "display_name": "执行交易", "description": "执行交易操作", "resource": "trading", "action": "write"},
+                {"name": "trading:admin", "display_name": "交易管理", "description": "交易管理", "resource": "trading", "action": "admin"},
+                {"name": "strategy:read", "display_name": "查看策略", "description": "查看策略信息", "resource": "strategy", "action": "read"},
+                {"name": "strategy:write", "display_name": "修改策略", "description": "创建和修改策略", "resource": "strategy", "action": "write"},
+                {"name": "strategy:admin", "display_name": "策略管理", "description": "策略管理", "resource": "strategy", "action": "admin"},
+                {"name": "portfolio:read", "display_name": "查看组合", "description": "查看投资组合", "resource": "portfolio", "action": "read"},
+                {"name": "portfolio:write", "display_name": "修改组合", "description": "修改投资组合", "resource": "portfolio", "action": "write"},
+                {"name": "portfolio:admin", "display_name": "组合管理", "description": "投资组合管理", "resource": "portfolio", "action": "admin"},
+                {"name": "risk:read", "display_name": "查看风险", "description": "查看风险信息", "resource": "risk", "action": "read"},
+                {"name": "risk:write", "display_name": "修改风险", "description": "修改风险设置", "resource": "risk", "action": "write"},
+                {"name": "risk:admin", "display_name": "风险管理", "description": "风险管理", "resource": "risk", "action": "admin"},
+                {"name": "market:read", "display_name": "查看市场", "description": "查看市场数据", "resource": "market", "action": "read"},
+                {"name": "market:admin", "display_name": "市场管理", "description": "市场数据管理", "resource": "market", "action": "admin"},
+                {"name": "notification:read", "display_name": "查看通知", "description": "查看通知", "resource": "notification", "action": "read"},
+                {"name": "notification:write", "display_name": "发送通知", "description": "发送通知", "resource": "notification", "action": "write"},
+                {"name": "notification:admin", "display_name": "通知管理", "description": "通知管理", "resource": "notification", "action": "admin"},
+                {"name": "system:admin", "display_name": "系统管理", "description": "系统管理", "resource": "system", "action": "admin"}
             ]
             
             permissions = []
@@ -81,11 +81,13 @@ async def create_default_roles_and_permissions():
             roles_data = [
                 {
                     "name": UserRole.ADMIN.value,
+                    "display_name": "系统管理员",
                     "description": "系统管理员，拥有所有权限",
                     "permissions": permissions  # 管理员拥有所有权限
                 },
                 {
                     "name": UserRole.TRADER.value,
+                    "display_name": "交易员",
                     "description": "交易员，可以执行交易操作",
                     "permissions": [
                         p for p in permissions 
@@ -96,22 +98,15 @@ async def create_default_roles_and_permissions():
                     ]
                 },
                 {
-                    "name": UserRole.ANALYST.value,
-                    "description": "分析师，可以查看和分析数据",
+                    "name": UserRole.DEVELOPER.value,
+                    "display_name": "策略开发者",
+                    "description": "策略开发者，可以开发和测试策略",
                     "permissions": [
                         p for p in permissions 
                         if any(prefix in p.name for prefix in [
-                            "user:read", "strategy:read", "portfolio:read", 
+                            "user:read", "strategy:", "portfolio:read", 
                             "risk:read", "market:read", "notification:read"
                         ])
-                    ]
-                },
-                {
-                    "name": UserRole.VIEWER.value,
-                    "description": "观察者，只能查看基础信息",
-                    "permissions": [
-                        p for p in permissions 
-                        if "read" in p.name and "admin" not in p.name
                     ]
                 }
             ]
@@ -119,6 +114,7 @@ async def create_default_roles_and_permissions():
             for role_data in roles_data:
                 role = Role(
                     name=role_data["name"],
+                    display_name=role_data["display_name"],
                     description=role_data["description"]
                 )
                 role.permissions = role_data["permissions"]
@@ -167,11 +163,10 @@ async def create_admin_user():
             admin_user = User(
                 username="admin",
                 email="admin@cashup.com",
-                password_hash=get_password_hash("admin123456"),
+                hashed_password=hash_password("admin123456"),
                 full_name="系统管理员",
-                role=UserRole.ADMIN,
                 status=UserStatus.ACTIVE,
-                is_verified=True,
+                is_email_verified=True,
                 is_superuser=True
             )
             admin_user.roles = [admin_role]
@@ -197,7 +192,7 @@ async def create_demo_users():
     """
     创建演示用户
     """
-    if settings.ENVIRONMENT == "production":
+    if not settings.DEBUG:
         logger.info("生产环境，跳过创建演示用户")
         return
     
@@ -219,20 +214,12 @@ async def create_demo_users():
                     "role_obj": roles.get(UserRole.TRADER.value)
                 },
                 {
-                    "username": "analyst1",
-                    "email": "analyst1@cashup.com",
-                    "password": "analyst123456",
-                    "full_name": "分析师一号",
-                    "role": UserRole.ANALYST,
-                    "role_obj": roles.get(UserRole.ANALYST.value)
-                },
-                {
-                    "username": "viewer1",
-                    "email": "viewer1@cashup.com",
-                    "password": "viewer123456",
-                    "full_name": "观察者一号",
-                    "role": UserRole.VIEWER,
-                    "role_obj": roles.get(UserRole.VIEWER.value)
+                    "username": "developer1",
+                    "email": "developer1@cashup.com",
+                    "password": "developer123456",
+                    "full_name": "策略开发者一号",
+                    "role": UserRole.DEVELOPER,
+                    "role_obj": roles.get(UserRole.DEVELOPER.value)
                 }
             ]
             
@@ -251,11 +238,10 @@ async def create_demo_users():
                 user = User(
                     username=user_data["username"],
                     email=user_data["email"],
-                    password_hash=get_password_hash(user_data["password"]),
+                    hashed_password=hash_password(user_data["password"]),
                     full_name=user_data["full_name"],
-                    role=user_data["role"],
                     status=UserStatus.ACTIVE,
-                    is_verified=True
+                    is_email_verified=True
                 )
                 
                 if user_data["role_obj"]:
@@ -283,7 +269,7 @@ async def main():
     主函数
     """
     logger.info("🚀 开始初始化CashUp用户服务数据库...")
-    logger.info(f"📊 环境: {settings.ENVIRONMENT}")
+    logger.info(f"📊 调试模式: {settings.DEBUG}")
     logger.info(f"🔗 数据库: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else 'SQLite'}")
     
     try:
@@ -304,10 +290,9 @@ async def main():
         logger.info("")
         logger.info("默认登录信息:")
         logger.info("  管理员 - 用户名: admin, 密码: admin123456")
-        if settings.ENVIRONMENT != "production":
+        if settings.DEBUG:
             logger.info("  交易员 - 用户名: trader1, 密码: trader123456")
-            logger.info("  分析师 - 用户名: analyst1, 密码: analyst123456")
-            logger.info("  观察者 - 用户名: viewer1, 密码: viewer123456")
+            logger.info("  策略开发者 - 用户名: developer1, 密码: developer123456")
         logger.info("")
         logger.warning("⚠️  请在生产环境中立即修改默认密码！")
         

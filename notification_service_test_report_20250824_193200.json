@@ -1,0 +1,196 @@
+{
+  "timestamp": "2025-08-24T19:32:00.056907",
+  "service_url": "http://localhost:8010",
+  "summary": {
+    "total": 5,
+    "success": 5,
+    "failed": 0,
+    "success_rate": "100.0%"
+  },
+  "channels": [],
+  "test_results": [
+    {
+      "channel": "WxPusher",
+      "success": true,
+      "result": {
+        "id": "7e1b84f2-b927-453d-83f4-b6f8c0059b63",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "title": "CashUp WxPusher测试通知",
+        "content": "这是一条来自CashUp系统的WxPusher测试通知\n\n发送时间: 2025-08-24 19:31:49\n渠道: WxPusher\n状态: 测试中",
+        "category": "system",
+        "priority": "normal",
+        "status": "sent",
+        "channels": [
+          "wxpusher"
+        ],
+        "recipients": {},
+        "template_id": null,
+        "template_variables": {},
+        "send_config": {},
+        "scheduled_at": null,
+        "sent_at": "2025-08-24T11:31:49.982784",
+        "expires_at": null,
+        "retry_attempts": 0,
+        "max_retry_attempts": 3,
+        "error_message": null,
+        "delivery_status": {},
+        "read_status": {},
+        "created_at": "2025-08-24T11:31:49.816422",
+        "updated_at": "2025-08-24T11:31:49.982787",
+        "metadata": {
+          "test_mode": true,
+          "test_timestamp": "2025-08-24T19:31:49.799930"
+        }
+      }
+    },
+    {
+      "channel": "PushPlus",
+      "success": true,
+      "result": {
+        "id": "5bc895a5-a065-498c-a8d7-4c52b4897d8a",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "title": "CashUp PushPlus测试通知",
+        "content": "这是一条来自CashUp系统的PushPlus测试通知<br><br>发送时间: 2025-08-24 19:31:51<br>渠道: PushPlus<br>状态: 测试中",
+        "category": "system",
+        "priority": "normal",
+        "status": "sent",
+        "channels": [
+          "pushplus"
+        ],
+        "recipients": {},
+        "template_id": null,
+        "template_variables": {},
+        "send_config": {},
+        "scheduled_at": null,
+        "sent_at": "2025-08-24T11:31:52.078385",
+        "expires_at": null,
+        "retry_attempts": 0,
+        "max_retry_attempts": 3,
+        "error_message": null,
+        "delivery_status": {},
+        "read_status": {},
+        "created_at": "2025-08-24T11:31:51.999840",
+        "updated_at": "2025-08-24T11:31:52.078386",
+        "metadata": {
+          "test_mode": true,
+          "test_timestamp": "2025-08-24T19:31:51.989295"
+        }
+      }
+    },
+    {
+      "channel": "QANotify",
+      "success": true,
+      "result": {
+        "id": "df3f586f-6854-46e2-b0f0-af9f17a991cd",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "title": "CashUp QANotify测试通知",
+        "content": "这是一条来自CashUp系统的QANotify测试通知\n\n发送时间: 2025-08-24 19:31:54\n渠道: QANotify\n状态: 测试中",
+        "category": "system",
+        "priority": "normal",
+        "status": "sent",
+        "channels": [
+          "qanotify"
+        ],
+        "recipients": {},
+        "template_id": null,
+        "template_variables": {},
+        "send_config": {},
+        "scheduled_at": null,
+        "sent_at": "2025-08-24T11:31:54.845797",
+        "expires_at": null,
+        "retry_attempts": 0,
+        "max_retry_attempts": 3,
+        "error_message": null,
+        "delivery_status": {},
+        "read_status": {},
+        "created_at": "2025-08-24T11:31:54.104626",
+        "updated_at": "2025-08-24T11:31:54.845805",
+        "metadata": {
+          "test_mode": true,
+          "test_timestamp": "2025-08-24T19:31:54.089472"
+        }
+      }
+    },
+    {
+      "channel": "QANotify-Order",
+      "success": true,
+      "result": {
+        "id": "9320624f-91d6-44e5-bd88-ba9b96718a03",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "title": "CashUp订单通知测试",
+        "content": "订单执行通知",
+        "category": "trading",
+        "priority": "high",
+        "status": "sent",
+        "channels": [
+          "qanotify"
+        ],
+        "recipients": {},
+        "template_id": null,
+        "template_variables": {
+          "strategy_name": "TestStrategy",
+          "account_name": "TestAccount",
+          "contract": "BTCUSDT",
+          "order_direction": "BUY",
+          "order_offset": "OPEN",
+          "price": 50000.0,
+          "volume": 0.1
+        },
+        "send_config": {},
+        "scheduled_at": null,
+        "sent_at": "2025-08-24T11:31:57.418243",
+        "expires_at": null,
+        "retry_attempts": 0,
+        "max_retry_attempts": 3,
+        "error_message": null,
+        "delivery_status": {},
+        "read_status": {},
+        "created_at": "2025-08-24T11:31:56.871783",
+        "updated_at": "2025-08-24T11:31:57.418248",
+        "metadata": {
+          "test_mode": true,
+          "test_timestamp": "2025-08-24T19:31:56.861953"
+        }
+      }
+    },
+    {
+      "channel": "QANotify-Price",
+      "success": true,
+      "result": {
+        "id": "00119fb0-95f8-4e4f-b50a-c04b3b8183c1",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "title": "CashUp价格预警测试",
+        "content": "价格预警通知",
+        "category": "alert",
+        "priority": "high",
+        "status": "sent",
+        "channels": [
+          "qanotify"
+        ],
+        "recipients": {},
+        "template_id": null,
+        "template_variables": {
+          "contract": "BTCUSDT",
+          "current_price": "51000.0",
+          "limit_price": 50000.0,
+          "order_id": "test_order_123"
+        },
+        "send_config": {},
+        "scheduled_at": null,
+        "sent_at": "2025-08-24T11:32:00.051840",
+        "expires_at": null,
+        "retry_attempts": 0,
+        "max_retry_attempts": 3,
+        "error_message": null,
+        "delivery_status": {},
+        "read_status": {},
+        "created_at": "2025-08-24T11:31:59.449500",
+        "updated_at": "2025-08-24T11:32:00.051845",
+        "metadata": {
+          "test_mode": true,
+          "test_timestamp": "2025-08-24T19:31:59.437514"
+        }
+      }
+    }
+  ]
+}

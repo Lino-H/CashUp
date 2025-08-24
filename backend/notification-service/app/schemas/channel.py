@@ -349,7 +349,7 @@ class ChannelMetrics(BaseModel):
     channel_id: UUID = Field(description="渠道ID")
     channel_name: str = Field(description="渠道名称")
     period: str = Field(description="统计周期")
-    sent_count: int = Field(description="发送数")
+    total_sent: int = Field(description="发送数")
     failed_count: int = Field(description="失败数")
     success_rate: float = Field(description="成功率")
     avg_response_time_ms: float = Field(description="平均响应时间（毫秒）")

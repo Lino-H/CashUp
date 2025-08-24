@@ -29,6 +29,14 @@ from ..core.exceptions import (
 from ..core.config import get_config
 from .template_service import TemplateService
 
+# QANotify消息推送
+try:
+    from qanotify import run_order_notify, run_price_notify, run_strategy_notify
+except ImportError:
+    run_order_notify = None
+    run_price_notify = None
+    run_strategy_notify = None
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,8 +50,9 @@ class SenderService:
     负责处理通知的实际发送逻辑，支持多种渠道
     """
     
-    def __init__(self):
+    def __init__(self, websocket_service=None):
         self.template_service = TemplateService()
+        self.websocket_service = websocket_service
         
         # 渠道发送器映射
         self.channel_senders = {
@@ -97,7 +106,7 @@ class SenderService:
             NotificationSendError: 发送失败
         """
         # 检查渠道状态
-        if not channel.is_available():
+        if channel.status != ChannelStatus.ACTIVE:
             raise ChannelNotAvailableError(f"Channel {channel.id} is not available")
         
         # 检查渠道限制
@@ -147,14 +156,15 @@ class SenderService:
                 db, channel.id, success=False, error_message=str(e)
             )
             
+            channel_type_str = channel.type.value if channel.type else "unknown"
             logger.error(
-                f"Failed to send notification {notification.id} via {channel.type.value}: {str(e)}"
+                f"Failed to send notification {notification.id} via {channel_type_str}: {str(e)}"
             )
             
             return {
                 "success": False,
                 "channel_id": channel.id,
-                "channel_type": channel.type.value,
+                "channel_type": channel_type_str,
                 "error": str(e),
                 "timestamp": start_time.isoformat()
             }
@@ -227,17 +237,17 @@ class SenderService:
         content = {
             "subject": notification.title,
             "content": notification.content,
-            "html_content": notification.html_content,
-            "recipient": notification.recipient,
-            "sender": notification.sender,
-            "metadata": notification.metadata or {}
+            "html_content": None,  # 从模板渲染或保持为None
+            "recipient": notification.recipient_email or notification.recipient_phone or "default",
+            "sender": "CashUp System",  # 默认发送者
+            "metadata": notification.meta_data or {}
         }
         
         # 如果有模板，进行渲染
-        if template and notification.template_variables:
+        if template and notification.template_data:
             try:
                 render_result = await self.template_service.render_template(
-                    db, template.id, notification.template_variables
+                    db, template.id, notification.template_data
                 )
                 
                 content["subject"] = render_result.get("rendered_subject") or content["subject"]
@@ -746,19 +756,65 @@ class SenderService:
             Dict[str, Any]: 发送结果
         """
         config = channel.config
-        app_token = config['app_token']
+        app_token = config.get('app_token') or config.get('token')
+        api_url = config.get('api_url', 'http://wxpusher.zjiecode.com/api/send/message')
+        uid = config.get('uid') or config.get('uids', [])
+        
+        if not app_token:
+            raise NotificationSendError("WxPusher app_token not configured")
+        
+        if not uid:
+            raise NotificationSendError("WxPusher uid not configured")
         
         try:
-            # 模拟WxPusher API调用
-            await asyncio.sleep(0.1)
+            # 准备发送数据
+            title = content.get('subject', notification.title)
+            message = content.get('content', notification.content)
             
-            return {
-                "message_id": f"wxpusher_{uuid.uuid4().hex[:8]}",
-                "details": {
-                    "provider": "wxpusher",
-                    "recipient": content['recipient']
-                }
+            # 构建请求数据
+            data = {
+                "appToken": app_token,
+                "content": message,
+                "summary": title,
+                "contentType": 1,  # 1-文本，2-html，3-markdown
+                "uids": [uid] if isinstance(uid, str) else uid
             }
+            
+            # 发送请求
+            if not self._http_session:
+                self._http_session = aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=30)
+                )
+            
+            async with self._http_session.post(
+                api_url,
+                json=data,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                
+                if response.status == 200 and result.get("success"):
+                    # 安全地获取messageId
+                    data = result.get('data', {})
+                    message_id = uuid.uuid4().hex[:8]  # 默认值
+                    if isinstance(data, dict):
+                        message_id = data.get('messageId', message_id)
+                    elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                        message_id = data[0].get('messageId', message_id)
+                    
+                    return {
+                        "message_id": f"wxpusher_{message_id}",
+                        "details": {
+                            "provider": "wxpusher",
+                            "recipient": uid,
+                            "response_code": result.get("code"),
+                            "response_msg": result.get("msg")
+                        }
+                    }
+                else:
+                    raise NotificationSendError(
+                        f"WxPusher API error: {result.get('msg', 'Unknown error')}"
+                    )
                     
         except Exception as e:
             raise NotificationSendError(f"WxPusher send failed: {str(e)}")
@@ -781,21 +837,93 @@ class SenderService:
             Dict[str, Any]: 发送结果
         """
         config = channel.config
+        token = config.get('token') or config.get('key')
+        
+        if not token:
+            raise NotificationSendError("QANotify token not configured")
+        
+        # 检查qanotify包是否可用
+        if run_order_notify is None or run_price_notify is None or run_strategy_notify is None:
+            raise NotificationSendError("QANotify package not available. Please install qanotify package.")
         
         try:
-            # 模拟QANotify API调用
-            await asyncio.sleep(0.1)
+            # 根据通知类别选择合适的发送方法
+            logger.info(f"Debug: notification.category = {notification.category}, type = {type(notification.category)}")
+            category = notification.category.value if notification.category else 'general'
+            title = content.get('subject', notification.title)
+            message = content.get('content', notification.content)
+            
+            if category == 'order' or 'order' in title.lower():
+                # 订单通知
+                template_vars = notification.template_data or {}
+                strategy_name = template_vars.get('strategy_name', 'CashUp')
+                account_name = template_vars.get('account_name', 'Default')
+                contract = template_vars.get('contract', 'Unknown')
+                order_direction = template_vars.get('order_direction', 'BUY')
+                order_offset = template_vars.get('order_offset', 'OPEN')
+                price = template_vars.get('price', 0)
+                volume = template_vars.get('volume', 0)
+                order_time = notification.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # 使用run_order_notify发送订单通知
+                run_order_notify(
+                    token, strategy_name, account_name, contract,
+                    order_direction, order_offset, price, volume, order_time
+                )
+                
+            elif category == 'price' or 'price' in title.lower() or '价格' in title:
+                # 价格预警通知
+                template_vars = notification.template_data or {}
+                contract = template_vars.get('contract', 'Unknown')
+                cur_price = template_vars.get('current_price', '0')
+                limit_price = template_vars.get('limit_price', 0)
+                order_id = template_vars.get('order_id', str(notification.id))
+                
+                # 使用run_price_notify发送价格预警
+                run_price_notify(
+                    token, title, contract, str(cur_price), limit_price, order_id
+                )
+                
+            else:
+                # 策略通知或其他通知
+                template_vars = notification.template_data or {}
+                strategy_name = template_vars.get('strategy_name', 'CashUp')
+                frequency = template_vars.get('frequency', 'once')
+                
+                # 使用run_strategy_notify发送策略通知
+                run_strategy_notify(
+                    token, strategy_name, title, message, frequency
+                )
             
             return {
                 "message_id": f"qanotify_{uuid.uuid4().hex[:8]}",
                 "details": {
                     "provider": "qanotify",
-                    "recipient": content['recipient']
+                    "category": category,
+                    "recipient": content.get('recipient', 'default'),
+                    "method": self._get_qanotify_method_name(category)
                 }
             }
                     
         except Exception as e:
             raise NotificationSendError(f"QANotify send failed: {str(e)}")
+    
+    def _get_qanotify_method_name(self, category: str) -> str:
+        """
+        根据通知类别获取QANotify方法名称
+        
+        Args:
+            category: 通知类别
+            
+        Returns:
+            str: 方法名称
+        """
+        if category == 'order' or 'order' in category.lower():
+            return 'run_order_notify'
+        elif category == 'price' or 'price' in category.lower():
+            return 'run_price_notify'
+        else:
+            return 'run_strategy_notify'
     
     async def _send_pushplus(
         self,
@@ -815,19 +943,65 @@ class SenderService:
             Dict[str, Any]: 发送结果
         """
         config = channel.config
-        token = config['token']
+        token = config.get('token') or config.get('key')
+        
+        if not token:
+            raise NotificationSendError("PushPlus token not configured")
         
         try:
-            # 模拟PushPlus API调用
-            await asyncio.sleep(0.1)
+            # 准备发送数据
+            title = content.get('subject', notification.title)
+            message = content.get('content', notification.content)
             
-            return {
-                "message_id": f"pushplus_{uuid.uuid4().hex[:8]}",
-                "details": {
-                    "provider": "pushplus",
-                    "recipient": content['recipient']
-                }
+            # 根据通知类型选择模板
+            template = "html"  # 默认使用HTML模板
+            
+            # 如果内容包含Markdown标记，使用markdown模板
+            if any(marker in message for marker in ['#', '**', '*', '`', '>', '-', '1.']):
+                template = "markdown"
+            
+            # 构建请求数据
+            data = {
+                "token": token,
+                "title": title,
+                "content": message,
+                "template": template
             }
+            
+            # 添加群组编码（如果配置了）
+            topic = config.get('topic')
+            if topic:
+                data["topic"] = topic
+            
+            # 发送请求
+            if not self._http_session:
+                self._http_session = aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=30)
+                )
+            
+            async with self._http_session.post(
+                "http://www.pushplus.plus/send",
+                json=data,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                
+                if response.status == 200 and result.get("code") == 200:
+                    return {
+                        "message_id": f"pushplus_{result.get('data', uuid.uuid4().hex[:8])}",
+                        "details": {
+                            "provider": "pushplus",
+                            "template": template,
+                            "topic": topic,
+                            "recipient": content.get('recipient', 'default'),
+                            "response_code": result.get("code"),
+                            "response_msg": result.get("msg")
+                        }
+                    }
+                else:
+                    raise NotificationSendError(
+                        f"PushPlus API error: {result.get('msg', 'Unknown error')}"
+                    )
                     
         except Exception as e:
             raise NotificationSendError(f"PushPlus send failed: {str(e)}")
@@ -851,27 +1025,23 @@ class SenderService:
         """
         try:
             # 通过WebSocket服务发送消息
-            if hasattr(self, 'websocket_service') and self.websocket_service:
-                await self.websocket_service.send_notification(
-                    content['recipient'],
-                    {
-                        "type": "notification",
-                        "data": {
-                            "id": str(notification.id),
-                            "subject": content['subject'],
-                            "content": content['content'],
-                            "metadata": content['metadata']
-                        }
-                    }
+            if self.websocket_service:
+                result = await self.websocket_service.send_notification(
+                    notification,
+                    target_type="user",
+                    target_value=content.get('recipient')
                 )
-            
-            return {
-                "message_id": f"websocket_{uuid.uuid4().hex[:8]}",
-                "details": {
-                    "provider": "websocket",
-                    "recipient": content['recipient']
+                
+                return {
+                    "message_id": f"websocket_{uuid.uuid4().hex[:8]}",
+                    "details": {
+                        "provider": "websocket",
+                        "recipient": content.get('recipient'),
+                        "success_count": result.get('success_count', 0)
+                    }
                 }
-            }
+            else:
+                raise NotificationSendError("WebSocket service not available")
                     
         except Exception as e:
             raise NotificationSendError(f"WebSocket send failed: {str(e)}")
@@ -932,10 +1102,10 @@ class SenderService:
         }
         
         if success:
-            update_data["sent_count"] = NotificationChannel.sent_count + 1
+            update_data["total_sent"] = NotificationChannel.total_sent + 1
             update_data["last_sent_at"] = datetime.utcnow()
         else:
-            update_data["failed_count"] = NotificationChannel.failed_count + 1
+            update_data["total_failed"] = NotificationChannel.total_failed + 1
             if error_message:
                 update_data["last_error_message"] = error_message
                 update_data["last_error_at"] = datetime.utcnow()

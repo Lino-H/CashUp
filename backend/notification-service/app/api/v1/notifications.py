@@ -40,7 +40,10 @@ from ...schemas.common import (
     ExportResponse
 )
 from ...services.notification_service import NotificationService
-from ...services.websocket_service import websocket_service
+from ...services.template_service import TemplateService
+from ...services.channel_service import ChannelService
+from ...services.sender_service import SenderService
+from ...services.websocket_service import get_websocket_service
 
 import logging
 
@@ -51,7 +54,16 @@ router = APIRouter()
 
 # 依赖注入
 def get_notification_service() -> NotificationService:
-    return NotificationService()
+    template_service = TemplateService()
+    channel_service = ChannelService()
+    websocket_service = get_websocket_service()
+    sender_service = SenderService(websocket_service=websocket_service)
+    return NotificationService(
+        template_service=template_service,
+        channel_service=channel_service,
+        sender_service=sender_service,
+        websocket_service=websocket_service
+    )
 
 
 @router.post("/", response_model=NotificationResponse)
@@ -75,31 +87,67 @@ async def create_notification(
     Returns:
         NotificationResponse: 创建的通知信息
     """
+    request_id = str(uuid.uuid4())[:8]
+    logger.info(f"[{request_id}] 接收到创建通知请求 - 用户ID: {current_user.get('user_id')}, 标题: {notification.title}, 渠道: {notification.channels}")
+    
     try:
+        logger.info(f"[{request_id}] 开始处理通知创建请求")
+        
         # 创建通知
+        logger.info(f"[{request_id}] 调用通知服务创建通知")
         created_notification = await service.create_notification(
             db=db,
             notification_data=notification,
             user_id=current_user["user_id"]
         )
+        logger.info(f"[{request_id}] 通知创建成功 - 通知ID: {created_notification.id}")
         
         # 发送WebSocket通知
+        logger.info(f"[{request_id}] 准备发送WebSocket通知")
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_notification_update,
-            str(created_notification.id),
-            {
-                "type": "notification_created",
-                "notification_id": str(created_notification.id),
-                "status": created_notification.status.value,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            created_notification,
+            "notification_created",
+            "user",
+            str(created_notification.user_id) if created_notification.user_id else None
         )
+        logger.info(f"[{request_id}] WebSocket通知任务已添加到后台队列")
         
-        return NotificationResponse.from_orm(created_notification)
+        # 手动构造响应数据
+        logger.info(f"[{request_id}] 开始构造响应数据")
+        response_data = {
+            "id": created_notification.id,
+            "user_id": created_notification.user_id,
+            "title": created_notification.title,
+            "content": created_notification.content,
+            "category": created_notification.category,
+            "priority": created_notification.priority,
+            "status": created_notification.status,
+            "channels": created_notification.channels.split(',') if isinstance(created_notification.channels, str) else (created_notification.channels or []),
+            "recipients": created_notification.recipient_data or {},
+            "template_id": created_notification.template_id,
+            "template_variables": created_notification.template_data or {},
+            "send_config": {},
+            "scheduled_at": created_notification.scheduled_at,
+            "sent_at": created_notification.sent_at,
+            "expires_at": created_notification.expires_at,
+            "retry_attempts": created_notification.retry_attempts or 0,
+            "max_retry_attempts": created_notification.max_retry_attempts or 3,
+            "error_message": created_notification.error_message,
+            "delivery_status": {},
+            "read_status": {},
+            "created_at": created_notification.created_at,
+            "updated_at": created_notification.updated_at,
+            "metadata": created_notification.meta_data or {}
+        }
+        logger.info(f"[{request_id}] 响应数据构造完成，准备返回")
+        return NotificationResponse.model_validate(response_data)
         
     except Exception as e:
-        logger.error(f"Error creating notification: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[{request_id}] 创建通知时发生异常: {str(e)}", exc_info=True)
+        logger.error(f"[{request_id}] 请求数据: {notification.model_dump()}")
+        raise HTTPException(status_code=500, detail=f"创建通知失败: {str(e)}")
 
 
 @router.post("/batch", response_model=NotificationBatchResponse)
@@ -132,6 +180,7 @@ async def create_batch_notifications(
         )
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -174,13 +223,43 @@ async def get_notifications(
         # 获取通知列表
         notifications, total = await service.get_notifications(
             db=db,
-            skip=pagination.skip,
-            limit=pagination.limit,
-            filters=filters
+            filters=filters,
+            page=pagination.page,
+            size=pagination.size
         )
         
+        # 手动构造响应数据列表
+        notification_items = []
+        for n in notifications:
+            response_data = {
+                "id": n.id,
+                "user_id": n.user_id,
+                "title": n.title,
+                "content": n.content,
+                "category": n.category,
+                "priority": n.priority,
+                "status": n.status,
+                "channels": n.channels.split(',') if isinstance(n.channels, str) else (n.channels or []),
+                "recipients": n.recipient_data or {},
+                "template_id": n.template_id,
+                "template_variables": n.template_data or {},
+                "send_config": {},
+                "scheduled_at": n.scheduled_at,
+                "sent_at": n.sent_at,
+                "expires_at": n.expires_at,
+                "retry_attempts": n.retry_attempts or 0,
+                "max_retry_attempts": n.max_retry_attempts or 3,
+                "error_message": n.error_message,
+                "delivery_status": {},
+                "read_status": {},
+                "created_at": n.created_at,
+                "updated_at": n.updated_at,
+                "metadata": n.meta_data or {}
+            }
+            notification_items.append(NotificationResponse.model_validate(response_data))
+        
         return NotificationListResponse(
-            items=[NotificationResponse.from_orm(n) for n in notifications],
+            items=notification_items,
             total=total,
             page=pagination.page,
             size=pagination.size,
@@ -216,7 +295,33 @@ async def get_notification(
         if not notification:
             raise HTTPException(status_code=404, detail="Notification not found")
         
-        return NotificationResponse.from_orm(notification)
+        # 手动构造响应数据
+        response_data = {
+            "id": notification.id,
+            "user_id": notification.user_id,
+            "title": notification.title,
+            "content": notification.content,
+            "category": notification.category,
+            "priority": notification.priority,
+            "status": notification.status,
+            "channels": notification.channels.split(',') if isinstance(notification.channels, str) else (notification.channels or []),
+            "recipients": notification.recipient_data or {},
+            "template_id": notification.template_id,
+            "template_variables": notification.template_data or {},
+            "send_config": {},
+            "scheduled_at": notification.scheduled_at,
+            "sent_at": notification.sent_at,
+            "expires_at": notification.expires_at,
+            "retry_attempts": notification.retry_attempts or 0,
+            "max_retry_attempts": notification.max_retry_attempts or 3,
+            "error_message": notification.error_message,
+            "delivery_status": {},
+            "read_status": {},
+            "created_at": notification.created_at,
+            "updated_at": notification.updated_at,
+            "metadata": notification.meta_data or {}
+        }
+        return NotificationResponse.model_validate(response_data)
         
     except HTTPException:
         raise
@@ -261,13 +366,10 @@ async def update_notification(
         # 发送WebSocket通知
         background_tasks.add_task(
             websocket_service.send_notification_update,
-            str(notification_id),
-            {
-                "type": "notification_updated",
-                "notification_id": str(notification_id),
-                "status": updated_notification.status.value,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            updated_notification,
+            "notification_updated",
+            "user",
+            str(updated_notification.user_id) if updated_notification.user_id else None
         )
         
         return NotificationResponse.from_orm(updated_notification)
@@ -317,13 +419,10 @@ async def update_notification_status(
         # 发送WebSocket通知
         background_tasks.add_task(
             websocket_service.send_notification_update,
-            str(notification_id),
-            {
-                "type": "notification_status_updated",
-                "notification_id": str(notification_id),
-                "status": updated_notification.status.value,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            updated_notification,
+            "notification_status_updated",
+            "user",
+            str(updated_notification.user_id) if updated_notification.user_id else None
         )
         
         return NotificationResponse.from_orm(updated_notification)
@@ -362,15 +461,15 @@ async def delete_notification(
         if not success:
             raise HTTPException(status_code=404, detail="Notification not found")
         
-        # 发送WebSocket通知
+        # 发送WebSocket系统消息（删除通知）
         background_tasks.add_task(
-            websocket_service.send_notification_update,
-            str(notification_id),
+            websocket_service.send_system_message,
+            "notification_deleted",
             {
-                "type": "notification_deleted",
                 "notification_id": str(notification_id),
                 "timestamp": datetime.utcnow().isoformat()
-            }
+            },
+            "broadcast"
         )
         
         return BaseResponse(
@@ -416,16 +515,16 @@ async def retry_notification(
             delay_minutes=retry_request.delay_minutes
         )
         
-        # 发送WebSocket通知
+        # 发送WebSocket系统消息
         background_tasks.add_task(
-            websocket_service.send_notification_update,
-            str(notification_id),
+            websocket_service.send_system_message,
+            "notification_retry_scheduled",
             {
-                "type": "notification_retry_scheduled",
                 "notification_id": str(notification_id),
-                "retry_count": result["retry_count"],
+                "retry_attempts": result["retry_attempts"],
                 "timestamp": datetime.utcnow().isoformat()
-            }
+            },
+            "broadcast"
         )
         
         return NotificationRetryResponse(**result)
@@ -465,22 +564,82 @@ async def cancel_notification(
             reason=cancel_request.reason
         )
         
-        # 发送WebSocket通知
+        # 发送WebSocket系统消息
         background_tasks.add_task(
-            websocket_service.send_notification_update,
-            str(notification_id),
+            websocket_service.send_system_message,
+            "notification_cancelled",
             {
-                "type": "notification_cancelled",
                 "notification_id": str(notification_id),
                 "reason": cancel_request.reason,
                 "timestamp": datetime.utcnow().isoformat()
-            }
+            },
+            "broadcast"
         )
         
         return NotificationCancelResponse(**result)
         
     except Exception as e:
         logger.error(f"Error cancelling notification {notification_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/send", response_model=NotificationResponse)
+async def send_notification(
+    notification: NotificationCreate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    service: NotificationService = Depends(get_notification_service)
+):
+    """
+    直接发送通知
+    
+    Args:
+        notification: 通知创建请求
+        background_tasks: 后台任务
+        db: 数据库会话
+        service: 通知服务
+        
+    Returns:
+        NotificationResponse: 发送结果
+    """
+    try:
+        # 创建通知
+        created_notification = await service.create_notification(
+            db=db,
+            notification_data=notification,
+            user_id=None
+        )
+        
+        # 手动构造响应数据
+        response_data = {
+            "id": created_notification.id,
+            "user_id": created_notification.user_id,
+            "title": created_notification.title,
+            "content": created_notification.content,
+            "category": created_notification.category,
+            "priority": created_notification.priority,
+            "status": created_notification.status,
+            "channels": created_notification.channels.split(',') if isinstance(created_notification.channels, str) else (created_notification.channels or []),
+            "recipients": created_notification.recipient_data or {},
+            "template_id": created_notification.template_id,
+            "template_variables": created_notification.template_data or {},
+            "send_config": {},
+            "scheduled_at": created_notification.scheduled_at,
+            "sent_at": created_notification.sent_at,
+            "expires_at": created_notification.expires_at,
+            "retry_attempts": created_notification.retry_attempts or 0,
+            "max_retry_attempts": created_notification.max_retry_attempts or 3,
+            "error_message": created_notification.error_message,
+            "delivery_status": {},
+            "read_status": {},
+            "created_at": created_notification.created_at,
+            "updated_at": created_notification.updated_at,
+            "metadata": created_notification.meta_data or {}
+        }
+        return NotificationResponse.model_validate(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error sending notification: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

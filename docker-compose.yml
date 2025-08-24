@@ -148,7 +148,7 @@ services:
       context: ./backend
       dockerfile: notification-service/Dockerfile
     ports:
-      - "8006:8000"
+      - "8010:8010"
     environment:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
       - RABBITMQ_URL=amqp://cashup:cashup123@rabbitmq:5672
@@ -157,6 +157,12 @@ services:
       - rabbitmq
     networks:
       - cashup-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # 订单服务
   order-service:
@@ -198,7 +204,7 @@ services:
     ports:
       - "8009:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://cashup:cashup123@postgres:5432/cashup
+      - DATABASE_URL=postgresql+psycopg2://cashup:cashup123@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres

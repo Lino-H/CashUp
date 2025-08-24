@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   Card, Table, Button, Space, Tag, Typography, Row, Col, Statistic,
-  Select, Input, Tabs, Alert, Tooltip, Progress, Switch
+  Select, Input, Tabs, Alert, Progress, Switch
 } from 'antd'
 import {
-  LineChartOutlined, BarChartOutlined, PieChartOutlined, ReloadOutlined,
+  BarChartOutlined, PieChartOutlined, ReloadOutlined,
   SearchOutlined, FilterOutlined, StarOutlined, StarFilled,
   ArrowUpOutlined, ArrowDownOutlined, DollarOutlined,
   ThunderboltOutlined, EyeOutlined, SettingOutlined
@@ -51,7 +51,7 @@ const MarketAnalysis: React.FC = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT')
   const [timeframe, setTimeframe] = useState('1h')
   const [showVolume, setShowVolume] = useState(true)
-  const [, setFavorites] = useState<string[]>(['BTC/USDT', 'ETH/USDT'])
+  const [favorites, setFavorites] = useState<string[]>(['BTC/USDT', 'ETH/USDT'])
 
   // 模拟数据
   const [marketStats] = useState<MarketStats>({
@@ -653,7 +653,7 @@ const MarketAnalysis: React.FC = () => {
                     />
                     <Select defaultValue="all" style={{ width: 120 }}>
                       <Option value="all">全部</Option>
-                      <Option value="favorites">收藏</Option>
+                      <Option value="favorites">收藏 ({favorites.length})</Option>
                       <Option value="gainers">涨幅榜</Option>
                       <Option value="losers">跌幅榜</Option>
                     </Select>

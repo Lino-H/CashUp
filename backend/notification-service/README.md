@@ -116,8 +116,240 @@ docker-compose logs -f notification-service
 
 启动服务后，访问以下地址查看API文档：
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8010/docs
+- **ReDoc**: http://localhost:8010/redoc
+- **服务地址**: http://localhost:8010
+
+## API接口详细说明
+
+### 1. 创建通知 - POST /api/v1/notifications
+
+**功能**: 创建并发送单个通知
+
+**请求格式**:
+```json
+{
+  "title": "通知标题",
+  "content": "通知内容",
+  "category": "system|trading|strategy|alert|marketing|security|maintenance",
+  "priority": "low|normal|high|urgent|critical",
+  "channels": ["wxpusher", "pushplus", "qanotify"],
+  "recipients": {
+    "wxpusher": [],
+    "pushplus": [],
+    "qanotify": []
+  },
+  "template_id": "uuid-string (可选)",
+  "template_variables": {
+    "key": "value"
+  },
+  "scheduled_at": "2024-01-01T12:00:00Z (可选)",
+  "expires_at": "2024-01-02T12:00:00Z (可选)",
+  "metadata": {
+    "custom_key": "custom_value"
+  }
+}
+```
+
+**响应格式**:
+```json
+{
+  "id": "uuid-string",
+  "user_id": "uuid-string",
+  "title": "通知标题",
+  "content": "通知内容",
+  "category": "system",
+  "priority": "normal",
+  "status": "pending|sending|sent|delivered|read|failed|cancelled",
+  "channels": ["wxpusher", "pushplus", "qanotify"],
+  "recipients": {
+    "wxpusher": [],
+    "pushplus": [],
+    "qanotify": []
+  },
+  "template_id": "uuid-string",
+  "template_variables": {},
+  "send_config": {},
+  "scheduled_at": "2024-01-01T12:00:00Z",
+  "sent_at": "2024-01-01T12:00:00Z",
+  "expires_at": "2024-01-02T12:00:00Z",
+  "retry_attempts": 0,
+  "max_retry_attempts": 3,
+  "error_message": null,
+  "delivery_status": {},
+  "read_status": {},
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z",
+  "metadata": {}
+}
+```
+
+### 2. 批量创建通知 - POST /api/v1/notifications/batch
+
+**功能**: 批量创建多个通知
+
+**请求格式**:
+```json
+{
+  "notifications": [
+    {
+      "title": "通知1",
+      "content": "内容1",
+      "category": "system",
+      "channels": ["wxpusher"]
+    },
+    {
+      "title": "通知2",
+      "content": "内容2",
+      "category": "trading",
+      "channels": ["pushplus"]
+    }
+  ],
+  "batch_config": {
+    "delay_between_sends": 1000
+  }
+}
+```
+
+**响应格式**:
+```json
+{
+  "success": true,
+  "message": "Batch notifications created successfully",
+  "total": 2,
+  "success_count": 2,
+  "failed_count": 0,
+  "notifications": [...],
+  "failed_items": []
+}
+```
+
+### 3. 获取通知列表 - GET /api/v1/notifications
+
+**功能**: 分页获取通知列表
+
+**查询参数**:
+- `page`: 页码 (默认: 1)
+- `size`: 每页大小 (默认: 20, 最大: 100)
+- `user_id`: 用户ID过滤
+- `category`: 分类过滤
+- `priority`: 优先级过滤
+- `status`: 状态过滤
+- `channel`: 渠道过滤
+- `start_date`: 开始日期
+- `end_date`: 结束日期
+
+**响应格式**:
+```json
+{
+  "success": true,
+  "message": "Notifications retrieved successfully",
+  "data": {
+    "items": [...],
+    "total": 100,
+    "page": 1,
+    "size": 20,
+    "pages": 5
+  }
+}
+```
+
+### 4. 获取单个通知 - GET /api/v1/notifications/{id}
+
+**功能**: 根据ID获取通知详情
+
+**响应格式**: 同创建通知响应格式
+
+### 5. 更新通知 - PUT /api/v1/notifications/{id}
+
+**功能**: 更新通知信息（仅限未发送的通知）
+
+**请求格式**:
+```json
+{
+  "title": "新标题",
+  "content": "新内容",
+  "priority": "high",
+  "scheduled_at": "2024-01-01T15:00:00Z"
+}
+```
+
+### 6. 重试发送 - POST /api/v1/notifications/{id}/retry
+
+**功能**: 重试发送失败的通知
+
+**请求格式**:
+```json
+{
+  "force": false,
+  "reset_retry_attempts": false
+}
+```
+
+### 7. 取消通知 - POST /api/v1/notifications/{id}/cancel
+
+**功能**: 取消待发送的通知
+
+**请求格式**:
+```json
+{
+  "reason": "用户取消"
+}
+```
+
+## 支持的通知渠道
+
+### 1. WxPusher (微信推送)
+- **渠道名称**: `wxpusher`
+- **配置要求**: 需要在系统中配置WxPusher的AppToken
+- **收件人格式**: 可为空数组（使用默认配置的UID）
+- **示例**:
+```json
+{
+  "channels": ["wxpusher"],
+  "recipients": {
+    "wxpusher": []
+  }
+}
+```
+
+### 2. PushPlus (推送加)
+- **渠道名称**: `pushplus`
+- **配置要求**: 需要在系统中配置PushPlus的Token
+- **收件人格式**: 可为空数组（使用默认配置的Token）
+- **示例**:
+```json
+{
+  "channels": ["pushplus"],
+  "recipients": {
+    "pushplus": []
+  }
+}
+```
+
+### 3. QANotify (QQ通知)
+- **渠道名称**: `qanotify`
+- **配置要求**: 需要在系统中配置QANotify相关参数
+- **收件人格式**: 可为空数组（使用默认配置）
+- **示例**:
+```json
+{
+  "channels": ["qanotify"],
+  "recipients": {
+    "qanotify": []
+  }
+}
+```
+
+## 错误码说明
+
+| 错误码 | 说明 | 解决方案 |
+|--------|------|----------|
+| 400 | 请求参数错误 | 检查请求格式和必填字段 |
+| 401 | 未授权 | 检查认证信息 |
+| 404 | 资源不存在 | 检查通知ID是否正确 |
+| 422 | 数据验证失败 | 检查字段格式和取值范围 |
+| 500 | 服务器内部错误 | 查看服务日志，联系管理员 |
 
 ## 主要API端点
 
@@ -160,6 +392,143 @@ docker-compose logs -f notification-service
 - `GET /api/v1/health/detailed` - 详细健康检查
 - `GET /api/v1/health/metrics` - 获取系统指标
 
+## 服务间通信协议
+
+### 其他服务调用Notification服务的标准格式
+
+**重要**: 其他服务在调用notification服务时，必须使用以下标准格式：
+
+```python
+import httpx
+import uuid
+from typing import Dict, Any, Optional, List
+
+class NotificationClient:
+    """通知服务客户端"""
+    
+    def __init__(self, base_url: str = "http://localhost:8010"):
+        self.base_url = base_url
+        self.timeout = 30.0
+    
+    async def send_notification(
+        self,
+        title: str,
+        content: str,
+        category: str = "system",
+        priority: str = "normal",
+        channels: List[str] = None,
+        recipients: Dict[str, List[str]] = None,
+        user_id: Optional[str] = None,
+        template_id: Optional[str] = None,
+        template_variables: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """发送通知"""
+        
+        # 默认渠道
+        if channels is None:
+            channels = ["wxpusher", "pushplus", "qanotify"]
+        
+        # 默认收件人（三个渠道都支持空收件人）
+        if recipients is None:
+            recipients = {
+                "wxpusher": [],
+                "pushplus": [],
+                "qanotify": []
+            }
+        
+        # 构造请求数据
+        notification_data = {
+            "title": title,
+            "content": content,
+            "category": category,
+            "priority": priority,
+            "channels": channels,
+            "recipients": recipients
+        }
+        
+        # 添加可选字段
+        if user_id:
+            notification_data["user_id"] = user_id
+        if template_id:
+            notification_data["template_id"] = template_id
+        if template_variables:
+            notification_data["template_variables"] = template_variables
+        if metadata:
+            notification_data["metadata"] = metadata
+        
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/notifications",
+                json=notification_data
+            )
+            response.raise_for_status()
+            return response.json()
+```
+
+### 标准调用示例
+
+#### 1. 系统通知
+```python
+# 发送系统通知
+notification_data = {
+    "title": "系统维护通知",
+    "content": "系统将于今晚22:00-24:00进行维护",
+    "category": "system",
+    "priority": "high",
+    "channels": ["wxpusher", "pushplus", "qanotify"],
+    "recipients": {
+        "wxpusher": [],
+        "pushplus": [],
+        "qanotify": []
+    }
+}
+```
+
+#### 2. 交易通知
+```python
+# 发送交易通知
+notification_data = {
+    "title": "订单执行通知",
+    "content": "您的AAPL买入订单已成功执行",
+    "category": "trading",
+    "priority": "normal",
+    "channels": ["wxpusher", "pushplus"],
+    "recipients": {
+        "wxpusher": [],
+        "pushplus": []
+    },
+    "metadata": {
+        "order_id": "12345",
+        "symbol": "AAPL",
+        "quantity": 100,
+        "price": 150.25
+    }
+}
+```
+
+#### 3. 告警通知
+```python
+# 发送告警通知
+notification_data = {
+    "title": "策略异常告警",
+    "content": "策略执行出现异常，请及时处理",
+    "category": "alert",
+    "priority": "urgent",
+    "channels": ["wxpusher", "pushplus", "qanotify"],
+    "recipients": {
+        "wxpusher": [],
+        "pushplus": [],
+        "qanotify": []
+    },
+    "metadata": {
+        "strategy_id": "strategy_001",
+        "error_code": "E001",
+        "timestamp": "2024-01-01T12:00:00Z"
+    }
+}
+```
+
 ## 使用示例
 
 ### 发送简单通知
@@ -167,17 +536,22 @@ docker-compose logs -f notification-service
 ```python
 import httpx
 
-# 创建通知
+# 创建通知（正确格式）
 notification_data = {
     "title": "交易提醒",
     "content": "您的订单已成功执行",
-    "channel_type": "email",
-    "recipients": ["user@example.com"],
-    "priority": "normal"
+    "category": "trading",
+    "priority": "normal",
+    "channels": ["wxpusher", "pushplus", "qanotify"],
+    "recipients": {
+        "wxpusher": [],
+        "pushplus": [],
+        "qanotify": []
+    }
 }
 
 response = httpx.post(
-    "http://localhost:8000/api/v1/notifications",
+    "http://localhost:8010/api/v1/notifications",
     json=notification_data
 )
 

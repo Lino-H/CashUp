@@ -31,7 +31,6 @@ from ....schemas.alerts import (
     AlertStatisticsResponse
 )
 from ....services.alerts import AlertService
-from ....services.notifications import NotificationService
 from ....core.exceptions import (
     AlertProcessingError,
     ConfigurationError,

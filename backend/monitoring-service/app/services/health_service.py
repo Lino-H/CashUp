@@ -72,7 +72,7 @@ class HealthService:
             db.refresh(health_check)
             
             # 如果启用，立即执行一次检查
-            if health_check.enabled:
+            if health_check.is_active():
                 await self._execute_health_check(db, health_check)
             
             # 清除相关缓存
@@ -330,7 +330,7 @@ class HealthService:
             checks = db.query(HealthCheck).filter(
                 and_(
                     HealthCheck.service_name == service_name,
-                    HealthCheck.enabled == True
+                    HealthCheck.status == 'active'
                 )
             ).all()
             
@@ -817,7 +817,7 @@ class HealthService:
         """启动定期健康检查"""
         try:
             # 获取所有启用的健康检查
-            enabled_checks = db.query(HealthCheck).filter(HealthCheck.enabled == True).all()
+            enabled_checks = db.query(HealthCheck).filter(HealthCheck.status == 'active').all()
             
             for check in enabled_checks:
                 if check.id not in self.check_tasks:

@@ -65,8 +65,8 @@ class LifespanManager:
             
             # 初始化数据库
             logger.info("Initializing database...")
-            await init_database()
-            await create_tables()
+            init_database()
+            create_tables()
             
             # 初始化缓存
             logger.info("Initializing cache...")
@@ -74,11 +74,11 @@ class LifespanManager:
             
             # 初始化服务
             logger.info("Initializing services...")
-            from app.core.database import get_db
-            db = next(get_db())
+            from app.core.cache import get_cache_manager
+            cache_manager = get_cache_manager()
             
-            self.health_service = HealthService(db)
-            self.metrics_service = MetricsService(db)
+            self.health_service = HealthService(cache_manager)
+            self.metrics_service = MetricsService(cache_manager)
             
             # 启动后台任务
             logger.info("Starting background tasks...")
@@ -115,7 +115,7 @@ class LifespanManager:
             
             # 关闭数据库
             logger.info("Closing database...")
-            await close_database()
+            close_database()
             
             logger.info("CashUp Monitoring Service shut down successfully")
             
@@ -127,16 +127,22 @@ class LifespanManager:
         try:
             # 启动健康检查任务
             if self.health_service:
-                task = asyncio.create_task(
-                    self.health_service.start_periodic_checks()
-                )
-                self.background_tasks.append(task)
-                logger.info("Health check task started")
+                # 获取数据库会话
+                from app.core.database import get_db
+                db = next(get_db())
+                try:
+                    task = asyncio.create_task(
+                        self.health_service.start_periodic_checks(db)
+                    )
+                    self.background_tasks.append(task)
+                    logger.info("Health check task started")
+                finally:
+                    db.close()
             
             # 启动指标收集任务
             if self.metrics_service:
                 task = asyncio.create_task(
-                    self.metrics_service.start_collection()
+                    self._periodic_metrics_collection()
                 )
                 self.background_tasks.append(task)
                 logger.info("Metrics collection task started")
@@ -170,15 +176,43 @@ class LifespanManager:
         except Exception as e:
             logger.error(f"Error stopping background tasks: {e}", exc_info=True)
     
+    async def _periodic_metrics_collection(self):
+        """定期指标收集任务"""
+        while not self.shutdown_event.is_set():
+            try:
+                # 触发指标收集
+                if self.metrics_service:
+                    from app.core.database import get_db
+                    db = next(get_db())
+                    try:
+                        await self.metrics_service.trigger_collection(db)
+                        logger.debug("Metrics collection completed")
+                    finally:
+                        db.close()
+                
+                # 等待下次收集（每5分钟一次）
+                await asyncio.sleep(300)
+                
+            except asyncio.CancelledError:
+                logger.info("Metrics collection task cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Error in metrics collection: {e}", exc_info=True)
+                await asyncio.sleep(60)  # 出错时等待1分钟再重试
+    
     async def _periodic_cleanup(self):
         """定期数据清理任务"""
         while not self.shutdown_event.is_set():
             try:
                 # 清理过期数据
                 if self.metrics_service:
-                    await self.metrics_service.cleanup_expired_data()
-                
-                logger.debug("Periodic cleanup completed")
+                    from app.core.database import get_db
+                    db = next(get_db())
+                    try:
+                        await self.metrics_service.cleanup_expired_data(db)
+                        logger.debug("Periodic cleanup completed")
+                    finally:
+                        db.close()
                 
                 # 等待下次清理（每小时一次）
                 await asyncio.sleep(3600)

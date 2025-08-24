@@ -9,7 +9,7 @@ CashUp量化交易系统 - 数据库连接管理
 import logging
 from typing import Generator, Optional
 from contextlib import contextmanager
-from sqlalchemy import create_engine, event, pool
+from sqlalchemy import create_engine, event, pool, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
@@ -138,7 +138,7 @@ def test_database_connection():
     """测试数据库连接"""
     try:
         with engine.connect() as connection:
-            result = connection.execute("SELECT 1")
+            result = connection.execute(text("SELECT 1"))
             result.fetchone()
         logger.info("Database connection test successful")
     except Exception as e:
@@ -260,7 +260,7 @@ def check_database_health() -> dict:
         # 测试连接
         with engine.connect() as connection:
             start_time = time.time()
-            result = connection.execute("SELECT 1")
+            result = connection.execute(text("SELECT 1"))
             result.fetchone()
             response_time = time.time() - start_time
         
@@ -328,7 +328,7 @@ def execute_raw_sql(sql: str, params: dict = None) -> list:
     """执行原始SQL查询"""
     try:
         with get_db_session() as db:
-            result = db.execute(sql, params or {})
+            result = db.execute(text(sql), params or {})
             return result.fetchall()
     except Exception as e:
         logger.error(f"Failed to execute raw SQL: {e}")

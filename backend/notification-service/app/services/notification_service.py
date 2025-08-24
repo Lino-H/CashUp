@@ -78,23 +78,47 @@ class NotificationService:
             ChannelNotFoundError: 渠道不存在
             InvalidNotificationError: 无效的通知数据
         """
+        notification_id = str(uuid.uuid4())[:8]
+        logger.info(f"[Service-{notification_id}] 开始创建通知 - 标题: {notification_data.title}, 渠道: {notification_data.channels}")
+        
         try:
             # 验证模板（如果指定）
             template = None
             if notification_data.template_id:
+                logger.info(f"[Service-{notification_id}] 验证模板: {notification_data.template_id}")
                 template = await self.template_service.get_template(
                     db, notification_data.template_id
                 )
                 if not template:
+                    logger.error(f"[Service-{notification_id}] 模板不存在: {notification_data.template_id}")
                     raise TemplateNotFoundError(f"Template {notification_data.template_id} not found")
+                logger.info(f"[Service-{notification_id}] 模板验证成功")
             
             # 验证渠道
+            logger.info(f"[Service-{notification_id}] 开始验证渠道: {notification_data.channels}")
             for channel_name in notification_data.channels:
+                logger.info(f"[Service-{notification_id}] 验证渠道: {channel_name}")
                 channel = await self.channel_service.get_channel_by_name(db, channel_name)
                 if not channel:
+                    logger.error(f"[Service-{notification_id}] 渠道不存在: {channel_name}")
                     raise ChannelNotFoundError(f"Channel {channel_name} not found")
                 if not channel.is_active:
+                    logger.error(f"[Service-{notification_id}] 渠道未激活: {channel_name}")
                     raise InvalidNotificationError(f"Channel {channel_name} is not active")
+                logger.info(f"[Service-{notification_id}] 渠道验证成功: {channel_name}")
+            logger.info(f"[Service-{notification_id}] 所有渠道验证完成")
+            
+            # 处理收件人信息
+            recipient_email = None
+            recipient_phone = None
+            recipient_data = notification_data.recipients
+            
+            # 从recipients中提取邮箱和手机号
+            if notification_data.recipients:
+                if 'email' in notification_data.recipients and notification_data.recipients['email']:
+                    recipient_email = notification_data.recipients['email'][0]
+                if 'sms' in notification_data.recipients and notification_data.recipients['sms']:
+                    recipient_phone = notification_data.recipients['sms'][0]
             
             # 创建通知对象
             notification = Notification(
@@ -105,32 +129,39 @@ class NotificationService:
                 category=notification_data.category,
                 priority=notification_data.priority,
                 status=NotificationStatus.PENDING,
-                channels=notification_data.channels,
-                recipients=notification_data.recipients,
+                channels=','.join(notification_data.channels) if notification_data.channels else None,
                 template_id=notification_data.template_id,
-                template_variables=notification_data.template_variables or {},
-                send_config=notification_data.send_config or {},
+                template_data=notification_data.template_variables or {},
+                recipient_email=recipient_email,
+                recipient_phone=recipient_phone,
+                recipient_data=recipient_data,
+                send_immediately=notification_data.scheduled_at is None,
                 scheduled_at=notification_data.scheduled_at,
                 expires_at=notification_data.expires_at,
-                retry_count=0,
                 max_retry_attempts=config.NOTIFICATION_MAX_RETRY_ATTEMPTS,
-                delivery_status={},
-                read_status={},
-                metadata=notification_data.metadata or {},
+                retry_attempts=0,
+                retry_delay_seconds=60,
+                meta_data=notification_data.metadata or {},
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
             
             # 保存到数据库
+            logger.info(f"[Service-{notification_id}] 开始保存通知到数据库")
             db.add(notification)
             await db.commit()
             await db.refresh(notification)
+            logger.info(f"[Service-{notification_id}] 通知保存成功 - 数据库ID: {notification.id}")
             
             logger.info(f"Created notification {notification.id} for user {user_id}")
             
             # 如果不是定时发送，立即处理
             if not notification.scheduled_at:
+                logger.info(f"[Service-{notification_id}] 开始立即处理通知发送")
                 await self._process_notification(db, notification)
+                logger.info(f"[Service-{notification_id}] 通知处理完成")
+            else:
+                logger.info(f"[Service-{notification_id}] 通知已安排定时发送: {notification.scheduled_at}")
             
             return notification
             
@@ -370,8 +401,8 @@ class NotificationService:
         if status_update.error_message:
             notification.error_message = status_update.error_message
         
-        if status_update.retry_count is not None:
-            notification.retry_count = status_update.retry_count
+        if status_update.retry_attempts is not None:
+                notification.retry_attempts = status_update.retry_attempts
         
         # 设置发送时间
         if status_update.status == NotificationStatus.SENT and not notification.sent_at:
@@ -385,12 +416,10 @@ class NotificationService:
         # 发送WebSocket通知
         if notification.user_id:
             await self.websocket_service.send_notification_update(
-                str(notification.user_id),
-                {
-                    "notification_id": str(notification.id),
-                    "status": notification.status.value,
-                    "updated_at": notification.updated_at.isoformat()
-                }
+                notification,
+                update_type="status_update",
+                target_type="user",
+                target_value=str(notification.user_id)
             )
         
         logger.info(f"Updated notification {notification_id} status to {status_update.status}")
@@ -452,7 +481,7 @@ class NotificationService:
             if notification.status != NotificationStatus.FAILED:
                 raise InvalidNotificationError("Only failed notifications can be retried")
             
-            if notification.retry_count >= notification.max_retry_attempts:
+            if notification.retry_attempts >= notification.max_retry_attempts:
                 raise InvalidNotificationError("Maximum retry attempts exceeded")
             
             # 检查是否过期
@@ -570,7 +599,7 @@ class NotificationService:
             category_query = category_query.where(and_(*conditions))
         
         category_result = await db.execute(category_query)
-        category_stats = {category.value: count for category, count in category_result.fetchall()}
+        category_stats = {category.value if category else 'unknown': count for category, count in category_result.fetchall()}
         
         # 按优先级统计
         priority_query = select(
@@ -581,7 +610,7 @@ class NotificationService:
             priority_query = priority_query.where(and_(*conditions))
         
         priority_result = await db.execute(priority_query)
-        priority_stats = {priority.value: count for priority, count in priority_result.fetchall()}
+        priority_stats = {priority.value if priority else 'unknown': count for priority, count in priority_result.fetchall()}
         
         # 计算成功率
         success_count = (
@@ -691,9 +720,12 @@ class NotificationService:
             db: 数据库会话
             notification: 通知对象
         """
+        logger.info(f"[{notification.id}] 开始处理通知: title={notification.title}, channels={notification.channels}")
         try:
             # 检查是否过期
+            logger.info(f"[{notification.id}] 检查通知是否过期")
             if notification.expires_at and notification.expires_at < datetime.utcnow():
+                logger.warning(f"[{notification.id}] 通知已过期，expires_at={notification.expires_at}")
                 await self.update_notification_status(
                     db,
                     notification.id,
@@ -703,59 +735,100 @@ class NotificationService:
                     )
                 )
                 return
+            logger.info(f"[{notification.id}] 通知未过期，继续处理")
             
             # 渲染模板（如果使用模板）
             if notification.template_id:
+                logger.info(f"[{notification.id}] 开始渲染模板，template_id={notification.template_id}")
                 rendered_content = await self.template_service.render_template(
                     db,
                     notification.template_id,
-                    notification.template_variables
+                    notification.template_data
                 )
                 notification.content = rendered_content.get("content", notification.content)
                 if "subject" in rendered_content:
                     notification.title = rendered_content["subject"]
+                logger.info(f"[{notification.id}] 模板渲染完成")
+            else:
+                logger.info(f"[{notification.id}] 无需渲染模板，直接使用原始内容")
             
-            # 发送通知
-            success = await self.sender_service.send_notification(notification)
+            # 发送通知到所有指定渠道
+            channels = notification.channels.split(',') if notification.channels else []
+            logger.info(f"[{notification.id}] 准备发送到渠道: {channels}")
+            success = True
+            
+            for channel_name in channels:
+                logger.info(f"[{notification.id}] 开始处理渠道: {channel_name.strip()}")
+                try:
+                    # 获取渠道信息
+                    logger.info(f"[{notification.id}] 获取渠道信息: {channel_name.strip()}")
+                    channel = await self.channel_service.get_channel_by_name(db, channel_name.strip())
+                    if not channel:
+                        logger.error(f"[{notification.id}] 渠道 {channel_name} 未找到")
+                        success = False
+                        continue
+                    logger.info(f"[{notification.id}] 渠道信息获取成功: {channel.name}, type={channel.type}")
+                    
+                    # 发送到该渠道
+                    logger.info(f"[{notification.id}] 开始发送通知到渠道: {channel_name}")
+                    result = await self.sender_service.send_notification(db, notification, channel)
+                    logger.info(f"[{notification.id}] 渠道 {channel_name} 发送结果: {result}")
+                    if not result.get('success', False):
+                        success = False
+                        logger.error(f"[{notification.id}] 发送失败 via {channel_name}: {result.get('error', 'Unknown error')}")
+                    else:
+                        logger.info(f"[{notification.id}] 发送成功 via {channel_name}")
+                        
+                except Exception as e:
+                    import traceback
+                    logger.error(f"[{notification.id}] 渠道 {channel_name} 发送异常: {str(e)}")
+                    logger.error(f"[{notification.id}] 完整异常信息: {traceback.format_exc()}")
+                    success = False
             
             if success:
+                logger.info(f"[{notification.id}] 所有渠道发送成功，更新状态为SENT")
                 await self.update_notification_status(
                     db,
                     notification.id,
                     NotificationStatusUpdate(status=NotificationStatus.SENT)
                 )
+                logger.info(f"[{notification.id}] 通知处理完成")
             else:
                 # 增加重试次数
-                notification.retry_count += 1
+                notification.retry_attempts += 1
+                logger.warning(f"[{notification.id}] 发送失败，重试次数: {notification.retry_attempts}/{notification.max_retry_attempts}")
                 
-                if notification.retry_count >= notification.max_retry_attempts:
+                if notification.retry_attempts >= notification.max_retry_attempts:
+                    logger.error(f"[{notification.id}] 达到最大重试次数，标记为失败")
                     await self.update_notification_status(
                         db,
                         notification.id,
                         NotificationStatusUpdate(
                             status=NotificationStatus.FAILED,
-                            error_message="Maximum retry attempts exceeded",
-                            retry_count=notification.retry_count
+                            error_message="Maximum retry attempts exceeded"
                         )
                     )
                 else:
+                    logger.info(f"[{notification.id}] 安排重试")
                     await self.update_notification_status(
                         db,
                         notification.id,
                         NotificationStatusUpdate(
                             status=NotificationStatus.FAILED,
-                            error_message="Send failed, will retry",
-                            retry_count=notification.retry_count
+                            error_message="Send failed, will retry"
                         )
                     )
                     
                     # 安排重试
-                    retry_delay = config.NOTIFICATION_RETRY_DELAY_SECONDS * (2 ** (notification.retry_count - 1))
+                    retry_delay = config.NOTIFICATION_RETRY_DELAY_SECONDS * (2 ** (notification.retry_attempts - 1))
+                    logger.info(f"[{notification.id}] 等待 {retry_delay} 秒后重试")
                     await asyncio.sleep(retry_delay)
                     await self._process_notification(db, notification)
             
         except Exception as e:
-            logger.error(f"Failed to process notification {notification.id}: {str(e)}")
+            import traceback
+            logger.error(f"[{notification.id}] 处理通知时发生异常: {str(e)}")
+            logger.error(f"[{notification.id}] 异常详情: {traceback.format_exc()}")
             await self.update_notification_status(
                 db,
                 notification.id,

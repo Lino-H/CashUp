@@ -87,6 +87,14 @@ class Metric(BaseModel, SoftDeleteMixin, MetadataMixin, StatusMixin):
         comment="聚合配置"
     )
     
+    # 启用状态
+    enabled = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="是否启用"
+    )
+
     # 告警配置
     alert_enabled = Column(
         Boolean,
@@ -94,7 +102,7 @@ class Metric(BaseModel, SoftDeleteMixin, MetadataMixin, StatusMixin):
         nullable=False,
         comment="是否启用告警"
     )
-    
+
     alert_rules = Column(
         JSONB,
         nullable=True,

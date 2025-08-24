@@ -103,16 +103,18 @@ class ChannelService:
                 status=ChannelStatus.ACTIVE,
                 config=channel_data.config,
                 priority=channel_data.priority,
-                rate_limit=channel_data.rate_limit or {},
+                rate_limit=channel_data.rate_limit,
                 daily_limit=channel_data.daily_limit,
-                retry_config=channel_data.retry_config or {},
-                sent_count=0,
-                failed_count=0,
+                max_retry_attempts=channel_data.max_retry_attempts,
+                retry_delay_seconds=channel_data.retry_delay_seconds,
+                total_sent=0,
+                total_failed=0,
+                today_sent=0,
                 last_sent_at=None,
                 last_error_at=None,
                 last_error_message=None,
                 created_by=created_by,
-                metadata=channel_data.metadata or {},
+                meta_data=channel_data.metadata or {},
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -454,8 +456,8 @@ class ChannelService:
             "is_active": channel.is_active(),
             "is_available": is_available,
             "success_rate": success_rate,
-            "sent_count": channel.sent_count,
-            "failed_count": channel.failed_count,
+            "total_sent": channel.total_sent,
+            "failed_count": channel.total_failed,
             "today_sent": today_sent,
             "daily_limit": channel.daily_limit,
             "daily_limit_reached": daily_limit_reached,
@@ -491,8 +493,8 @@ class ChannelService:
         # 基础指标
         metrics = {
             "channel_id": channel_id,
-            "total_sent": channel.sent_count,
-            "total_failed": channel.failed_count,
+            "total_sent": channel.total_sent,
+            "total_failed": channel.total_failed,
             "success_rate": channel.get_success_rate(),
             "today_sent": channel.get_today_sent_count(),
             "daily_limit": channel.daily_limit,
@@ -585,8 +587,8 @@ class ChannelService:
         
         # 发送统计
         sent_query = select(
-            func.sum(NotificationChannel.sent_count),
-            func.sum(NotificationChannel.failed_count)
+            func.sum(NotificationChannel.total_sent),
+            func.sum(NotificationChannel.total_failed)
         )
         if conditions:
             sent_query = sent_query.where(and_(*conditions))
@@ -598,7 +600,7 @@ class ChannelService:
         
         # 最活跃渠道
         most_active_query = select(NotificationChannel).order_by(
-            NotificationChannel.sent_count.desc()
+            NotificationChannel.total_sent.desc()
         ).limit(5)
         if conditions:
             most_active_query = most_active_query.where(and_(*conditions))
@@ -610,7 +612,7 @@ class ChannelService:
                 "name": channel.name,
                 "display_name": channel.display_name,
                 "type": channel.type.value,
-                "sent_count": channel.sent_count,
+                "total_sent": channel.total_sent,
                 "success_rate": channel.get_success_rate()
             }
             for channel in most_active_result.scalars().all()

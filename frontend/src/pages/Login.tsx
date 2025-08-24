@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Form, Input, Button, Card, Typography, message, Checkbox, Divider } from 'antd'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { UserService } from '../utils/api'
 
 const { Title, Text, Link } = Typography
 
@@ -27,23 +28,45 @@ const Login: React.FC = () => {
   const handleLogin = async (values: LoginForm) => {
     setLoading(true)
     try {
-      // 模拟登录API调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 调用真实的登录API
+      const response = await UserService.login(values.email, values.password)
       
-      // 模拟成功登录
-      const mockToken = 'mock_jwt_token_' + Date.now()
-      localStorage.setItem('access_token', mockToken)
-      localStorage.setItem('user_info', JSON.stringify({
-        id: '1',
-        email: values.email,
-        username: 'Demo User',
-        avatar: 'https://trae-api-sg.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20avatar%20portrait&image_size=square'
-      }))
-      
-      message.success('登录成功！')
-      navigate('/dashboard')
-    } catch (error) {
-      message.error('登录失败，请检查用户名和密码')
+      if (response.access_token) {
+        // 保存token和用户信息
+        localStorage.setItem('access_token', response.access_token)
+        if (response.refresh_token) {
+          localStorage.setItem('refresh_token', response.refresh_token)
+        }
+        
+        // 获取用户信息
+        try {
+          const userProfile = await UserService.getUserProfile()
+          localStorage.setItem('user_info', JSON.stringify(userProfile))
+        } catch (profileError) {
+          console.warn('获取用户信息失败:', profileError)
+          // 使用基本信息
+          localStorage.setItem('user_info', JSON.stringify({
+            email: values.email,
+            username: values.email.split('@')[0]
+          }))
+        }
+        
+        message.success('登录成功！')
+        navigate('/dashboard')
+      } else {
+        message.error('登录失败：无效的响应格式')
+      }
+    } catch (error: any) {
+      console.error('登录错误:', error)
+      if (error.response?.status === 401) {
+        message.error('用户名或密码错误')
+      } else if (error.response?.status === 422) {
+        message.error('请输入有效的邮箱和密码')
+      } else if (error.response?.data?.message) {
+        message.error(error.response.data.message)
+      } else {
+        message.error('登录失败，请稍后重试')
+      }
     } finally {
       setLoading(false)
     }
@@ -52,14 +75,31 @@ const Login: React.FC = () => {
   const handleRegister = async (values: RegisterForm) => {
     setLoading(true)
     try {
-      // 模拟注册API调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 调用真实的注册API
+      await UserService.register({
+        email: values.email,
+        password: values.password,
+        username: values.username
+      })
       
       message.success('注册成功！请登录')
       setIsLogin(true)
       form.resetFields()
-    } catch (error) {
-      message.error('注册失败，请稍后重试')
+    } catch (error: any) {
+      console.error('注册错误:', error)
+      if (error.response?.status === 422) {
+        const details = error.response.data?.detail
+        if (Array.isArray(details)) {
+          const errorMessages = details.map((err: any) => err.msg).join(', ')
+          message.error(`注册失败: ${errorMessages}`)
+        } else {
+          message.error('注册信息格式不正确')
+        }
+      } else if (error.response?.data?.message) {
+        message.error(error.response.data.message)
+      } else {
+        message.error('注册失败，请稍后重试')
+      }
     } finally {
       setLoading(false)
     }

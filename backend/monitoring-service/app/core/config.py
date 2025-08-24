@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # 数据库配置
-    DATABASE_URL: str = "postgresql://cashup:cashup123@localhost:5432/cashup_monitoring"
+    DATABASE_URL: str = "postgresql+psycopg2://cashup:cashup123@postgres:5432/cashup"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_POOL_TIMEOUT: int = 30
@@ -122,6 +122,20 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_WINDOW: int = 60  # 秒
+    
+    # 安全中间件配置
+    class SecurityConfig:
+        use_https: bool = False
+        hsts_max_age: int = 31536000
+        hsts_include_subdomains: bool = True
+        hsts_preload: bool = False
+        content_type_nosniff: bool = True
+        x_frame_options: str = "DENY"
+        x_content_type_options: str = "nosniff"
+        referrer_policy: str = "strict-origin-when-cross-origin"
+        content_security_policy: str = "default-src 'self'"
+    
+    security: SecurityConfig = SecurityConfig()
     
     # 性能配置
     WORKER_PROCESSES: int = 1

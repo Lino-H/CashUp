@@ -49,19 +49,25 @@ class NotificationService:
             bool: 发送是否成功
         """
         try:
+            # 使用notification服务的标准格式
             notification_data = {
-                "user_id": str(user_id),
-                "type": "order",
-                "event_type": event_type,
                 "title": self._get_notification_title(event_type),
-                "message": message,
+                "content": message,
+                "category": "trading",
+                "priority": self._get_notification_priority(event_type),
+                "channels": self._get_notification_channels(event_type),
+                "recipients": {
+                    "wxpusher": [],
+                    "pushplus": [],
+                    "qanotify": []
+                },
+                "user_id": str(user_id),
                 "metadata": {
                     "order_id": str(order_id),
                     "service": "order-service",
+                    "event_type": event_type,
                     **(metadata or {})
-                },
-                "priority": self._get_notification_priority(event_type),
-                "channels": self._get_notification_channels(event_type)
+                }
             }
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -103,25 +109,31 @@ class NotificationService:
             bool: 发送是否成功
         """
         try:
+            # 使用notification服务的标准格式
             alert_data = {
-                "user_id": str(user_id),
-                "type": "alert",
-                "alert_type": alert_type,
-                "severity": severity,
                 "title": f"Order Alert: {alert_type.title()}",
-                "message": message,
+                "content": message,
+                "category": "alert",
+                "priority": "high" if severity in ["error", "critical"] else "normal",
+                "channels": ["wxpusher", "pushplus", "qanotify"] if severity in ["error", "critical"] else ["wxpusher", "pushplus"],
+                "recipients": {
+                    "wxpusher": [],
+                    "pushplus": [],
+                    "qanotify": []
+                },
+                "user_id": str(user_id),
                 "metadata": {
                     "order_id": str(order_id),
                     "service": "order-service",
+                    "alert_type": alert_type,
+                    "severity": severity,
                     "alert_category": "order"
-                },
-                "priority": "high" if severity in ["error", "critical"] else "medium",
-                "channels": ["push", "email"] if severity in ["error", "critical"] else ["push"]
+                }
             }
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.notification_service_url}/api/v1/alerts",
+                    f"{self.notification_service_url}/api/v1/notifications",
                     json=alert_data
                 )
                 response.raise_for_status()
@@ -208,14 +220,14 @@ class NotificationService:
         high_priority_events = [
             "order_filled", "order_rejected", "order_failed", "order_expired"
         ]
-        medium_priority_events = [
+        normal_priority_events = [
             "order_partial_filled", "order_cancelled"
         ]
         
         if event_type in high_priority_events:
             return "high"
-        elif event_type in medium_priority_events:
-            return "medium"
+        elif event_type in normal_priority_events:
+            return "normal"
         else:
             return "low"
     
@@ -235,9 +247,9 @@ class NotificationService:
         ]
         
         if event_type in important_events:
-            return ["push", "email", "websocket"]
+            return ["wxpusher", "pushplus", "qanotify"]
         else:
-            return ["push", "websocket"]
+            return ["wxpusher", "pushplus"]
     
     async def health_check(self) -> Dict[str, Any]:
         """

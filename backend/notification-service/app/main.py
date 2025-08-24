@@ -180,27 +180,24 @@ app = FastAPI(
 # 添加CORS中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS,
+    allow_origins=config.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # 添加可信主机中间件
-if config.ALLOWED_HOSTS:
+if config.allowed_hosts_list and config.allowed_hosts_list != ["*"]:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=config.ALLOWED_HOSTS
+        allowed_hosts=config.allowed_hosts_list
     )
 
 # 添加请求日志中间件
 app.add_middleware(RequestLoggingMiddleware)
 
 # 注册API路由
-app.include_router(
-    api_router,
-    prefix="/api/v1"
-)
+app.include_router(api_router)
 
 
 # 异常处理器
@@ -248,8 +245,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     Returns:
         JSONResponse: 错误响应
     """
+    # 安全地序列化错误信息
+    try:
+        error_details = []
+        for error in exc.errors():
+            safe_error = {
+                "type": str(error.get("type", "unknown")),
+                "loc": [str(loc) for loc in error.get("loc", [])],
+                "msg": str(error.get("msg", "Validation error")),
+                "input": str(error.get("input", ""))[:200]  # 限制输入长度
+            }
+            if "ctx" in error:
+                safe_error["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+            error_details.append(safe_error)
+    except Exception as e:
+        logger.error(f"Error serializing validation errors: {e}")
+        error_details = [{"type": "serialization_error", "msg": "Unable to serialize validation errors"}]
+    
     logger.warning(
-        f"Validation error - URL: {request.url}, Errors: {exc.errors()}"
+        f"Validation error - URL: {request.url}, Errors: {error_details}"
     )
     
     return JSONResponse(
@@ -259,7 +273,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "code": 422,
                 "message": "Validation error",
                 "type": "validation_error",
-                "details": exc.errors()
+                "details": error_details
             },
             "timestamp": time.time(),
             "path": str(request.url.path)
@@ -316,12 +330,22 @@ async def general_exception_handler(request: Request, exc: Exception):
         exc_info=True
     )
     
+    # 确保错误消息是可序列化的字符串
+    error_message = "Internal server error"
+    if config.DEBUG:
+        try:
+            # 安全地转换异常为字符串
+            error_message = str(exc)
+        except Exception:
+            # 如果转换失败，使用异常类型名称
+            error_message = f"{type(exc).__name__}: Unable to serialize exception message"
+    
     return JSONResponse(
         status_code=500,
         content={
             "error": {
                 "code": 500,
-                "message": "Internal server error" if not config.DEBUG else str(exc),
+                "message": error_message,
                 "type": "internal_error"
             },
             "timestamp": time.time(),

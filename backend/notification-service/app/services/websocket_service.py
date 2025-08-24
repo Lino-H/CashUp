@@ -357,10 +357,26 @@ class WebSocketService:
     """
     
     def __init__(self):
+        """
+        初始化WebSocket服务
+        """
         self.connection_manager = ConnectionManager()
+        self._cleanup_task = None
         
-        # 启动清理任务
-        asyncio.create_task(self._periodic_cleanup())
+    async def start(self):
+        """启动WebSocket服务"""
+        if self._cleanup_task is None:
+            self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+            
+    async def stop(self):
+        """停止WebSocket服务"""
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            self._cleanup_task = None
     
     async def handle_connection(
         self,
@@ -418,7 +434,7 @@ class WebSocketService:
                 "content": notification.content,
                 "category": notification.category.value if notification.category else None,
                 "priority": notification.priority.value if notification.priority else None,
-                "status": notification.status.value,
+                "status": notification.status.value if notification.status else None,
                 "created_at": notification.created_at.isoformat(),
                 "metadata": notification.metadata
             },
@@ -441,6 +457,65 @@ class WebSocketService:
         
         return {
             "notification_id": str(notification.id),
+            "target_type": target_type,
+            "target_value": target_value,
+            "success_count": success_count,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    async def send_notification_update(
+        self,
+        notification: Notification,
+        update_type: str = "status_update",
+        target_type: str = "user",
+        target_value: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        发送通知状态更新
+        
+        Args:
+            notification: 通知对象
+            update_type: 更新类型
+            target_type: 目标类型 (user, channel, broadcast)
+            target_value: 目标值
+            
+        Returns:
+            Dict[str, Any]: 发送结果
+        """
+        message = {
+            "type": "notification_update",
+            "update_type": update_type,
+            "data": {
+                "id": str(notification.id),
+                "title": notification.title,
+                "content": notification.content,
+                "category": notification.category.value if notification.category else None,
+                "priority": notification.priority.value if notification.priority else None,
+                "status": notification.status.value if notification.status else None,
+                "created_at": notification.created_at.isoformat(),
+                "updated_at": notification.updated_at.isoformat() if notification.updated_at else None,
+                "metadata": notification.metadata
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        success_count = 0
+        
+        if target_type == "user" and target_value:
+            success_count = await self.connection_manager.send_to_user(target_value, message)
+        elif target_type == "channel" and target_value:
+            success_count = await self.connection_manager.send_to_channel(target_value, message)
+        elif target_type == "broadcast":
+            success_count = await self.connection_manager.broadcast(message)
+        
+        logger.info(
+            f"Sent notification update {notification.id} to {success_count} connections "
+            f"via {target_type}:{target_value or 'all'}"
+        )
+        
+        return {
+            "notification_id": str(notification.id),
+            "update_type": update_type,
             "target_type": target_type,
             "target_value": target_value,
             "success_count": success_count,
@@ -639,4 +714,11 @@ class WebSocketService:
 
 
 # 全局WebSocket服务实例
-websocket_service = WebSocketService()
+websocket_service = None
+
+def get_websocket_service() -> WebSocketService:
+    """获取WebSocket服务实例"""
+    global websocket_service
+    if websocket_service is None:
+        websocket_service = WebSocketService()
+    return websocket_service

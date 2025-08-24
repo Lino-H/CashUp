@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     
     # 服务配置
     HOST: str = Field(default="0.0.0.0", description="服务监听地址")
-    PORT: int = Field(default=8006, description="服务端口")
+    PORT: int = Field(default=8010, description="服务端口")
     
     # 数据库配置
     DATABASE_URL: str = Field(
@@ -49,14 +49,28 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="访问令牌过期时间（分钟）")
     
     # CORS配置
-    ALLOWED_HOSTS: List[str] = Field(
-        default=["*"],
-        description="允许的主机列表"
+    ALLOWED_HOSTS: str = Field(
+        default="*",
+        description="允许的主机列表（逗号分隔）"
     )
-    CORS_ORIGINS: List[str] = Field(
-        default=["*"],
-        description="CORS允许的源列表"
+    CORS_ORIGINS: str = Field(
+        default="*",
+        description="CORS允许的源列表（逗号分隔）"
     )
+    
+    @property
+    def allowed_hosts_list(self) -> List[str]:
+        """将ALLOWED_HOSTS字符串转换为列表"""
+        if self.ALLOWED_HOSTS == "*":
+            return ["*"]
+        return [host.strip() for host in self.ALLOWED_HOSTS.split(",") if host.strip()]
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """将CORS_ORIGINS字符串转换为列表"""
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
     
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", description="日志级别")
@@ -110,7 +124,9 @@ class Settings(BaseSettings):
     
     # 通知配置
     MAX_RETRY_ATTEMPTS: int = Field(default=3, description="最大重试次数")
+    NOTIFICATION_MAX_RETRY_ATTEMPTS: int = Field(default=3, description="通知最大重试次数")
     RETRY_DELAY_SECONDS: int = Field(default=60, description="重试延迟时间（秒）")
+    NOTIFICATION_RETRY_DELAY_SECONDS: int = Field(default=60, description="通知重试延迟时间（秒）")
     BATCH_SIZE: int = Field(default=100, description="批量发送大小")
     NOTIFICATION_HISTORY_DAYS: int = Field(default=30, description="通知历史保留天数")
     
@@ -134,6 +150,7 @@ class Settings(BaseSettings):
         description="用户服务URL"
     )
     
+
     @validator('LOG_LEVEL')
     def validate_log_level(cls, v):
         """验证日志级别"""

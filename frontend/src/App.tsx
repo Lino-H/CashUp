@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Button, Avatar, Dropdown, Badge, Typography } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Badge, Typography, Space } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -8,12 +8,11 @@ import {
   BarChartOutlined,
   MonitorOutlined,
   LineChartOutlined,
-  ShieldOutlined,
+  SafetyOutlined,
   BellOutlined,
   SettingOutlined,
   UserOutlined,
-  LogoutOutlined,
-  NotificationOutlined
+  LogoutOutlined
 } from '@ant-design/icons'
 
 const { Header, Sider, Content } = Layout
@@ -21,7 +20,6 @@ const { Title } = Typography
 
 function App() {
   const [collapsed, setCollapsed] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(true) // 临时设为true用于开发
 
   // 菜单项配置
   const menuItems = [
@@ -32,12 +30,12 @@ function App() {
     },
     {
       key: '/strategies',
-      icon: <RocketOutlined />,
+      icon: <BarChartOutlined />,
       label: '策略管理'
     },
     {
       key: '/trading',
-      icon: <TradingViewOutlined />,
+      icon: <MonitorOutlined />,
       label: '交易监控'
     },
     {
@@ -47,7 +45,7 @@ function App() {
     },
     {
       key: '/risk',
-      icon: <ShieldCheckOutlined />,
+      icon: <SafetyOutlined />,
       label: '风险管理'
     },
     {
@@ -67,27 +65,37 @@ function App() {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: '个人资料'
+      label: '个人资料',
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
-      label: '账户设置'
+      label: '系统设置',
     },
     {
-      type: 'divider'
+      type: 'divider' as const,
     },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: '退出登录',
-      onClick: () => setIsAuthenticated(false)
-    }
+    },
   ]
 
-  // 如果未认证，显示登录页面
-  if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // 处理菜单点击
+  const handleMenuClick = ({ key }: { key: string }) => {
+    navigate(key)
+  }
+
+  // 处理用户菜单点击
+  const handleUserMenuClick = ({ key }: { key: string }) => {
+    if (key === 'logout') {
+      localStorage.removeItem('access_token')
+      navigate('/login')
+    }
   }
 
   return (
@@ -115,13 +123,10 @@ function App() {
         {/* 导航菜单 */}
         <Menu
           mode="inline"
-          defaultSelectedKeys={['/dashboard']}
+          selectedKeys={[location.pathname]}
           items={menuItems}
           className="border-r-0 mt-4"
-          onClick={({ key }) => {
-            window.history.pushState(null, '', key)
-            window.dispatchEvent(new PopStateEvent('popstate'))
-          }}
+          onClick={handleMenuClick}
         />
       </Sider>
 
@@ -151,7 +156,7 @@ function App() {
             </Badge>
 
             {/* 用户头像和下拉菜单 */}
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
               <Space className="cursor-pointer hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors">
                 <Avatar size="small" icon={<UserOutlined />} />
                 <span className="text-gray-700">交易员</span>

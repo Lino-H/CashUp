@@ -37,10 +37,11 @@ from ...schemas.channel import (
 )
 from ...schemas.common import (
     BaseResponse,
-    PaginationParams
+    PaginationParams,
+    PaginationInfo
 )
 from ...services.channel_service import ChannelService
-from ...services.websocket_service import websocket_service
+from ...services.websocket_service import get_websocket_service
 
 import logging
 
@@ -80,10 +81,11 @@ async def create_channel(
         created_channel = await service.create_channel(
             db=db,
             channel_data=channel,
-            user_id=current_user["user_id"]
+            created_by=current_user["user_id"]
         )
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -127,17 +129,20 @@ async def get_channels(
         # 获取渠道列表
         channels, total = await service.get_channels(
             db=db,
-            skip=pagination.skip,
-            limit=pagination.limit,
-            filters=filters
+            filters=filters,
+            page=pagination.page,
+            size=pagination.size
         )
         
         return ChannelListResponse(
-            items=[ChannelResponse.from_orm(c) for c in channels],
-            total=total,
-            page=pagination.page,
-            size=pagination.size,
-            pages=(total + pagination.size - 1) // pagination.size
+            success=True,
+            message="Channels retrieved successfully",
+            data=[ChannelResponse.from_orm(c) for c in channels],
+            pagination=PaginationInfo.create(
+                page=pagination.page,
+                size=pagination.size,
+                total=total
+            )
         )
         
     except Exception as e:
@@ -212,6 +217,7 @@ async def update_channel(
             raise HTTPException(status_code=404, detail="Channel not found")
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -259,6 +265,7 @@ async def delete_channel(
             raise HTTPException(status_code=404, detail="Channel not found")
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -312,6 +319,7 @@ async def test_channel(
         )
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -513,6 +521,7 @@ async def bulk_channel_operation(
         }
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {
@@ -628,6 +637,7 @@ async def update_channel_config(
         await db.commit()
         
         # 发送WebSocket通知
+        websocket_service = get_websocket_service()
         background_tasks.add_task(
             websocket_service.send_system_message,
             {

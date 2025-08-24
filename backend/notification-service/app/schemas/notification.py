@@ -26,7 +26,7 @@ class NotificationBase(BaseModel):
     category: NotificationCategory = Field(description="通知分类")
     priority: NotificationPriority = Field(default=NotificationPriority.NORMAL, description="优先级")
     channels: List[str] = Field(description="发送渠道列表")
-    recipients: Dict[str, List[str]] = Field(description="收件人信息")
+    recipients: Optional[Dict[str, List[str]]] = Field(default=None, description="收件人信息")
     template_id: Optional[UUID] = Field(default=None, description="模板ID")
     template_variables: Optional[Dict[str, Any]] = Field(default=None, description="模板变量")
     send_config: Optional[Dict[str, Any]] = Field(default=None, description="发送配置")
@@ -42,27 +42,53 @@ class NotificationCreate(NotificationBase):
     user_id: Optional[UUID] = Field(default=None, description="用户ID")
     
     @validator('recipients')
-    def validate_recipients(cls, v):
+    def validate_recipients(cls, v, values):
         """
         验证收件人信息
         """
-        if not v:
-            raise ValueError("Recipients cannot be empty")
+        # 获取渠道列表
+        channels = values.get('channels', [])
+        
+        # 允许为空的渠道列表（这些渠道有默认接收者）
+        channels_allow_empty = {'wxpusher', 'pushplus', 'qanotify'}
+        
+        # 如果所有渠道都允许为空，则recipients可以为None或空字典
+        if all(channel in channels_allow_empty for channel in channels):
+            if v is None:
+                return {}
+            if not v:
+                return {}
+        
+        # 如果recipients为None但有需要收件人的渠道，则报错
+        if v is None:
+            non_empty_channels = [ch for ch in channels if ch not in channels_allow_empty]
+            if non_empty_channels:
+                raise ValueError(f"Recipients are required for channels: {', '.join(non_empty_channels)}")
+            return {}
         
         # 验证每个渠道的收件人格式
         for channel, recipients in v.items():
-            if not isinstance(recipients, list) or not recipients:
-                raise ValueError(f"Recipients for channel {channel} must be a non-empty list")
-            
-            # 根据渠道类型验证收件人格式
-            if channel == 'email':
-                for recipient in recipients:
-                    if '@' not in recipient:
-                        raise ValueError(f"Invalid email address: {recipient}")
-            elif channel == 'sms':
-                for recipient in recipients:
-                    if not recipient.replace('+', '').replace('-', '').replace(' ', '').isdigit():
-                        raise ValueError(f"Invalid phone number: {recipient}")
+            # 对于允许为空的渠道，跳过空值检查
+            if channel in channels_allow_empty:
+                if not isinstance(recipients, list):
+                    raise ValueError(f"Recipients for channel {channel} must be a list")
+                # 如果有收件人，则验证格式
+                if recipients:
+                    continue  # 这些渠道暂时不需要特殊格式验证
+            else:
+                # 其他渠道必须有收件人
+                if not isinstance(recipients, list) or not recipients:
+                    raise ValueError(f"Recipients for channel {channel} must be a non-empty list")
+                
+                # 根据渠道类型验证收件人格式
+                if channel == 'email':
+                    for recipient in recipients:
+                        if '@' not in recipient:
+                            raise ValueError(f"Invalid email address: {recipient}")
+                elif channel == 'sms':
+                    for recipient in recipients:
+                        if not recipient.replace('+', '').replace('-', '').replace(' ', '').isdigit():
+                            raise ValueError(f"Invalid phone number: {recipient}")
         
         return v
     
@@ -109,7 +135,7 @@ class NotificationStatusUpdate(BaseModel):
     """
     status: NotificationStatus = Field(description="新状态")
     error_message: Optional[str] = Field(default=None, description="错误信息")
-    retry_count: Optional[int] = Field(default=None, description="重试次数")
+    retry_attempts: Optional[int] = Field(default=None, description="重试次数")
 
 
 class NotificationResponse(BaseModel):
@@ -133,7 +159,7 @@ class NotificationResponse(BaseModel):
     scheduled_at: Optional[datetime] = Field(description="定时发送时间")
     sent_at: Optional[datetime] = Field(description="发送时间")
     expires_at: Optional[datetime] = Field(description="过期时间")
-    retry_count: int = Field(description="重试次数")
+    retry_attempts: int = Field(description="重试次数")
     max_retry_attempts: int = Field(description="最大重试次数")
     error_message: Optional[str] = Field(description="错误信息")
     delivery_status: Dict[str, Any] = Field(description="投递状态")
@@ -160,7 +186,7 @@ class NotificationResponse(BaseModel):
     @property
     def can_retry(self) -> bool:
         """检查是否可以重试"""
-        return self.is_failed and self.retry_count < self.max_retry_attempts
+        return self.is_failed and self.retry_attempts < self.max_retry_attempts
 
 
 class NotificationListResponse(PaginatedResponse[NotificationResponse]):
@@ -253,7 +279,7 @@ class NotificationRetry(BaseModel):
     """
     notification_ids: List[UUID] = Field(description="通知ID列表")
     force: bool = Field(default=False, description="是否强制重试")
-    reset_retry_count: bool = Field(default=False, description="是否重置重试次数")
+    reset_retry_attempts: bool = Field(default=False, description="是否重置重试次数")
 
 
 class NotificationRetryResponse(BaseResponse):

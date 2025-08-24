@@ -34,7 +34,7 @@ async def get_current_user(
     if not credentials:
         # 对于开发环境，允许无认证访问
         return {
-            "user_id": "default_user",
+            "user_id": "00000000-0000-0000-0000-000000000001",
             "username": "default",
             "email": "default@cashup.com",
             "roles": ["user"]
@@ -43,7 +43,7 @@ async def get_current_user(
     # 这里应该验证token的有效性
     # 临时返回默认用户信息
     return {
-        "user_id": "authenticated_user",
+        "user_id": "00000000-0000-0000-0000-000000000002",
         "username": "user",
         "email": "user@cashup.com",
         "roles": ["user"]
@@ -117,7 +117,7 @@ async def get_current_user_from_token(token: str) -> Optional[Dict]:
     if not user_data:
         # 临时返回默认用户信息
         return {
-            "user_id": "token_user",
+            "user_id": "00000000-0000-0000-0000-000000000003",
             "username": "token_user",
             "email": "token_user@cashup.com",
             "roles": ["user"]

@@ -131,9 +131,9 @@ async def get_templates(
         # 获取模板列表
         templates, total = await service.get_templates(
             db=db,
-            skip=pagination.skip,
-            limit=pagination.limit,
-            filters=filters
+            filters=filters,
+            page=pagination.page,
+            size=pagination.size
         )
         
         return TemplateListResponse(
