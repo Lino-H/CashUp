@@ -1,5 +1,5 @@
 """
-认证相关的数据模型
+认证相关的数据模型 - 简化版（基于会话）
 """
 
 from pydantic import BaseModel, EmailStr, Field, validator
@@ -41,12 +41,6 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class LoginResponse(BaseModel):
-    """登录响应"""
-    access_token: str
-    refresh_token: str
-    token_type: str
+    """登录响应 - 简化版（返回session_id）"""
+    session_id: str
     user: UserResponse
-
-class TokenData(BaseModel):
-    """令牌数据"""
-    username: Optional[str] = None

@@ -12,16 +12,14 @@ from enum import Enum as PyEnum
 from ..database.connection import Base
 
 class UserRole(PyEnum):
-    """用户角色枚举"""
+    """用户角色枚举 - 简化版"""
     ADMIN = "admin"
-    TRADER = "trader"
-    VIEWER = "viewer"
+    USER = "user"  # 简化为两种角色
 
 class UserStatus(PyEnum):
-    """用户状态枚举"""
+    """用户状态枚举 - 简化版"""
     ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    INACTIVE = "inactive"  # 简化为两种状态
 
 class User(Base):
     """用户模型"""
@@ -32,9 +30,9 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True, comment="邮箱")
     password_hash = Column(String(255), nullable=False, comment="密码哈希")
     full_name = Column(String(100), nullable=True, comment="全名")
-    role = Column(Enum(UserRole), default=UserRole.TRADER, comment="用户角色")
+    role = Column(Enum(UserRole), default=UserRole.USER, comment="用户角色")
     status = Column(Enum(UserStatus), default=UserStatus.ACTIVE, comment="用户状态")
-    is_verified = Column(Boolean, default=False, comment="邮箱是否验证")
+    is_verified = Column(Boolean, default=True, comment="邮箱是否验证")
     avatar_url = Column(String(255), nullable=True, comment="头像URL")
     last_login = Column(DateTime, nullable=True, comment="最后登录时间")
     created_at = Column(DateTime, default=func.now(), comment="创建时间")

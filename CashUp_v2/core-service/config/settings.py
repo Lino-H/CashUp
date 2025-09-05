@@ -18,8 +18,6 @@ class Settings(BaseSettings):
     
     # 安全配置
     SECRET_KEY: str = "your-secret-key-here"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # 数据库配置
     DATABASE_URL: str = "postgresql://cashup:cashup@localhost:5432/cashup"
@@ -34,9 +32,8 @@ class Settings(BaseSettings):
         "http://localhost:8000"
     ]
     
-    # JWT配置
-    JWT_SECRET_KEY: str = "your-jwt-secret-key"
-    JWT_REFRESH_SECRET_KEY: str = "your-jwt-refresh-secret"
+    # 会话配置
+    SESSION_EXPIRE_HOURS: int = 24
     
     # 邮件配置
     SMTP_HOST: str = ""

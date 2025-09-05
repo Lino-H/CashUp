@@ -1,16 +1,16 @@
 """
-认证服务层
+认证服务层 - 简化版（基于会话）
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from datetime import datetime, timedelta
-import jwt
+from datetime import datetime
+import uuid
 import bcrypt
 from passlib.context import CryptContext
+import redis.asyncio as redis
 
 from ..models.models import User
-from ..schemas.auth import TokenData
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,8 +21,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class AuthService:
     """认证服务类"""
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, redis_client: redis.Redis):
         self.db = db
+        self.redis = redis_client
     
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """验证用户身份"""
@@ -64,49 +65,51 @@ class AuthService:
         user_service = UserService(self.db)
         await user_service.update_last_login(user_id)
     
-    def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
-        """创建访问令牌"""
-        from ..config.settings import settings
+    async def create_session(self, user_id: int) -> str:
+        """创建用户会话"""
+        session_id = str(uuid.uuid4())
+        session_data = {
+            "user_id": user_id,
+            "created_at": datetime.utcnow().isoformat(),
+            "last_access": datetime.utcnow().isoformat()
+        }
         
-        to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        # 会话有效期24小时
+        await self.redis.setex(
+            f"session:{session_id}", 
+            24 * 3600,  # 24小时
+            str(session_data)
+        )
         
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-        
-        return encoded_jwt
+        return session_id
     
-    def create_refresh_token(self, data: dict) -> str:
-        """创建刷新令牌"""
-        from ..config.settings import settings
-        
-        to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        to_encode.update({"exp": expire})
-        
-        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-        
-        return encoded_jwt
-    
-    def verify_token(self, token: str) -> Optional[TokenData]:
-        """验证令牌"""
-        from ..config.settings import settings
-        
+    async def validate_session(self, session_id: str) -> Optional[int]:
+        """验证会话并返回用户ID"""
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            username: str = payload.get("sub")
-            user_id: int = payload.get("user_id")
-            
-            if username is None or user_id is None:
+            session_data = await self.redis.get(f"session:{session_id}")
+            if not session_data:
                 return None
             
-            return TokenData(username=username, user_id=user_id)
-        
-        except jwt.PyJWTError:
+            # 更新最后访问时间
+            await self.redis.expire(f"session:{session_id}", 24 * 3600)
+            
+            # 简单解析用户ID
+            import json
+            data = json.loads(session_data)
+            return data.get("user_id")
+            
+        except Exception as e:
+            logger.error(f"会话验证失败: {e}")
             return None
+    
+    async def destroy_session(self, session_id: str) -> bool:
+        """销毁用户会话"""
+        try:
+            await self.redis.delete(f"session:{session_id}")
+            return True
+        except Exception as e:
+            logger.error(f"会话销毁失败: {e}")
+            return False
     
     async def create_user(self, username: str, email: str, password: str, full_name: str = None) -> User:
         """创建用户"""

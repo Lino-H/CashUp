@@ -1,40 +1,49 @@
 """
-认证依赖模块
+认证依赖模块 - 简化版（基于会话）
 """
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Cookie, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from ..database.connection import get_db
+from ..database.redis import get_redis
 from ..services.auth import AuthService
-from ..schemas.auth import TokenData
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-security = HTTPBearer()
-
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis)
 ):
     """获取当前用户"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="无法验证凭据",
-        headers={"WWW-Authenticate": "Bearer"},
     )
     
     try:
-        auth_service = AuthService(db)
-        token_data = auth_service.verify_token(credentials.credentials)
+        # 优先从Cookie获取session_id
+        if not session_id and authorization:
+            # 从Authorization头获取session_id
+            if authorization.startswith("Bearer "):
+                session_id = authorization[7:]
+            else:
+                session_id = authorization
         
-        if token_data is None:
+        if not session_id:
             raise credentials_exception
         
-        user = await auth_service.get_user_by_id(token_data.user_id)
+        auth_service = AuthService(db, redis_client)
+        user_id = await auth_service.validate_session(session_id)
+        
+        if user_id is None:
+            raise credentials_exception
+        
+        user = await auth_service.get_user_by_id(user_id)
         if user is None:
             raise credentials_exception
         
@@ -67,21 +76,29 @@ async def get_current_admin_user(
     return current_user
 
 async def get_optional_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis)
 ):
     """获取可选的当前用户（用于公开接口）"""
-    if credentials is None:
+    if not session_id and authorization:
+        if authorization.startswith("Bearer "):
+            session_id = authorization[7:]
+        else:
+            session_id = authorization
+    
+    if not session_id:
         return None
     
     try:
-        auth_service = AuthService(db)
-        token_data = auth_service.verify_token(credentials.credentials)
+        auth_service = AuthService(db, redis_client)
+        user_id = await auth_service.validate_session(session_id)
         
-        if token_data is None:
+        if user_id is None:
             return None
         
-        user = await auth_service.get_user_by_id(token_data.user_id)
+        user = await auth_service.get_user_by_id(user_id)
         return user
     
     except Exception:

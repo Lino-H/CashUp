@@ -1,29 +1,29 @@
 """
-认证路由
+认证路由 - 简化版（基于会话）
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
 from typing import Optional
 
 from ..schemas.auth import LoginRequest, LoginResponse, RegisterRequest, UserResponse
 from ..services.auth import AuthService
 from ..database.connection import get_db
+from ..database.redis import get_redis
 from ..utils.logger import get_logger
 
 router = APIRouter()
-security = HTTPBearer()
 logger = get_logger(__name__)
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: LoginRequest,
-    db: AsyncSession = Depends(get_db)
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis)
 ):
     """用户登录"""
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, redis_client)
     
     try:
         user = await auth_service.authenticate_user(request.username, request.password)
@@ -33,17 +33,21 @@ async def login(
                 detail="用户名或密码错误"
             )
         
-        # 生成访问令牌
-        access_token = auth_service.create_access_token(data={"sub": user.username})
-        refresh_token = auth_service.create_refresh_token(data={"sub": user.username})
+        # 创建会话
+        session_id = await auth_service.create_session(user.id)
         
-        # 更新最后登录时间
-        await auth_service.update_last_login(user.id)
+        # 设置HttpOnly Cookie
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,  # 开发环境设为False，生产环境设为True
+            samesite="lax",
+            max_age=24 * 3600  # 24小时
+        )
         
         return LoginResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
+            session_id=session_id,
             user=UserResponse.from_orm(user)
         )
         
@@ -60,7 +64,9 @@ async def register(
     db: AsyncSession = Depends(get_db)
 ):
     """用户注册"""
-    auth_service = AuthService(db)
+    from ..database.redis import get_redis
+    
+    auth_service = AuthService(db, await get_redis())
     
     try:
         # 检查用户名是否已存在
@@ -96,79 +102,44 @@ async def register(
             detail="注册失败"
         )
 
-@router.post("/refresh", response_model=LoginResponse)
-async def refresh_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+@router.post("/logout")
+async def logout(
+    response: Response,
+    session_id: Optional[str] = None,
+    authorization: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis)
 ):
-    """刷新令牌"""
-    auth_service = AuthService(db)
+    """用户登出"""
+    auth_service = AuthService(db, redis_client)
     
     try:
-        # 验证刷新令牌
-        username = auth_service.verify_token(credentials.credentials)
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="无效的令牌"
-            )
+        # 获取session_id
+        if not session_id and authorization:
+            if authorization.startswith("Bearer "):
+                session_id = authorization[7:]
+            else:
+                session_id = authorization
         
-        # 获取用户信息
-        user = await auth_service.get_user_by_username(username)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="用户不存在"
-            )
+        # 销毁会话
+        if session_id:
+            await auth_service.destroy_session(session_id)
         
-        # 生成新的访问令牌
-        access_token = auth_service.create_access_token(data={"sub": user.username})
-        refresh_token = auth_service.create_refresh_token(data={"sub": user.username})
+        # 清除Cookie
+        response.delete_cookie("session_id")
         
-        return LoginResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-            user=UserResponse.from_orm(user)
-        )
+        return {"message": "登出成功"}
         
     except Exception as e:
-        logger.error(f"令牌刷新失败: {e}")
+        logger.error(f"登出失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="令牌刷新失败"
+            detail="登出失败"
         )
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+async def get_current_user_info(
+    current_user = Depends(get_current_user)
 ):
     """获取当前用户信息"""
-    auth_service = AuthService(db)
-    
-    try:
-        # 验证访问令牌
-        username = auth_service.verify_token(credentials.credentials)
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="无效的令牌"
-            )
-        
-        # 获取用户信息
-        user = await auth_service.get_user_by_username(username)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="用户不存在"
-            )
-        
-        return UserResponse.from_orm(user)
-        
-    except Exception as e:
-        logger.error(f"获取用户信息失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="获取用户信息失败"
-        )
+    return UserResponse.from_orm(current_user)
