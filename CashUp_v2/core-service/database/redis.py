@@ -4,8 +4,8 @@ Redis连接管理
 
 import redis.asyncio as redis
 from typing import Optional
-from ..config.settings import settings
-from ..utils.logger import get_logger
+from config.settings import settings
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

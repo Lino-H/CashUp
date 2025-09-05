@@ -8,9 +8,9 @@ from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime
 import json
 
-from ..models.models import Config
-from ..schemas.config import ConfigCreate, ConfigUpdate
-from ..utils.logger import get_logger
+from models.models import Config
+from schemas.config import ConfigCreate, ConfigUpdate
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

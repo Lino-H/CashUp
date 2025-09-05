@@ -16,7 +16,7 @@ def setup_logger(name: str) -> logging.Logger:
     if not logger.handlers:
         # 创建控制台处理器
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(logging.DEBUG)
         
         # 创建格式化器
         formatter = logging.Formatter(
@@ -27,7 +27,7 @@ def setup_logger(name: str) -> logging.Logger:
         
         # 添加处理器
         logger.addHandler(console_handler)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
     
     return logger
 

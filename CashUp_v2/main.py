@@ -19,12 +19,12 @@ from contextlib import asynccontextmanager
 import logging
 
 # 导入配置和数据库
-from config.settings import settings
-from database.connection import get_database, Base
-from utils.logger import setup_logger
+from core_service.config.settings import settings
+from core_service.database.connection import get_database, Base
+from core_service.utils.logger import setup_logger
 
 # 导入API路由
-from api.routes import auth, users, config
+from core_service.api.routes import auth, users, config
 
 # 设置日志
 logger = setup_logger(__name__)

@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
-from ..config.settings import settings
-from ..models.models import Base
-from ..utils.logger import get_logger
+from config.settings import settings
+from models.models import Base
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -49,11 +49,15 @@ async def create_default_data():
         engine, class_=AsyncSession, expire_on_commit=False
     )
     
+    # 创建Redis客户端
+    import redis.asyncio as redis
+    redis_client = redis.from_url(settings.REDIS_URL)
+    
     async with async_session() as session:
         try:
             # 创建默认管理员用户
-            from .services.auth import AuthService
-            auth_service = AuthService(session)
+            from services.auth import AuthService
+            auth_service = AuthService(session, redis_client)
             
             # 检查是否已存在管理员用户
             admin_user = await auth_service.get_user_by_username("admin")
@@ -67,17 +71,17 @@ async def create_default_data():
                 
                 # 更新用户为管理员角色
                 from sqlalchemy import update
-                from ..models.models import User
+                from models.models import User
                 await session.execute(
                     update(User)
                     .where(User.username == "admin")
-                    .values(role="admin", is_verified=True)
+                    .values(role="ADMIN", is_verified=True)
                 )
                 await session.commit()
                 logger.info("✅ 创建默认管理员用户: admin / admin123")
             
             # 创建默认系统配置
-            from .services.config import ConfigService
+            from services.config import ConfigService
             config_service = ConfigService(session)
             
             default_configs = [
@@ -121,7 +125,7 @@ async def create_default_data():
             for config_data in default_configs:
                 existing_config = await config_service.get_config_by_key(config_data["key"])
                 if not existing_config:
-                    from .schemas.config import ConfigCreate
+                    from schemas.config import ConfigCreate
                     config_create = ConfigCreate(**config_data)
                     await config_service.create_config(config_create)
             

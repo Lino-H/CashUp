@@ -34,7 +34,9 @@ import {
   Tooltip,
   Popconfirm,
   QRCode,
-  notification
+  notification,
+  Statistic,
+  Spin
 } from 'antd';
 import {
   UserOutlined,
@@ -70,7 +72,6 @@ import type { UploadFile, UploadProps } from 'antd/es/upload';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 const { TextArea } = Input;
 const { Option } = Select;
 
@@ -463,7 +464,7 @@ const UserSettings: React.FC = () => {
       <Form
         form={form}
         layout="vertical"
-        initialValues={userConfig}
+        initialValues={userConfig || undefined}
         onFinish={handleSave}
       >
         <Row gutter={16}>
@@ -1429,17 +1430,17 @@ const UserSettings: React.FC = () => {
               dataIndex: 'status',
               key: 'status',
               render: (status) => {
-                const colors = {
+                const colors: Record<string, string> = {
                   running: 'green',
                   stopped: 'red',
                   error: 'orange'
                 };
-                const texts = {
+                const texts: Record<string, string> = {
                   running: '运行中',
                   stopped: '已停止',
                   error: '错误'
                 };
-                return <Tag color={colors[status]}>{texts[status]}</Tag>;
+                return <Tag color={colors[status] || 'default'}>{texts[status] || status}</Tag>;
               }
             },
             {

@@ -8,9 +8,9 @@ from typing import List, Optional, Tuple
 from datetime import datetime
 import bcrypt
 
-from ..models.models import User
-from ..schemas.user import UserCreate, UserUpdate
-from ..utils.logger import get_logger
+from models.models import User
+from schemas.user import UserCreate, UserUpdate
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -88,7 +88,7 @@ class UserService:
             username=user_data.username,
             email=user_data.email,
             full_name=user_data.full_name,
-            hashed_password=hashed_password.decode('utf-8'),
+            password_hash=hashed_password.decode('utf-8'),
             role=user_data.role,
             status=user_data.status,
             is_verified=user_data.is_verified
@@ -123,14 +123,14 @@ class UserService:
         if not user:
             return False
         
-        return bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8'))
+        return bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8'))
     
     async def update_password(self, user_id: int, new_password: str) -> bool:
         """更新密码"""
         hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
         
         query = update(User).where(User.id == user_id).values(
-            hashed_password=hashed_password.decode('utf-8'),
+            password_hash=hashed_password.decode('utf-8'),
             updated_at=datetime.utcnow()
         )
         await self.db.execute(query)

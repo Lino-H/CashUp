@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from ..schemas.auth import LoginRequest, LoginResponse, RegisterRequest, UserResponse
-from ..services.auth import AuthService
-from ..database.connection import get_db
-from ..database.redis import get_redis
-from ..utils.logger import get_logger
+from schemas.auth import LoginRequest, LoginResponse, RegisterRequest, UserResponse
+from services.auth import AuthService
+from database.connection import get_db
+from database.redis import get_redis
+from utils.logger import get_logger
+from auth.dependencies import get_current_user
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -61,12 +62,11 @@ async def login(
 @router.post("/register", response_model=UserResponse)
 async def register(
     request: RegisterRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis)
 ):
     """用户注册"""
-    from ..database.redis import get_redis
-    
-    auth_service = AuthService(db, await get_redis())
+    auth_service = AuthService(db, redis_client)
     
     try:
         # 检查用户名是否已存在

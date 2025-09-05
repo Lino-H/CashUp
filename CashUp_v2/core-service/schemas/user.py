@@ -9,15 +9,15 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """用户角色枚举"""
-    USER = "user"
-    ADMIN = "admin"
-    TRADER = "trader"
+    USER = "USER"
+    ADMIN = "ADMIN"
+    TRADER = "TRADER"
 
 class UserStatus(str, Enum):
     """用户状态枚举"""
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    SUSPENDED = "SUSPENDED"
 
 class UserBase(BaseModel):
     """用户基础模型"""

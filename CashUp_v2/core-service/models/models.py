@@ -9,17 +9,17 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from ..database.connection import Base
+from database.connection import Base
 
 class UserRole(PyEnum):
     """用户角色枚举 - 简化版"""
-    ADMIN = "admin"
-    USER = "user"  # 简化为两种角色
+    ADMIN = "ADMIN"
+    USER = "USER"  # 简化为两种角色
 
 class UserStatus(PyEnum):
     """用户状态枚举 - 简化版"""
-    ACTIVE = "active"
-    INACTIVE = "inactive"  # 简化为两种状态
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"  # 简化为两种状态
 
 class User(Base):
     """用户模型"""

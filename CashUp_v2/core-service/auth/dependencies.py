@@ -6,10 +6,10 @@ from fastapi import Depends, HTTPException, status, Cookie, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from ..database.connection import get_db
-from ..database.redis import get_redis
-from ..services.auth import AuthService
-from ..utils.logger import get_logger
+from database.connection import get_db
+from database.redis import get_redis
+from services.auth import AuthService
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -57,7 +57,7 @@ async def get_current_active_user(
     current_user = Depends(get_current_user)
 ):
     """获取当前活跃用户"""
-    if current_user.status != "active":
+    if current_user.status.value != "ACTIVE":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户账户已被禁用"
@@ -68,7 +68,7 @@ async def get_current_admin_user(
     current_user = Depends(get_current_active_user)
 ):
     """获取当前管理员用户"""
-    if current_user.role != "admin":
+    if current_user.role.value != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要管理员权限"

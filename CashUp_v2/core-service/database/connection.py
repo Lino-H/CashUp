@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from contextlib import asynccontextmanager
 import asyncio
 
-from .config.settings import settings
+from config.settings import settings
 
 # 创建异步数据库引擎
 engine = create_async_engine(

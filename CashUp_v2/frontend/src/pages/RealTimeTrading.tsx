@@ -1,6 +1,6 @@
 /**
- * 实时交易监控页面
- * Real-time Trading Monitoring Page
+ * 实时交易监控页面 - 简化版本
+ * Real-time Trading Monitoring Page - Simplified Version
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,54 +15,28 @@ import {
   Space,
   Tag,
   Progress,
-  Tabs,
   Alert,
   Divider,
-  Tooltip,
   Typography,
   Spin,
   message,
   Modal,
-  Drawer,
   Badge,
   Switch,
   InputNumber,
   Form,
   Input,
-  DatePicker
 } from 'antd';
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-  ScatterChart,
-  Scatter,
-  ComposedChart,
-  CandlestickChart,
-  Candlestick
-} from 'recharts';
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarCircle,
-  Percentage,
-  ClockCircle,
+  RiseOutlined as TrendingUp,
+  FallOutlined as TrendingDown,
+  DollarCircleOutlined as DollarCircle,
+  PercentageOutlined as Percentage,
+  ClockCircleOutlined as ClockCircle,
   BarChartOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  StopCircleOutlined,
+  StopOutlined,
   EyeOutlined,
   SettingOutlined,
   BellOutlined,
@@ -70,15 +44,13 @@ import {
   CheckCircleOutlined,
   ThunderboltOutlined,
   DashboardOutlined,
-  OrderedListOutlined
+  OrderedListOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import moment from 'moment';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { RangePicker } = DatePicker;
-const { TabPane } = Tabs;
-const { TextArea } = Input;
 
 // 实时交易数据类型
 interface RealTimeTrade {
@@ -190,11 +162,6 @@ const RealTimeTrading: React.FC = () => {
   const [accountBalances, setAccountBalances] = useState<AccountBalance[]>([]);
   const [currentPositions, setCurrentPositions] = useState<CurrentPosition[]>([]);
   const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null);
-  
-  // 图表数据
-  const [priceChartData, setPriceChartData] = useState<any[]>([]);
-  const [pnlChartData, setPnlChartData] = useState<any[]>([]);
-  const [volumeChartData, setVolumeChartData] = useState<any[]>([]);
   
   // 详情显示
   const [detailVisible, setDetailVisible] = useState(false);
@@ -381,27 +348,12 @@ const RealTimeTrading: React.FC = () => {
       riskLevel: 'medium'
     };
 
-    // 模拟图表数据
-    const mockPriceData = Array.from({ length: 50 }, (_, i) => ({
-      time: new Date(Date.now() - (49 - i) * 60000).toISOString(),
-      price: 43000 + Math.sin(i * 0.1) * 500 + Math.random() * 200,
-      volume: Math.random() * 1000000 + 500000
-    }));
-
-    const mockPnlData = Array.from({ length: 24 }, (_, i) => ({
-      time: `${i}:00`,
-      pnl: Math.random() * 1000 - 500,
-      cumulative: Math.random() * 5000 + 2000
-    }));
-
     setRecentTrades(mockTrades);
     setRealTimePrices(mockPrices);
     setStrategyStatus(mockStrategyStatus);
     setAccountBalances(mockBalances);
     setCurrentPositions(mockPositions);
     setRiskMetrics(mockRiskMetrics);
-    setPriceChartData(mockPriceData);
-    setPnlChartData(mockPnlData);
   };
 
   const handleViewTradeDetail = (trade: RealTimeTrade) => {
@@ -619,364 +571,202 @@ const RealTimeTrading: React.FC = () => {
         </Col>
       </Row>
 
-      <Tabs defaultActiveKey="overview">
-        <TabPane tab="总览" key="overview">
-          <Row gutter={[16, 16]}>
-            {/* 策略状态 */}
-            <Col span={12}>
-              <Card title="策略状态" style={{ marginBottom: 16 }}>
-                {strategyStatus.map(strategy => (
-                  <div key={strategy.id} style={{ marginBottom: 16 }}>
-                    <Row gutter={16}>
-                      <Col span={8}>
-                        <div style={{ fontWeight: 'bold' }}>{strategy.name}</div>
-                        <Tag color={statusColor[strategy.status]} style={{ marginTop: 4 }}>
-                          {statusText[strategy.status]}
-                        </Tag>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: 12, color: '#666' }}>运行时间</div>
-                        <div>{strategy.uptime}</div>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: 12, color: '#666' }}>今日盈亏</div>
-                        <div style={{ color: strategy.totalPnl >= 0 ? '#3f8600' : '#cf1322' }}>
-                          ${strategy.totalPnl.toFixed(2)}
-                        </div>
-                      </Col>
-                    </Row>
-                    <Row gutter={16} style={{ marginTop: 8 }}>
-                      <Col span={6}>
-                        <div style={{ fontSize: 12, color: '#666' }}>交易次数</div>
-                        <div>{strategy.tradesCount}</div>
-                      </Col>
-                      <Col span={6}>
-                        <div style={{ fontSize: 12, color: '#666' }}>胜率</div>
-                        <div>{strategy.winRate.toFixed(1)}%</div>
-                      </Col>
-                      <Col span={6}>
-                        <div style={{ fontSize: 12, color: '#666' }}>持仓数</div>
-                        <div>{strategy.currentPositions}</div>
-                      </Col>
-                      <Col span={6}>
-                        <Space>
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={strategy.status === 'running' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                            onClick={() => handleControlStrategy(strategy.id, strategy.status === 'running' ? 'pause' : 'start')}
-                          />
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<StopCircleOutlined />}
-                            onClick={() => handleControlStrategy(strategy.id, 'stop')}
-                          />
-                        </Space>
-                      </Col>
-                    </Row>
-                    <Divider style={{ margin: '8px 0' }} />
-                  </div>
-                ))}
-              </Card>
-            </Col>
-
-            {/* 实时价格 */}
-            <Col span={12}>
-              <Card title="实时价格" style={{ marginBottom: 16 }}>
-                {realTimePrices.map(price => (
-                  <div key={price.symbol} style={{ marginBottom: 16 }}>
-                    <Row gutter={16}>
-                      <Col span={8}>
-                        <div style={{ fontWeight: 'bold' }}>{price.symbol}</div>
-                        <div style={{ fontSize: 18, color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
-                          ${price.price.toFixed(2)}
-                        </div>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: 12, color: '#666' }}>24h变化</div>
-                        <div style={{ color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
-                          {price.changePercent24h >= 0 ? '+' : ''}{price.changePercent24h.toFixed(2)}%
-                        </div>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: 12, color: '#666' }}>24h成交量</div>
-                        <div>${(price.volume24h / 1000000).toFixed(1)}M</div>
-                      </Col>
-                    </Row>
-                    <Divider style={{ margin: '8px 0' }} />
-                  </div>
-                ))}
-              </Card>
-            </Col>
-          </Row>
-
-          {/* 实时图表 */}
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Card title="价格走势">
-                <div style={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={priceChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Line type="monotone" dataKey="price" stroke="#8884d8" name="价格" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="盈亏曲线">
-                <div style={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={pnlChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Area type="monotone" dataKey="cumulative" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} name="累计盈亏" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
-
-        <TabPane tab="实时交易" key="trades">
-          <Card>
-            <Table
-              columns={tradeColumns}
-              dataSource={recentTrades}
-              rowKey="id"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true
-              }}
-              scroll={{ x: 1200 }}
-            />
-          </Card>
-        </TabPane>
-
-        <TabPane tab="当前持仓" key="positions">
-          <Card>
-            <Table
-              columns={[
-                {
-                  title: '策略',
-                  dataIndex: 'strategyName',
-                  key: 'strategyName'
-                },
-                {
-                  title: '交易对',
-                  dataIndex: 'symbol',
-                  key: 'symbol',
-                  render: (symbol: string) => <Tag color="blue">{symbol}</Tag>
-                },
-                {
-                  title: '方向',
-                  dataIndex: 'side',
-                  key: 'side',
-                  render: (side: string) => (
-                    <Tag color={side === 'long' ? 'green' : 'red'}>
-                      {side === 'long' ? '多头' : '空头'}
-                    </Tag>
-                  )
-                },
-                {
-                  title: '数量',
-                  dataIndex: 'quantity',
-                  key: 'quantity',
-                  render: (quantity: number) => quantity.toFixed(4)
-                },
-                {
-                  title: '入场价格',
-                  dataIndex: 'entryPrice',
-                  key: 'entryPrice',
-                  render: (price: number) => `$${price.toFixed(2)}`
-                },
-                {
-                  title: '当前价格',
-                  dataIndex: 'currentPrice',
-                  key: 'currentPrice',
-                  render: (price: number) => `$${price.toFixed(2)}`
-                },
-                {
-                  title: '盈亏',
-                  dataIndex: 'pnl',
-                  key: 'pnl',
-                  render: (pnl: number) => (
-                    <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
-                      {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-                    </span>
-                  )
-                },
-                {
-                  title: '盈亏比例',
-                  dataIndex: 'pnlPercent',
-                  key: 'pnlPercent',
-                  render: (percent: number) => (
-                    <span style={{ color: percent >= 0 ? '#3f8600' : '#cf1322' }}>
-                      {percent >= 0 ? '+' : ''}{percent.toFixed(2)}%
-                    </span>
-                  )
-                },
-                {
-                  title: '持仓时间',
-                  dataIndex: 'duration',
-                  key: 'duration'
-                },
-                {
-                  title: '交易所',
-                  dataIndex: 'exchange',
-                  key: 'exchange'
-                }
-              ]}
-              dataSource={currentPositions}
-              rowKey="id"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true
-              }}
-            />
-          </Card>
-        </TabPane>
-
-        <TabPane tab="账户余额" key="balances">
-          <Row gutter={[16, 16]}>
-            {accountBalances.map(balance => (
-              <Col span={12} key={balance.exchange}>
-                <Card title={balance.exchange}>
-                  <Row gutter={16}>
-                    <Col span={8}>
-                      <Statistic
-                        title="总余额"
-                        value={balance.totalBalance}
-                        prefix="$"
-                        precision={2}
-                      />
-                    </Col>
-                    <Col span={8}>
-                      <Statistic
-                        title="可用余额"
-                        value={balance.availableBalance}
-                        prefix="$"
-                        precision={2}
-                      />
-                    </Col>
-                    <Col span={8}>
-                      <Statistic
-                        title="使用余额"
-                        value={balance.usedBalance}
-                        prefix="$"
-                        precision={2}
-                      />
-                    </Col>
-                  </Row>
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>资产分布</div>
-                    {balance.currencies.map(currency => (
-                      <div key={currency.currency} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span>{currency.currency}</span>
-                        <span>{currency.balance.toFixed(4)} (${currency.btcValue.toFixed(2)})</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </TabPane>
-
-        <TabPane tab="风险监控" key="risk">
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Card title="风险指标">
+      {/* 主要内容区域 */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* 策略状态 */}
+        <Col span={12}>
+          <Card title="策略状态">
+            {strategyStatus.map(strategy => (
+              <div key={strategy.id} style={{ marginBottom: 16 }}>
                 <Row gutter={16}>
-                  <Col span={12}>
-                    <Statistic
-                      title="总敞口"
-                      value={riskMetrics?.totalExposure}
-                      prefix="$"
-                      precision={2}
-                    />
+                  <Col span={8}>
+                    <div style={{ fontWeight: 'bold' }}>{strategy.name}</div>
+                    <Tag color={statusColor[strategy.status]} style={{ marginTop: 4 }}>
+                      {statusText[strategy.status]}
+                    </Tag>
                   </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="保证金使用率"
-                      value={riskMetrics?.marginUsage}
-                      suffix="%"
-                      precision={1}
-                      valueStyle={{ 
-                        color: riskMetrics?.marginUsage > 80 ? '#ff4d4f' : 
-                               riskMetrics?.marginUsage > 60 ? '#faad14' : '#52c41a' 
-                      }}
-                    />
+                  <Col span={8}>
+                    <div style={{ fontSize: 12, color: '#666' }}>运行时间</div>
+                    <div>{strategy.uptime}</div>
                   </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="最大回撤"
-                      value={riskMetrics?.maxDrawdown}
-                      suffix="%"
-                      precision={2}
-                      valueStyle={{ color: '#ff4d4f' }}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="VaR (95%)"
-                      value={riskMetrics?.var95}
-                      prefix="$"
-                      precision={2}
-                      valueStyle={{ color: '#ff4d4f' }}
-                    />
+                  <Col span={8}>
+                    <div style={{ fontSize: 12, color: '#666' }}>今日盈亏</div>
+                    <div style={{ color: strategy.totalPnl >= 0 ? '#3f8600' : '#cf1322' }}>
+                      ${strategy.totalPnl.toFixed(2)}
+                    </div>
                   </Col>
                 </Row>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="风险分析">
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>夏普比率</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold', color: riskMetrics?.sharpeRatio >= 1.5 ? '#52c41a' : '#faad14' }}>
-                    {riskMetrics?.sharpeRatio?.toFixed(2)}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Beta系数</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold' }}>
-                    {riskMetrics?.beta?.toFixed(2)}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>相关系数</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold' }}>
-                    {riskMetrics?.correlation?.toFixed(2)}
-                  </div>
-                </div>
-                <Alert
-                  message="风险提示"
-                  description={`当前风险等级为${riskMetrics?.riskLevel === 'low' ? '低' : riskMetrics?.riskLevel === 'medium' ? '中' : '高'}，建议密切关注市场变化`}
-                  type={riskMetrics?.riskLevel === 'low' ? 'success' : riskMetrics?.riskLevel === 'medium' ? 'warning' : 'error'}
-                  showIcon
-                />
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
-      </Tabs>
+                <Row gutter={16} style={{ marginTop: 8 }}>
+                  <Col span={6}>
+                    <div style={{ fontSize: 12, color: '#666' }}>交易次数</div>
+                    <div>{strategy.tradesCount}</div>
+                  </Col>
+                  <Col span={6}>
+                    <div style={{ fontSize: 12, color: '#666' }}>胜率</div>
+                    <div>{strategy.winRate.toFixed(1)}%</div>
+                  </Col>
+                  <Col span={6}>
+                    <div style={{ fontSize: 12, color: '#666' }}>持仓数</div>
+                    <div>{strategy.currentPositions}</div>
+                  </Col>
+                  <Col span={6}>
+                    <Space>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={strategy.status === 'running' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                        onClick={() => handleControlStrategy(strategy.id, strategy.status === 'running' ? 'pause' : 'start')}
+                      />
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<StopOutlined />}
+                        onClick={() => handleControlStrategy(strategy.id, 'stop')}
+                      />
+                    </Space>
+                  </Col>
+                </Row>
+                <Divider style={{ margin: '8px 0' }} />
+              </div>
+            ))}
+          </Card>
+        </Col>
 
-      {/* 交易详情抽屉 */}
-      <Drawer
+        {/* 实时价格 */}
+        <Col span={12}>
+          <Card title="实时价格">
+            {realTimePrices.map(price => (
+              <div key={price.symbol} style={{ marginBottom: 16 }}>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <div style={{ fontWeight: 'bold' }}>{price.symbol}</div>
+                    <div style={{ fontSize: 18, color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
+                      ${price.price.toFixed(2)}
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div style={{ fontSize: 12, color: '#666' }}>24h变化</div>
+                    <div style={{ color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
+                      {price.changePercent24h >= 0 ? '+' : ''}{price.changePercent24h.toFixed(2)}%
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div style={{ fontSize: 12, color: '#666' }}>24h成交量</div>
+                    <div>${(price.volume24h / 1000000).toFixed(1)}M</div>
+                  </Col>
+                </Row>
+                <Divider style={{ margin: '8px 0' }} />
+              </div>
+            ))}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 实时交易表格 */}
+      <Card title="实时交易" style={{ marginBottom: 24 }}>
+        <Table
+          columns={tradeColumns}
+          dataSource={recentTrades}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true
+          }}
+          scroll={{ x: 1200 }}
+        />
+      </Card>
+
+      {/* 当前持仓 */}
+      <Card title="当前持仓">
+        <Table
+          columns={[
+            {
+              title: '策略',
+              dataIndex: 'strategyName',
+              key: 'strategyName'
+            },
+            {
+              title: '交易对',
+              dataIndex: 'symbol',
+              key: 'symbol',
+              render: (symbol: string) => <Tag color="blue">{symbol}</Tag>
+            },
+            {
+              title: '方向',
+              dataIndex: 'side',
+              key: 'side',
+              render: (side: string) => (
+                <Tag color={side === 'long' ? 'green' : 'red'}>
+                  {side === 'long' ? '多头' : '空头'}
+                </Tag>
+              )
+            },
+            {
+              title: '数量',
+              dataIndex: 'quantity',
+              key: 'quantity',
+              render: (quantity: number) => quantity.toFixed(4)
+            },
+            {
+              title: '入场价格',
+              dataIndex: 'entryPrice',
+              key: 'entryPrice',
+              render: (price: number) => `$${price.toFixed(2)}`
+            },
+            {
+              title: '当前价格',
+              dataIndex: 'currentPrice',
+              key: 'currentPrice',
+              render: (price: number) => `$${price.toFixed(2)}`
+            },
+            {
+              title: '盈亏',
+              dataIndex: 'pnl',
+              key: 'pnl',
+              render: (pnl: number) => (
+                <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
+                  {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                </span>
+              )
+            },
+            {
+              title: '盈亏比例',
+              dataIndex: 'pnlPercent',
+              key: 'pnlPercent',
+              render: (percent: number) => (
+                <span style={{ color: percent >= 0 ? '#3f8600' : '#cf1322' }}>
+                  {percent >= 0 ? '+' : ''}{percent.toFixed(2)}%
+                </span>
+              )
+            },
+            {
+              title: '持仓时间',
+              dataIndex: 'duration',
+              key: 'duration'
+            },
+            {
+              title: '交易所',
+              dataIndex: 'exchange',
+              key: 'exchange'
+            }
+          ]}
+          dataSource={currentPositions}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true
+          }}
+        />
+      </Card>
+
+      {/* 交易详情模态框 */}
+      <Modal
         title="交易详情"
-        placement="right"
-        width={600}
-        onClose={() => setDetailVisible(false)}
         open={detailVisible}
+        onCancel={() => setDetailVisible(false)}
+        footer={null}
+        width={600}
       >
         {selectedTrade && (
           <div>
@@ -1003,7 +793,7 @@ const RealTimeTrading: React.FC = () => {
               </Row>
             </Card>
 
-            <Card title="交易信息" style={{ marginBottom: 16 }}>
+            <Card title="交易信息">
               <Row gutter={16}>
                 <Col span={12}>
                   <Statistic title="方向" value={selectedTrade.side === 'buy' ? '买入' : '卖出'} />
@@ -1029,17 +819,9 @@ const RealTimeTrading: React.FC = () => {
                 </Col>
               </Row>
             </Card>
-
-            <Card title="时间信息">
-              <Row gutter={16}>
-                <Col span={24}>
-                  <Statistic title="交易时间" value={moment(selectedTrade.timestamp).format('YYYY-MM-DD HH:mm:ss')} />
-                </Col>
-              </Row>
-            </Card>
           </div>
         )}
-      </Drawer>
+      </Modal>
 
       {/* 设置模态框 */}
       <Modal

@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from ..schemas.config import ConfigCreate, ConfigUpdate, ConfigResponse, ConfigListResponse
-from ..services.config import ConfigService
-from ..database.connection import get_db
-from ..utils.logger import get_logger
-from ..auth.dependencies import get_current_user, get_current_active_user
+from schemas.config import ConfigCreate, ConfigUpdate, ConfigResponse, ConfigListResponse
+from services.config import ConfigService
+from database.connection import get_db
+from utils.logger import get_logger
+from auth.dependencies import get_current_user, get_current_active_user
 
 router = APIRouter()
 security = HTTPBearer()

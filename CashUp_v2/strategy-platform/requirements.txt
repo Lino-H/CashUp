@@ -25,7 +25,6 @@ aiohttp==3.9.1
 # 数据库
 psycopg2-binary==2.9.9
 redis==5.0.1
-sqlite3
 
 # 工具库
 click==8.1.7

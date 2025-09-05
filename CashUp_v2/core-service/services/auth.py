@@ -7,16 +7,13 @@ from typing import Optional
 from datetime import datetime
 import uuid
 import bcrypt
-from passlib.context import CryptContext
 import redis.asyncio as redis
 
-from ..models.models import User
-from ..utils.logger import get_logger
+from models.models import User
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     """认证服务类"""
@@ -31,7 +28,7 @@ class AuthService:
         if not user:
             return None
         
-        if not self.verify_password(password, user.hashed_password):
+        if not self.verify_password(password, user.password_hash):
             return None
         
         # 更新最后登录时间
@@ -41,27 +38,33 @@ class AuthService:
     
     async def get_user_by_username(self, username: str) -> Optional[User]:
         """根据用户名获取用户"""
-        from ..services.user import UserService
+        from services.user import UserService
         user_service = UserService(self.db)
         return await user_service.get_user_by_username(username)
     
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """根据ID获取用户"""
-        from ..services.user import UserService
+        from services.user import UserService
         user_service = UserService(self.db)
         return await user_service.get_user_by_id(user_id)
     
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """根据邮箱获取用户"""
+        from services.user import UserService
+        user_service = UserService(self.db)
+        return await user_service.get_user_by_email(email)
+    
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """验证密码"""
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     
     def get_password_hash(self, password: str) -> str:
         """获取密码哈希"""
-        return pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
     async def update_last_login(self, user_id: int) -> None:
         """更新最后登录时间"""
-        from ..services.user import UserService
+        from services.user import UserService
         user_service = UserService(self.db)
         await user_service.update_last_login(user_id)
     
@@ -93,9 +96,22 @@ class AuthService:
             # 更新最后访问时间
             await self.redis.expire(f"session:{session_id}", 24 * 3600)
             
-            # 简单解析用户ID
+            # 解析会话数据
             import json
-            data = json.loads(session_data)
+            import ast
+            # 处理bytes类型
+            if isinstance(session_data, bytes):
+                session_data = session_data.decode('utf-8')
+            
+            # 使用ast.literal_eval安全地解析单引号字符串
+            try:
+                data = ast.literal_eval(session_data)
+            except (ValueError, SyntaxError):
+                # 如果ast解析失败，尝试替换引号后使用json解析
+                if session_data.startswith("'") and session_data.endswith("'"):
+                    session_data = session_data.replace("'", '"')
+                data = json.loads(session_data)
+            
             return data.get("user_id")
             
         except Exception as e:
@@ -113,8 +129,8 @@ class AuthService:
     
     async def create_user(self, username: str, email: str, password: str, full_name: str = None) -> User:
         """创建用户"""
-        from ..services.user import UserService
-        from ..schemas.user import UserCreate
+        from services.user import UserService
+        from schemas.user import UserCreate
         
         user_service = UserService(self.db)
         user_data = UserCreate(

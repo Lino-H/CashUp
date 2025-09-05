@@ -6,7 +6,6 @@ WORKDIR /app
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
     gcc \
-    postgresql-client \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,11 +23,11 @@ RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # 暴露端口
-EXPOSE 8001
+EXPOSE 8004
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8001/health || exit 1
+  CMD curl -f http://localhost:8004/health || exit 1
 
 # 启动命令
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004"]

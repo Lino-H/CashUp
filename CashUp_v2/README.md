@@ -38,6 +38,11 @@ CashUp_v2/
 │   ├── templates/         # 通知模板
 │   └── queue/             # 消息队列
 ├── frontend/              # 前端应用 (3000)
+├── nginx/                 # Nginx反向代理 (80/443)
+│   ├── 负载均衡
+│   ├── SSL终端
+│   ├── 静态文件服务
+│   └── API路由
 └── strategies/            # 策略目录
     ├── templates/         # 策略模板
     ├── examples/          # 示例策略
@@ -86,11 +91,13 @@ make dev
 
 ### 访问地址
 
-- 前端界面: http://localhost:3000
+- Web界面: http://localhost:80 (通过Nginx反向代理)
+- 前端应用: http://localhost:3000 (直接访问)
 - 核心服务: http://localhost:8001
 - 交易引擎: http://localhost:8002
 - 策略平台: http://localhost:8003
 - 通知服务: http://localhost:8004
+- API文档: http://localhost:8001/docs
 
 ## 核心功能
 
@@ -330,6 +337,26 @@ docker-compose -f docker-compose.prod.yml build
 # 生产环境启动
 docker-compose -f docker-compose.prod.yml up -d
 ```
+
+### Nginx反向代理
+
+系统包含Nginx反向代理服务，提供以下功能：
+
+- **负载均衡**: 分发请求到后端服务
+- **SSL终端**: HTTPS证书管理和加密
+- **静态文件服务**: 高效提供前端静态资源
+- **API路由**: 统一的API入口点
+- **WebSocket支持**: 实时数据传输
+
+配置文件位置：`frontend/nginx.conf`
+
+主要路由规则：
+- `/` → 前端应用
+- `/api/core/` → 核心服务
+- `/api/trading/` → 交易引擎
+- `/api/strategy/` → 策略平台
+- `/api/notification/` → 通知服务
+- `/ws/` → WebSocket连接
 
 ## 贡献指南
 
