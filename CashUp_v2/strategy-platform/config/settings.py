@@ -2,7 +2,8 @@
 策略平台配置管理
 """
 
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List, Optional
 from pathlib import Path
 import os

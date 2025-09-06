@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 
-from .connection import Base
+from database.connection import Base
 
 class Strategy(Base):
     """策略表"""
@@ -77,7 +77,7 @@ class StrategyLog(Base):
     level = Column(String(20), default="INFO")
     message = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=func.now())
-    metadata = Column(JSON, default={})
+    log_metadata = Column(JSON, default={})
     
     # 关系
     strategy = relationship("Strategy")
@@ -187,7 +187,7 @@ class StrategySignal(Base):
     price = Column(Float)
     confidence = Column(Float, default=1.0)
     reason = Column(Text)
-    metadata = Column(JSON, default={})
+    log_metadata = Column(JSON, default={})
     timestamp = Column(DateTime, default=func.now())
     created_at = Column(DateTime, default=func.now())
     

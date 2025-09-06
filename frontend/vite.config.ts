@@ -8,10 +8,25 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
-      '/api': {
+      '/api/core': {
         target: 'http://localhost:8001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api\/core/, '')
+      },
+      '/api/trading': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/trading/, '')
+      },
+      '/api/strategy': {
+        target: 'http://localhost:8003',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/strategy/, '')
+      },
+      '/api/notification': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/notification/, '')
       }
     }
   },

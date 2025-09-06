@@ -1,5 +1,5 @@
 """
-pn¡B
+pnï¿½B
 """
 
 import pandas as pd
@@ -11,30 +11,30 @@ import json
 import sqlite3
 from pathlib import Path
 
-from ..schemas.data import SymbolInfo, TimeFrameInfo, DataSourceResponse, CacheStatsResponse
-from ..data.manager import DataManager
-from ..utils.logger import get_logger
+from schemas.data import SymbolInfo, TimeFrameInfo, DataSourceResponse, CacheStatsResponse
+from data.manager import DataManager
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 class DataService:
-    """pn¡{"""
+    """pnï¿½{"""
     
     def __init__(self):
         self.data_manager = DataManager()
         self.cache_db_path = Path("./data/cache.db")
         self.cache_db_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # ËXpn“
+        # ï¿½Xpnï¿½
         self._init_cache_db()
         
-        # /„¤ÁÍ
+        # /ï¿½ï¿½ï¿½ï¿½
         self.supported_symbols = [
-            SymbolInfo(symbol="BTCUSDT", name="Ôy/USDT", type="crypto"),
-            SymbolInfo(symbol="ETHUSDT", name="å*J/USDT", type="crypto"),
-            SymbolInfo(symbol="BNBUSDT", name="‰/USDT", type="crypto"),
-            SymbolInfo(symbol="ADAUSDT", name="~¾/USDT", type="crypto"),
-            SymbolInfo(symbol="DOTUSDT", name="âa/USDT", type="crypto"),
+            SymbolInfo(symbol="BTCUSDT", name="ï¿½y/USDT", type="crypto"),
+            SymbolInfo(symbol="ETHUSDT", name="ï¿½*J/USDT", type="crypto"),
+            SymbolInfo(symbol="BNBUSDT", name="ï¿½/USDT", type="crypto"),
+            SymbolInfo(symbol="ADAUSDT", name="~ï¿½/USDT", type="crypto"),
+            SymbolInfo(symbol="DOTUSDT", name="ï¿½a/USDT", type="crypto"),
             SymbolInfo(symbol="SOLUSDT", name="Solana/USDT", type="crypto"),
             SymbolInfo(symbol="MATICUSDT", name="Polygon/USDT", type="crypto"),
             SymbolInfo(symbol="AVAXUSDT", name="Avalanche/USDT", type="crypto"),
@@ -42,19 +42,19 @@ class DataService:
             SymbolInfo(symbol="UNIUSDT", name="Uniswap/USDT", type="crypto"),
         ]
         
-        # /„öôh
+        # /ï¿½ï¿½ï¿½h
         self.supported_timeframes = [
-            TimeFrameInfo(name="1m", display_name="1Ÿ", seconds=60),
-            TimeFrameInfo(name="5m", display_name="5Ÿ", seconds=300),
-            TimeFrameInfo(name="15m", display_name="15Ÿ", seconds=900),
-            TimeFrameInfo(name="30m", display_name="30Ÿ", seconds=1800),
-            TimeFrameInfo(name="1h", display_name="1ö", seconds=3600),
-            TimeFrameInfo(name="4h", display_name="4ö", seconds=14400),
+            TimeFrameInfo(name="1m", display_name="1ï¿½", seconds=60),
+            TimeFrameInfo(name="5m", display_name="5ï¿½", seconds=300),
+            TimeFrameInfo(name="15m", display_name="15ï¿½", seconds=900),
+            TimeFrameInfo(name="30m", display_name="30ï¿½", seconds=1800),
+            TimeFrameInfo(name="1h", display_name="1ï¿½", seconds=3600),
+            TimeFrameInfo(name="4h", display_name="4ï¿½", seconds=14400),
             TimeFrameInfo(name="1d", display_name="1)", seconds=86400),
             TimeFrameInfo(name="1w", display_name="1h", seconds=604800),
         ]
         
-        # pn
+        # pnï¿½
         self.data_sources = [
             {
                 "id": 1,
@@ -77,12 +77,12 @@ class DataService:
         ]
     
     def _init_cache_db(self):
-        """ËXpn“"""
+        """ï¿½Xpnï¿½"""
         try:
             conn = sqlite3.connect(str(self.cache_db_path))
             cursor = conn.cursor()
             
-            # úXh
+            # ï¿½Xh
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS data_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +95,7 @@ class DataService:
                 )
             ''')
             
-            # ú"
+            # ï¿½"
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_symbol_timeframe 
                 ON data_cache(symbol, timeframe)
@@ -109,25 +109,25 @@ class DataService:
             conn.commit()
             conn.close()
             
-            logger.info("Xpn“ËŒ")
+            logger.info("Xpnï¿½ï¿½ï¿½")
             
         except Exception as e:
-            logger.error(f"ËXpn“1%: {e}")
+            logger.error(f"ï¿½Xpnï¿½1%: {e}")
     
     async def get_available_symbols(self) -> List[SymbolInfo]:
-        """·Öï(„¤ÁÍh"""
+        """ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½h"""
         try:
             return self.supported_symbols
         except Exception as e:
-            logger.error(f"·Ö¤ÁÍh1%: {e}")
+            logger.error(f"ï¿½Ö¤ï¿½ï¿½h1%: {e}")
             return []
     
     async def get_available_timeframes(self) -> List[TimeFrameInfo]:
-        """·Öï(„öôhh"""
+        """ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½hh"""
         try:
             return self.supported_timeframes
         except Exception as e:
-            logger.error(f"·Ööôhh1%: {e}")
+            logger.error(f"ï¿½ï¿½ï¿½ï¿½hh1%: {e}")
             return []
     
     async def get_historical_data(
@@ -138,28 +138,28 @@ class DataService:
         end_date: Optional[datetime] = None,
         limit: int = 1000
     ) -> List[Dict[str, Any]]:
-        """·Ö†òpn"""
+        """ï¿½Ö†ï¿½pn"""
         try:
-            logger.info(f"·Ö†òpn: {symbols}, {timeframe}")
+            logger.info(f"ï¿½Ö†ï¿½pn: {symbols}, {timeframe}")
             
-            # ŒÁ¤ÁÍ
+            # ï¿½ï¿½ï¿½ï¿½ï¿½
             symbol_names = [s.symbol for s in self.supported_symbols]
             for symbol in symbols:
                 if symbol not in symbol_names:
-                    raise ValueError(f"/„¤ÁÍ: {symbol}")
+                    raise ValueError(f"/ï¿½ï¿½ï¿½ï¿½: {symbol}")
             
-            # ŒÁöôh
+            # ï¿½ï¿½ï¿½ï¿½h
             timeframe_names = [tf.name for tf in self.supported_timeframes]
             if timeframe not in timeframe_names:
-                raise ValueError(f"/„öôh: {timeframe}")
+                raise ValueError(f"/ï¿½ï¿½ï¿½h: {timeframe}")
             
-            # ÕÎX·Ö
+            # ï¿½ï¿½Xï¿½ï¿½
             cached_data = await self._get_cached_data(symbols[0], timeframe, start_date, end_date)
             if cached_data:
-                logger.info(f"ÎX·Öpn: {len(cached_data)} a")
+                logger.info(f"ï¿½Xï¿½ï¿½pn: {len(cached_data)} a")
                 return cached_data
             
-            # Îpn¡h·Ö
+            # ï¿½pnï¿½hï¿½ï¿½
             data = await self.data_manager.get_historical_data(
                 symbols=symbols,
                 timeframe=timeframe,
@@ -175,36 +175,36 @@ class DataService:
             return data
             
         except Exception as e:
-            logger.error(f"·Ö†òpn1%: {e}")
+            logger.error(f"ï¿½Ö†ï¿½pn1%: {e}")
             raise
     
     async def get_realtime_data(self, symbol: str) -> Dict[str, Any]:
-        """·Öžöpn"""
+        """ï¿½Öžï¿½pn"""
         try:
-            logger.info(f"·Öžöpn: {symbol}")
+            logger.info(f"ï¿½Öžï¿½pn: {symbol}")
             
-            # ŒÁ¤ÁÍ
+            # ï¿½ï¿½ï¿½ï¿½ï¿½
             symbol_names = [s.symbol for s in self.supported_symbols]
             if symbol not in symbol_names:
-                raise ValueError(f"/„¤ÁÍ: {symbol}")
+                raise ValueError(f"/ï¿½ï¿½ï¿½ï¿½: {symbol}")
             
-            # ·Öžöpn
+            # ï¿½Öžï¿½pn
             data = await self.data_manager.get_realtime_data(symbol)
             
             if not data:
-                # ÔÞ!ßpn
+                # ï¿½ï¿½!ï¿½pn
                 data = await self._generate_mock_realtime_data(symbol)
             
             return data
             
         except Exception as e:
-            logger.error(f"·Öžöpn1%: {e}")
+            logger.error(f"ï¿½Öžï¿½pn1%: {e}")
             raise
     
     async def get_realtime_data_multiple(self, symbols: List[str]) -> Dict[str, Dict[str, Any]]:
-        """·Ö*¤ÁÍ„žöpn"""
+        """ï¿½ï¿½*ï¿½ï¿½Í„ï¿½ï¿½pn"""
         try:
-            logger.info(f"·Ö*¤ÁÍžöpn: {symbols}")
+            logger.info(f"ï¿½ï¿½*ï¿½ï¿½Ížï¿½pn: {symbols}")
             
             results = {}
             
@@ -213,39 +213,39 @@ class DataService:
                     data = await self.get_realtime_data(symbol)
                     results[symbol] = data
                 except Exception as e:
-                    logger.error(f"·Ö {symbol} žöpn1%: {e}")
+                    logger.error(f"ï¿½ï¿½ {symbol} ï¿½ï¿½pn1%: {e}")
                     continue
             
             return results
             
         except Exception as e:
-            logger.error(f"·Ö*¤ÁÍžöpn1%: {e}")
+            logger.error(f"ï¿½ï¿½*ï¿½ï¿½Ížï¿½pn1%: {e}")
             raise
     
     async def refresh_data(self, symbol: str, timeframe: Optional[str] = None) -> bool:
-        """7°pnX"""
+        """7ï¿½pnX"""
         try:
-            logger.info(f"7°pnX: {symbol}, {timeframe}")
+            logger.info(f"7ï¿½pnX: {symbol}, {timeframe}")
             
             # dX
             await self._clear_cache(symbol, timeframe)
             
-            # Í°·Öpn
+            # Í°ï¿½ï¿½pn
             if timeframe:
                 data = await self.get_historical_data([symbol], timeframe, limit=100)
             else:
-                # 7°@	öôh
+                # 7ï¿½@	ï¿½ï¿½h
                 for tf in self.supported_timeframes:
                     try:
                         data = await self.get_historical_data([symbol], tf.name, limit=100)
                     except Exception as e:
-                        logger.error(f"7° {symbol} {tf.name} pn1%: {e}")
+                        logger.error(f"7ï¿½ {symbol} {tf.name} pn1%: {e}")
                         continue
             
             return True
             
         except Exception as e:
-            logger.error(f"7°pnX1%: {e}")
+            logger.error(f"7ï¿½pnX1%: {e}")
             return False
     
     async def clear_cache(self, symbol: str, timeframe: Optional[str] = None) -> bool:
@@ -260,24 +260,24 @@ class DataService:
             return False
     
     async def get_cache_stats(self) -> Dict[str, Any]:
-        """·ÖXß¡áo"""
+        """ï¿½ï¿½Xß¡ï¿½o"""
         try:
             conn = sqlite3.connect(str(self.cache_db_path))
             cursor = conn.cursor()
             
-            # ·ÖXaîpÏ
+            # ï¿½ï¿½Xaï¿½pï¿½
             cursor.execute("SELECT COUNT(*) FROM data_cache")
             total_entries = cursor.fetchone()[0]
             
-            # ·Ö¤ÁÍ„XpÏ
+            # ï¿½ï¿½ï¿½ï¿½Í„Xpï¿½
             cursor.execute("SELECT symbol, COUNT(*) FROM data_cache GROUP BY symbol")
             symbol_stats = dict(cursor.fetchall())
             
-            # ·Ööôh„XpÏ
+            # ï¿½ï¿½ï¿½ï¿½hï¿½Xpï¿½
             cursor.execute("SELECT timeframe, COUNT(*) FROM data_cache GROUP BY timeframe")
             timeframe_stats = dict(cursor.fetchall())
             
-            # ·Öpn“'
+            # ï¿½ï¿½pnï¿½'
             db_size = self.cache_db_path.stat().st_size if self.cache_db_path.exists() else 0
             
             conn.close()
@@ -291,18 +291,18 @@ class DataService:
             }
             
         except Exception as e:
-            logger.error(f"·ÖXß¡áo1%: {e}")
+            logger.error(f"ï¿½ï¿½Xß¡ï¿½o1%: {e}")
             return {}
     
     async def get_data_sources(self) -> List[DataSourceResponse]:
-        """·Öpnh"""
+        """ï¿½ï¿½pnï¿½h"""
         try:
             return [
                 DataSourceResponse(**source) 
                 for source in self.data_sources
             ]
         except Exception as e:
-            logger.error(f"·Öpnh1%: {e}")
+            logger.error(f"ï¿½ï¿½pnï¿½h1%: {e}")
             return []
     
     async def create_data_source(
@@ -313,16 +313,16 @@ class DataService:
         api_key: Optional[str] = None,
         rate_limit: int = 1000
     ) -> Dict[str, Any]:
-        """úpn"""
+        """ï¿½pnï¿½"""
         try:
-            logger.info(f"úpn: {name}")
+            logger.info(f"ï¿½pnï¿½: {name}")
             
-            # Àåð/&òX(
+            # ï¿½ï¿½ï¿½/&ï¿½X(
             for source in self.data_sources:
                 if source["name"] == name:
-                    raise ValueError(f"pnð '{name}' òX(")
+                    raise ValueError(f"pnï¿½ï¿½ '{name}' ï¿½X(")
             
-            # ú°pn
+            # ï¿½ï¿½pnï¿½
             new_source = {
                 "id": max([s["id"] for s in self.data_sources]) + 1,
                 "name": name,
@@ -336,11 +336,11 @@ class DataService:
             
             self.data_sources.append(new_source)
             
-            logger.info(f"pnúŸ: {name}")
+            logger.info(f"pnï¿½ï¿½ï¿½: {name}")
             return new_source
             
         except Exception as e:
-            logger.error(f"úpn1%: {e}")
+            logger.error(f"ï¿½pnï¿½1%: {e}")
             raise
     
     async def update_data_source(
@@ -353,11 +353,11 @@ class DataService:
         rate_limit: Optional[int] = None,
         is_active: Optional[bool] = None
     ) -> bool:
-        """ô°pn"""
+        """ï¿½ï¿½pnï¿½"""
         try:
-            logger.info(f"ô°pn: {source_id}")
+            logger.info(f"ï¿½ï¿½pnï¿½: {source_id}")
             
-            # å~pn
+            # ï¿½~pnï¿½
             source = None
             for s in self.data_sources:
                 if s["id"] == source_id:
@@ -367,7 +367,7 @@ class DataService:
             if not source:
                 return False
             
-            # ô°Wµ
+            # ï¿½ï¿½Wï¿½
             if name is not None:
                 source["name"] = name
             if type is not None:
@@ -381,35 +381,35 @@ class DataService:
             if is_active is not None:
                 source["is_active"] = is_active
             
-            logger.info(f"pnô°Ÿ: {source_id}")
+            logger.info(f"pnï¿½ï¿½ï¿½ï¿½: {source_id}")
             return True
             
         except Exception as e:
-            logger.error(f"ô°pn1%: {e}")
+            logger.error(f"ï¿½ï¿½pnï¿½1%: {e}")
             return False
     
     async def delete_data_source(self, source_id: int) -> bool:
-        """ dpn"""
+        """ dpnï¿½"""
         try:
-            logger.info(f" dpn: {source_id}")
+            logger.info(f" dpnï¿½: {source_id}")
             
-            # å~v dpn
+            # ï¿½~v dpnï¿½
             for i, source in enumerate(self.data_sources):
                 if source["id"] == source_id:
                     del self.data_sources[i]
-                    logger.info(f"pn dŸ: {source_id}")
+                    logger.info(f"pnï¿½ dï¿½: {source_id}")
                     return True
             
             return False
             
         except Exception as e:
-            logger.error(f" dpn1%: {e}")
+            logger.error(f" dpnï¿½1%: {e}")
             return False
     
     async def get_market_overview(self) -> Dict[str, Any]:
-        """·Ö:‚Èpn"""
+        """ï¿½ï¿½:ï¿½ï¿½pn"""
         try:
-            logger.info("·Ö:‚Èpn")
+            logger.info("ï¿½ï¿½:ï¿½ï¿½pn")
             
             overview = {
                 "timestamp": datetime.utcnow().isoformat(),
@@ -422,7 +422,7 @@ class DataService:
                 "24h_volume": 0
             }
             
-            # ·Ö;¤ÁÍ„žöpn
+            # ï¿½ï¿½;ï¿½ï¿½ï¿½Í„ï¿½ï¿½pn
             major_symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
             market_data = await self.get_realtime_data_multiple(major_symbols)
             
@@ -440,22 +440,22 @@ class DataService:
                             "change_percent": change_percent
                         })
             
-            # ’
+            # ï¿½ï¿½
             overview["top_gainers"].sort(key=lambda x: x["change_percent"], reverse=True)
             overview["top_losers"].sort(key=lambda x: x["change_percent"])
             
             return overview
             
         except Exception as e:
-            logger.error(f"·Ö:‚È1%: {e}")
+            logger.error(f"ï¿½ï¿½:ï¿½ï¿½1%: {e}")
             return {}
     
     async def get_symbol_info(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """·Ö¤ÁÍæÆáo"""
+        """ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½o"""
         try:
-            logger.info(f"·Ö¤ÁÍáo: {symbol}")
+            logger.info(f"ï¿½Ö¤ï¿½ï¿½ï¿½o: {symbol}")
             
-            # å~¤ÁÍ
+            # ï¿½~ï¿½ï¿½ï¿½
             symbol_info = None
             for s in self.supported_symbols:
                 if s.symbol == symbol:
@@ -465,10 +465,10 @@ class DataService:
             if not symbol_info:
                 return None
             
-            # ·Öžöpn
+            # ï¿½Öžï¿½pn
             realtime_data = await self.get_realtime_data(symbol)
             
-            # Äáo
+            # ï¿½ï¿½o
             info = {
                 "symbol": symbol_info.symbol,
                 "name": symbol_info.name,
@@ -481,7 +481,7 @@ class DataService:
             return info
             
         except Exception as e:
-            logger.error(f"·Ö¤ÁÍáo1%: {e}")
+            logger.error(f"ï¿½Ö¤ï¿½ï¿½ï¿½o1%: {e}")
             return None
     
     async def _get_cached_data(
@@ -491,7 +491,7 @@ class DataService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None
     ) -> Optional[List[Dict[str, Any]]]:
-        """ÎX·Öpn"""
+        """ï¿½Xï¿½ï¿½pn"""
         try:
             conn = sqlite3.connect(str(self.cache_db_path))
             cursor = conn.cursor()
@@ -515,13 +515,13 @@ class DataService:
             conn.close()
             
             if rows:
-                # v@	X„pn
+                # v@	Xï¿½pn
                 all_data = []
                 for row in rows:
                     data = json.loads(row[0])
                     all_data.extend(data)
                 
-                # »Ív’
+                # ï¿½ï¿½vï¿½ï¿½
                 unique_data = []
                 seen_timestamps = set()
                 
@@ -536,7 +536,7 @@ class DataService:
             return None
             
         except Exception as e:
-            logger.error(f"ÎX·Öpn1%: {e}")
+            logger.error(f"ï¿½Xï¿½ï¿½pn1%: {e}")
             return None
     
     async def _cache_data(self, symbol: str, timeframe: str, data: List[Dict[str, Any]]):
@@ -548,7 +548,7 @@ class DataService:
             conn = sqlite3.connect(str(self.cache_db_path))
             cursor = conn.cursor()
             
-            # 	åÄX
+            # 	ï¿½ï¿½X
             date_groups = {}
             for item in data:
                 timestamp = item.get("timestamp", "")
@@ -558,7 +558,7 @@ class DataService:
                         date_groups[date] = []
                     date_groups[date].append(item)
             
-            # XÏ*å„pn
+            # Xï¿½*ï¿½ï¿½pn
             for date, items in date_groups.items():
                 data_json = json.dumps(items)
                 
@@ -571,7 +571,7 @@ class DataService:
             conn.commit()
             conn.close()
             
-            logger.info(f"pnXŒ: {symbol}, {timeframe}, {len(data)} a")
+            logger.info(f"pnXï¿½: {symbol}, {timeframe}, {len(data)} a")
             
         except Exception as e:
             logger.error(f"Xpn1%: {e}")
@@ -596,7 +596,7 @@ class DataService:
             conn.commit()
             conn.close()
             
-            logger.info(f"XdŒ: {symbol}, {timeframe}")
+            logger.info(f"Xdï¿½: {symbol}, {timeframe}")
             return True
             
         except Exception as e:
@@ -604,9 +604,9 @@ class DataService:
             return False
     
     async def _generate_mock_realtime_data(self, symbol: str) -> Dict[str, Any]:
-        """!ßžöpn"""
+        """!ßžï¿½pn"""
         try:
-            # ú@÷<
+            # ï¿½@ï¿½<
             base_price = {
                 "BTCUSDT": 45000,
                 "ETHUSDT": 3000,
@@ -620,9 +620,9 @@ class DataService:
                 "UNIUSDT": 6
             }.get(symbol, 100)
             
-            # û :â¨
+            # ï¿½ï¿½ï¿½:ï¿½
             import random
-            price_change = random.uniform(-0.02, 0.02)  # ±2%
+            price_change = random.uniform(-0.02, 0.02)  # ï¿½2%
             current_price = base_price * (1 + price_change)
             
             return {
@@ -638,5 +638,5 @@ class DataService:
             }
             
         except Exception as e:
-            logger.error(f"!ßžöpn1%: {e}")
+            logger.error(f"!ßžï¿½pn1%: {e}")
             return {}

@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-from ..strategies.base import StrategyBase, StrategyConfig, StrategySignal, BacktestResult
-from ..data.manager import DataManager
-from ..utils.logger import get_logger
+from strategies.base import StrategyBase, StrategyConfig, StrategySignal, BacktestResult
+from data.manager import DataManager
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

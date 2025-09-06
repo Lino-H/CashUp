@@ -1040,13 +1040,13 @@ const UserSettings: React.FC = () => {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Title level={5}>系统维护</Title>
               <Space>
-                <Button icon={<ReloadOutlined />} onClick={handleClearCache}> 
+                <Button icon={<ReloadOutlined />} onClick={handleClearCache}>
                   清除缓存
                 </Button>
-                <Button icon={<SyncOutlined />} onClick={handleSyncData}> 
+                <Button icon={<SyncOutlined />} onClick={handleSyncData}>
                   同步数据
                 </Button>
-                <Button danger icon={<WarningOutlined />} onClick={handleResetSystem}> 
+                <Button danger icon={<WarningOutlined />} onClick={handleResetSystem}>
                   重置系统
                 </Button>
               </Space>
@@ -1057,10 +1057,10 @@ const UserSettings: React.FC = () => {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Title level={5}>日志管理</Title>
               <Space>
-                <Button icon={<DownloadOutlined />} onClick={handleExportLogs}> 
+                <Button icon={<DownloadOutlined />} onClick={handleExportLogs}>
                   导出日志
                 </Button>
-                <Button danger icon={<DeleteOutlined />} onClick={handleClearLogs}> 
+                <Button danger icon={<DeleteOutlined />} onClick={handleClearLogs}>
                   清除日志
                 </Button>
               </Space>

@@ -13,13 +13,18 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import logging
+import sys
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # 导入配置和数据库
-from .config.settings import settings
-from .utils.logger import setup_logger
+from config.settings import settings
+from utils.logger import setup_logger
 
 # 导入API路由
-from .api.routes import strategies, backtest, data
+from api.routes import strategies, backtest, data
 
 # 设置日志
 logger = setup_logger(__name__)
@@ -33,11 +38,11 @@ async def lifespan(app: FastAPI):
     
     try:
         # 初始化数据管理器
-        from .data.manager import DataManager
+        from data.manager import DataManager
         data_manager = DataManager()
         
         # 初始化策略管理器
-        from .strategies.manager import StrategyManager
+        from strategies.manager import StrategyManager
         strategy_manager = StrategyManager()
         
         # 发现可用策略
@@ -45,7 +50,7 @@ async def lifespan(app: FastAPI):
         logger.info(f"✅ 发现 {len(available_strategies)} 个策略")
         
         # 初始化回测引擎
-        from .backtest.engine import BacktestEngine
+        from backtest.engine import BacktestEngine
         backtest_engine = BacktestEngine(data_manager)
         
         logger.info(f"🌍 调试模式: {settings.DEBUG}")
@@ -111,11 +116,11 @@ async def health_check():
     """健康检查接口"""
     try:
         # 检查数据管理器
-        from .data.manager import DataManager
+        from data.manager import DataManager
         data_manager = DataManager()
         
         # 检查策略管理器
-        from .strategies.manager import StrategyManager
+        from strategies.manager import StrategyManager
         strategy_manager = StrategyManager()
         
         return {

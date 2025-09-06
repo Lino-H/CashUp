@@ -12,11 +12,11 @@ import importlib.util
 import inspect
 from pathlib import Path
 
-from ..models.models import Strategy
-from ..schemas.strategy import StrategyCreate, StrategyUpdate, StrategyType, StrategyStatus
-from ..strategies.manager import StrategyManager
-from ..data.manager import DataManager
-from ..utils.logger import get_logger
+from models.models import Strategy
+from schemas.strategy import StrategyCreate, StrategyUpdate, StrategyType, StrategyStatus
+from strategies.manager import StrategyManager
+from data.manager import DataManager
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

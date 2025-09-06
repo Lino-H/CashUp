@@ -9,12 +9,13 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json
 
-from ..schemas.strategy import (
-    StrategyInfo, StrategyCreate, StrategyUpdate, StrategyResponse, 
+from schemas.strategy import (
+    StrategyCreate, StrategyUpdate, StrategyResponse, 
     StrategyListResponse, StrategyTemplateRequest
 )
-from ...services.strategy_service import StrategyService
-from ...utils.logger import get_logger
+from services.strategy_service import StrategyService
+from database.connection import get_db
+from utils.logger import get_logger
 
 router = APIRouter()
 security = HTTPBearer()
@@ -383,4 +384,4 @@ async def upload_strategy_file(
         )
 
 # 导入依赖函数
-from ...database.connection import get_db
+from database.connection import get_db

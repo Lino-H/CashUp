@@ -1,6 +1,6 @@
 /**
- * 实时交易监控页面 - 简化版本
- * Real-time Trading Monitoring Page - Simplified Version
+ * 实时交易监控页面 - 连接真实API
+ * Real-time Trading Monitoring Page - Connected to Real APIs
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,18 +14,18 @@ import {
   Select,
   Space,
   Tag,
-  Progress,
   Alert,
   Divider,
   Typography,
   Spin,
   message,
   Modal,
-  Badge,
   Switch,
   InputNumber,
   Form,
-  Input,
+  Badge,
+  Progress,
+  Popconfirm,
 } from 'antd';
 import {
   RiseOutlined as TrendingUp,
@@ -39,334 +39,222 @@ import {
   StopOutlined,
   EyeOutlined,
   SettingOutlined,
-  BellOutlined,
+  ReloadOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
-  ThunderboltOutlined,
-  DashboardOutlined,
-  OrderedListOutlined,
-  ReloadOutlined
 } from '@ant-design/icons';
 import moment from 'moment';
+import {
+  strategyAPI,
+  tradingAPI,
+  MarketData,
+  Strategy,
+  Order,
+  Position,
+} from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-
-// 实时交易数据类型
-interface RealTimeTrade {
-  id: string;
-  strategyName: string;
-  symbol: string;
-  side: 'buy' | 'sell';
-  price: number;
-  quantity: number;
-  amount: number;
-  timestamp: string;
-  exchange: string;
-  status: 'pending' | 'filled' | 'cancelled' | 'failed';
-  orderId: string;
-  fee: number;
-  pnl?: number;
-}
-
-// 实时价格数据类型
-interface RealTimePrice {
-  symbol: string;
-  price: number;
-  change24h: number;
-  changePercent24h: number;
-  volume24h: number;
-  high24h: number;
-  low24h: number;
-  timestamp: string;
-}
-
-// 策略状态类型
-interface StrategyStatus {
-  id: string;
-  name: string;
-  status: 'running' | 'stopped' | 'error' | 'paused';
-  startTime?: string;
-  uptime: string;
-  tradesCount: number;
-  totalPnl: number;
-  winRate: number;
-  currentPositions: number;
-  maxDrawdown: number;
-  cpuUsage: number;
-  memoryUsage: number;
-  lastSignal?: string;
-  lastError?: string;
-}
-
-// 账户余额类型
-interface AccountBalance {
-  exchange: string;
-  totalBalance: number;
-  availableBalance: number;
-  usedBalance: number;
-  btcValue: number;
-  change24h: number;
-  currencies: Array<{
-    currency: string;
-    balance: number;
-    available: number;
-    locked: number;
-    btcValue: number;
-  }>;
-}
-
-// 当前持仓类型
-interface CurrentPosition {
-  id: string;
-  strategyName: string;
-  symbol: string;
-  side: 'long' | 'short';
-  quantity: number;
-  entryPrice: number;
-  currentPrice: number;
-  pnl: number;
-  pnlPercent: number;
-  margin: number;
-  leverage: number;
-  liquidationPrice: number;
-  openTime: string;
-  duration: string;
-  exchange: string;
-}
-
-// 风险指标类型
-interface RiskMetrics {
-  totalExposure: number;
-  marginUsage: number;
-  maxDrawdown: number;
-  var95: number;
-  sharpeRatio: number;
-  beta: number;
-  correlation: number;
-  riskLevel: 'low' | 'medium' | 'high';
-}
 
 // 实时交易监控组件
 const RealTimeTrading: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000);
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('all');
-  const [selectedExchange, setSelectedExchange] = useState<string>('all');
   
-  // 实时数据状态
-  const [recentTrades, setRecentTrades] = useState<RealTimeTrade[]>([]);
-  const [realTimePrices, setRealTimePrices] = useState<RealTimePrice[]>([]);
-  const [strategyStatus, setStrategyStatus] = useState<StrategyStatus[]>([]);
-  const [accountBalances, setAccountBalances] = useState<AccountBalance[]>([]);
-  const [currentPositions, setCurrentPositions] = useState<CurrentPosition[]>([]);
-  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null);
+  // 数据状态
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [marketData, setMarketData] = useState<MarketData[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [marketOverview, setMarketOverview] = useState<any>(null);
   
   // 详情显示
   const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedTrade, setSelectedTrade] = useState<RealTimeTrade | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   
-  // 模拟数据加载
-  useEffect(() => {
-    loadMockData();
-    if (autoRefresh) {
-      const interval = setInterval(loadMockData, refreshInterval);
-      return () => clearInterval(interval);
+  // 选中的交易对
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTCUSDT', 'ETHUSDT']);
+  
+  // 交易控制
+  const [tradeModalVisible, setTradeModalVisible] = useState(false);
+  const [tradeForm] = Form.useForm();
+  
+  // 账户信息
+  const [accountInfo, setAccountInfo] = useState<any>(null);
+  
+  // 获取账户信息
+  const fetchAccountInfo = async () => {
+    try {
+      const response = await tradingAPI.getAccountInfo();
+      setAccountInfo(response.data);
+    } catch (error) {
+      console.error('获取账户信息失败:', error);
     }
-  }, [autoRefresh, refreshInterval]);
-
-  const loadMockData = () => {
-    // 模拟实时交易数据
-    const mockTrades: RealTimeTrade[] = [
-      {
-        id: '1',
-        strategyName: 'MA Cross Strategy',
-        symbol: 'BTCUSDT',
-        side: 'buy',
-        price: 43250.50,
-        quantity: 0.1,
-        amount: 4325.05,
-        timestamp: new Date().toISOString(),
-        exchange: 'Binance',
-        status: 'filled',
-        orderId: '123456789',
-        fee: 4.32,
-        pnl: 25.50
-      },
-      {
-        id: '2',
-        strategyName: 'RSI Mean Reversion',
-        symbol: 'ETHUSDT',
-        side: 'sell',
-        price: 2250.30,
-        quantity: 0.5,
-        amount: 1125.15,
-        timestamp: new Date(Date.now() - 60000).toISOString(),
-        exchange: 'Gate.io',
-        status: 'filled',
-        orderId: '987654321',
-        fee: 1.12,
-        pnl: -15.20
-      }
-    ];
-
-    // 模拟实时价格数据
-    const mockPrices: RealTimePrice[] = [
-      {
-        symbol: 'BTCUSDT',
-        price: 43250.50,
-        change24h: 1250.50,
-        changePercent24h: 2.98,
-        volume24h: 28500000000,
-        high24h: 43800.00,
-        low24h: 41800.00,
-        timestamp: new Date().toISOString()
-      },
-      {
-        symbol: 'ETHUSDT',
-        price: 2250.30,
-        change24h: -85.70,
-        changePercent24h: -3.67,
-        volume24h: 15600000000,
-        high24h: 2350.00,
-        low24h: 2200.00,
-        timestamp: new Date().toISOString()
-      }
-    ];
-
-    // 模拟策略状态
-    const mockStrategyStatus: StrategyStatus[] = [
-      {
-        id: '1',
-        name: 'MA Cross Strategy',
-        status: 'running',
-        startTime: '2024-01-15T10:30:00Z',
-        uptime: '2d 5h 30m',
-        tradesCount: 156,
-        totalPnl: 2540.50,
-        winRate: 65.4,
-        currentPositions: 2,
-        maxDrawdown: -8.5,
-        cpuUsage: 25.3,
-        memoryUsage: 512,
-        lastSignal: 'Buy signal triggered for BTCUSDT'
-      },
-      {
-        id: '2',
-        name: 'RSI Mean Reversion',
-        status: 'running',
-        startTime: '2024-01-20T14:20:00Z',
-        uptime: '1d 15h 40m',
-        tradesCount: 89,
-        totalPnl: 1285.30,
-        winRate: 58.9,
-        currentPositions: 1,
-        maxDrawdown: -12.3,
-        cpuUsage: 18.7,
-        memoryUsage: 384,
-        lastSignal: 'Sell signal triggered for ETHUSDT'
-      }
-    ];
-
-    // 模拟账户余额
-    const mockBalances: AccountBalance[] = [
-      {
-        exchange: 'Binance',
-        totalBalance: 15420.50,
-        availableBalance: 12420.50,
-        usedBalance: 3000.00,
-        btcValue: 0.356,
-        change24h: 254.30,
-        currencies: [
-          { currency: 'USDT', balance: 12420.50, available: 12420.50, locked: 0, btcValue: 0.287 },
-          { currency: 'BTC', balance: 0.069, available: 0.069, locked: 0, btcValue: 0.069 }
-        ]
-      },
-      {
-        exchange: 'Gate.io',
-        totalBalance: 8750.30,
-        availableBalance: 6250.30,
-        usedBalance: 2500.00,
-        btcValue: 0.202,
-        change24h: -125.60,
-        currencies: [
-          { currency: 'USDT', balance: 6250.30, available: 6250.30, locked: 0, btcValue: 0.144 },
-          { currency: 'ETH', balance: 1.2, available: 1.2, locked: 0, btcValue: 0.058 }
-        ]
-      }
-    ];
-
-    // 模拟当前持仓
-    const mockPositions: CurrentPosition[] = [
-      {
-        id: '1',
-        strategyName: 'MA Cross Strategy',
-        symbol: 'BTCUSDT',
-        side: 'long',
-        quantity: 0.1,
-        entryPrice: 41800.00,
-        currentPrice: 43250.50,
-        pnl: 145.05,
-        pnlPercent: 3.47,
-        margin: 4180.00,
-        leverage: 1,
-        liquidationPrice: 0,
-        openTime: '2024-01-18T09:30:00Z',
-        duration: '2d 3h',
-        exchange: 'Binance'
-      },
-      {
-        id: '2',
-        strategyName: 'RSI Mean Reversion',
-        symbol: 'ETHUSDT',
-        side: 'short',
-        quantity: 0.5,
-        entryPrice: 2335.00,
-        currentPrice: 2250.30,
-        pnl: 42.35,
-        pnlPercent: 3.63,
-        margin: 1167.50,
-        leverage: 1,
-        liquidationPrice: 0,
-        openTime: '2024-01-19T14:15:00Z',
-        duration: '1d 2h',
-        exchange: 'Gate.io'
-      }
-    ];
-
-    // 模拟风险指标
-    const mockRiskMetrics: RiskMetrics = {
-      totalExposure: 5347.50,
-      marginUsage: 45.2,
-      maxDrawdown: -8.5,
-      var95: -1250.30,
-      sharpeRatio: 1.85,
-      beta: 0.85,
-      correlation: 0.72,
-      riskLevel: 'medium'
-    };
-
-    setRecentTrades(mockTrades);
-    setRealTimePrices(mockPrices);
-    setStrategyStatus(mockStrategyStatus);
-    setAccountBalances(mockBalances);
-    setCurrentPositions(mockPositions);
-    setRiskMetrics(mockRiskMetrics);
   };
-
-  const handleViewTradeDetail = (trade: RealTimeTrade) => {
-    setSelectedTrade(trade);
+  
+  // 创建订单
+  const handleCreateOrder = async (values: any) => {
+    try {
+      await tradingAPI.createOrder(values);
+      message.success('订单创建成功');
+      setTradeModalVisible(false);
+      tradeForm.resetFields();
+      await fetchRecentOrders();
+    } catch (error) {
+      console.error('创建订单失败:', error);
+      message.error('创建订单失败');
+    }
+  };
+  
+  // 取消订单
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await tradingAPI.cancelOrder(orderId);
+      message.success('订单取消成功');
+      await fetchRecentOrders();
+    } catch (error) {
+      console.error('取消订单失败:', error);
+      message.error('取消订单失败');
+    }
+  };
+  
+  // 平仓
+  const handleClosePosition = async (positionId: string) => {
+    try {
+      await tradingAPI.closePosition(positionId);
+      message.success('平仓成功');
+      await fetchPositions();
+    } catch (error) {
+      console.error('平仓失败:', error);
+      message.error('平仓失败');
+    }
+  };
+  
+  // 获取策略列表
+  const fetchStrategies = async () => {
+    try {
+      const response = await strategyAPI.getStrategies();
+      setStrategies(response.data || []);
+    } catch (error) {
+      console.error('获取策略列表失败:', error);
+      message.error('获取策略列表失败');
+    }
+  };
+  
+  // 获取市场数据
+  const fetchMarketData = async () => {
+    try {
+      const promises = selectedSymbols.map(symbol => 
+        strategyAPI.getRealTimeData(symbol)
+      );
+      const responses = await Promise.all(promises);
+      const data = responses.map(response => response.data);
+      setMarketData(data);
+    } catch (error) {
+      console.error('获取市场数据失败:', error);
+      message.error('获取市场数据失败');
+    }
+  };
+  
+  // 获取市场概览
+  const fetchMarketOverview = async () => {
+    try {
+      const response = await strategyAPI.getMarketOverview();
+      setMarketOverview(response.data);
+    } catch (error) {
+      console.error('获取市场概览失败:', error);
+    }
+  };
+  
+  // 获取最近订单
+  const fetchRecentOrders = async () => {
+    try {
+      const response = await tradingAPI.getOrders({ 
+        limit: 50, 
+        sort_by: 'timestamp', 
+        sort_order: 'desc' 
+      });
+      setRecentOrders(response.data || []);
+    } catch (error) {
+      console.error('获取最近订单失败:', error);
+      message.error('获取最近订单失败');
+    }
+  };
+  
+  // 获取持仓数据
+  const fetchPositions = async () => {
+    try {
+      const response = await tradingAPI.getPositions();
+      setPositions(response.data || []);
+    } catch (error) {
+      console.error('获取持仓数据失败:', error);
+      message.error('获取持仓数据失败');
+    }
+  };
+  
+  // 加载所有数据
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchStrategies(),
+        fetchMarketData(),
+        fetchMarketOverview(),
+        fetchRecentOrders(),
+        fetchPositions(),
+        fetchAccountInfo()
+      ]);
+    } catch (error) {
+      console.error('加载数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // 策略控制
+  const handleControlStrategy = async (strategyId: string, action: 'start' | 'stop' | 'reload') => {
+    try {
+      if (action === 'start') {
+        await strategyAPI.startStrategy(strategyId);
+        message.success('策略启动成功');
+      } else if (action === 'stop') {
+        await strategyAPI.stopStrategy(strategyId);
+        message.success('策略停止成功');
+      } else if (action === 'reload') {
+        await strategyAPI.reloadStrategy(strategyId);
+        message.success('策略重载成功');
+      }
+      await fetchStrategies();
+    } catch (error) {
+      console.error('策略控制失败:', error);
+      message.error('策略控制失败');
+    }
+  };
+  
+  // 查看订单详情
+  const handleViewOrderDetail = (order: Order) => {
+    setSelectedOrder(order);
     setDetailVisible(true);
   };
-
-  const handleControlStrategy = (strategyId: string, action: 'start' | 'stop' | 'pause') => {
-    message.success(`策略 ${action} 操作已执行`);
-    loadMockData();
-  };
-
-  const tradeColumns = [
+  
+  // 自动刷新
+  useEffect(() => {
+    loadAllData();
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchMarketData();
+        fetchRecentOrders();
+        fetchPositions();
+        fetchAccountInfo();
+      }, refreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh, refreshInterval, selectedSymbols]);
+  
+  // 订单表格列
+  const orderColumns = [
     {
       title: '时间',
       dataIndex: 'timestamp',
@@ -374,18 +262,15 @@ const RealTimeTrading: React.FC = () => {
       render: (timestamp: string) => (
         <span>{moment(timestamp).format('HH:mm:ss')}</span>
       ),
-      sorter: (a: RealTimeTrade, b: RealTimeTrade) => 
+      sorter: (a: Order, b: Order) => 
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     },
     {
-      title: '策略',
-      dataIndex: 'strategyName',
-      key: 'strategyName',
-      render: (text: string, record: RealTimeTrade) => (
-        <div>
-          <div style={{ fontWeight: 'bold' }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#666' }}>{record.exchange}</div>
-        </div>
+      title: '策略ID',
+      dataIndex: 'strategyId',
+      key: 'strategyId',
+      render: (strategyId: string) => (
+        <Tag color="blue">{strategyId}</Tag>
       )
     },
     {
@@ -393,7 +278,7 @@ const RealTimeTrading: React.FC = () => {
       dataIndex: 'symbol',
       key: 'symbol',
       render: (symbol: string) => (
-        <Tag color="blue">{symbol}</Tag>
+        <Tag color="green">{symbol}</Tag>
       )
     },
     {
@@ -407,11 +292,21 @@ const RealTimeTrading: React.FC = () => {
       )
     },
     {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => (
+        <Tag color={type === 'market' ? 'blue' : 'orange'}>
+          {type === 'market' ? '市价' : '限价'}
+        </Tag>
+      )
+    },
+    {
       title: '价格',
       dataIndex: 'price',
       key: 'price',
       render: (price: number) => `$${price.toFixed(2)}`,
-      sorter: (a: RealTimeTrade, b: RealTimeTrade) => a.price - b.price
+      sorter: (a: Order, b: Order) => a.price - b.price
     },
     {
       title: '数量',
@@ -420,20 +315,10 @@ const RealTimeTrading: React.FC = () => {
       render: (quantity: number) => quantity.toFixed(4)
     },
     {
-      title: '金额',
-      dataIndex: 'amount',
-      key: 'amount',
-      render: (amount: number) => `$${amount.toFixed(2)}`
-    },
-    {
-      title: '盈亏',
-      dataIndex: 'pnl',
-      key: 'pnl',
-      render: (pnl: number) => (
-        <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
-          {pnl >= 0 ? '+' : ''}${pnl?.toFixed(2) || '0.00'}
-        </span>
-      )
+      title: '成交数量',
+      dataIndex: 'filledQuantity',
+      key: 'filledQuantity',
+      render: (filledQuantity: number) => filledQuantity.toFixed(4)
     },
     {
       title: '状态',
@@ -451,414 +336,572 @@ const RealTimeTrading: React.FC = () => {
       }
     },
     {
+      title: '盈亏',
+      dataIndex: 'pnl',
+      key: 'pnl',
+      render: (pnl: number) => (
+        <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
+          {pnl >= 0 ? '+' : ''}${pnl?.toFixed(2) || '0.00'}
+        </span>
+      )
+    },
+    {
       title: '操作',
       key: 'actions',
-      render: (text: string, record: RealTimeTrade) => (
-        <Button
-          type="link"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewTradeDetail(record)}
-        >
-          详情
-        </Button>
+      render: (text: string, record: Order) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewOrderDetail(record)}
+          >
+            详情
+          </Button>
+          {record.status === 'pending' && (
+            <Popconfirm
+              title="确定要取消这个订单吗？"
+              onConfirm={() => handleCancelOrder(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button
+                type="link"
+                danger
+                icon={<StopOutlined />}
+              >
+                取消
+              </Button>
+            </Popconfirm>
+          )}
+        </Space>
       )
     }
   ];
-
-  const statusColor = {
+  
+  // 持仓表格列
+  const positionColumns = [
+    {
+      title: '策略ID',
+      dataIndex: 'strategyId',
+      key: 'strategyId',
+      render: (strategyId: string) => (
+        <Tag color="blue">{strategyId}</Tag>
+      )
+    },
+    {
+      title: '交易对',
+      dataIndex: 'symbol',
+      key: 'symbol',
+      render: (symbol: string) => <Tag color="green">{symbol}</Tag>
+    },
+    {
+      title: '方向',
+      dataIndex: 'side',
+      key: 'side',
+      render: (side: string) => (
+        <Tag color={side === 'long' ? 'green' : 'red'}>
+          {side === 'long' ? '多头' : '空头'}
+        </Tag>
+      )
+    },
+    {
+      title: '数量',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (quantity: number) => quantity.toFixed(4)
+    },
+    {
+      title: '入场价格',
+      dataIndex: 'entryPrice',
+      key: 'entryPrice',
+      render: (price: number) => `$${price.toFixed(2)}`
+    },
+    {
+      title: '当前价格',
+      dataIndex: 'currentPrice',
+      key: 'currentPrice',
+      render: (price: number) => `$${price.toFixed(2)}`
+    },
+    {
+      title: '盈亏',
+      dataIndex: 'pnl',
+      key: 'pnl',
+      render: (pnl: number) => (
+        <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
+          {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+        </span>
+      )
+    },
+    {
+      title: '盈亏比例',
+      dataIndex: 'pnlPercent',
+      key: 'pnlPercent',
+      render: (percent: number) => (
+        <span style={{ color: percent >= 0 ? '#3f8600' : '#cf1322' }}>
+          {percent >= 0 ? '+' : ''}{percent.toFixed(2)}%
+        </span>
+      )
+    },
+    {
+      title: '保证金',
+      dataIndex: 'margin',
+      key: 'margin',
+      render: (margin: number) => `$${margin.toFixed(2)}`
+    },
+    {
+      title: '杠杆',
+      dataIndex: 'leverage',
+      key: 'leverage',
+      render: (leverage: number) => `${leverage}x`
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (text: string, record: Position) => (
+        <Popconfirm
+          title="确定要平仓吗？"
+          onConfirm={() => handleClosePosition(record.id)}
+          okText="确定"
+          cancelText="取消"
+        >
+          <Button
+            type="link"
+            danger
+            icon={<StopOutlined />}
+          >
+            平仓
+          </Button>
+        </Popconfirm>
+      )
+    }
+  ];
+  
+  // 策略状态颜色
+  const strategyStatusColor = {
     running: '#52c41a',
     stopped: '#8c8c8c',
     error: '#ff4d4f',
     paused: '#faad14'
   };
-
-  const statusText = {
+  
+  // 策略状态文本
+  const strategyStatusText = {
     running: '运行中',
     stopped: '已停止',
     error: '错误',
     paused: '暂停'
   };
-
+  
+  // 计算统计数据
+  const totalPnl = recentOrders.reduce((sum, order) => sum + (order.pnl || 0), 0);
+  const runningStrategies = strategies.filter(s => s.status === 'running').length;
+  const totalPositions = positions.length;
+  const totalExposure = positions.reduce((sum, pos) => sum + pos.margin, 0);
+  const accountBalance = accountInfo?.total_balance || 0;
+  const availableBalance = accountInfo?.available_balance || 0;
+  
   return (
     <div style={{ padding: 24 }}>
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={12}>
-          <Title level={2}>实时交易监控</Title>
-        </Col>
-        <Col span={12} style={{ textAlign: 'right' }}>
-          <Space>
-            <span>自动刷新:</span>
-            <Switch
-              checked={autoRefresh}
-              onChange={setAutoRefresh}
-            />
-            <Select
-              value={refreshInterval}
-              onChange={setRefreshInterval}
-              style={{ width: 120 }}
-            >
-              <Option value={1000}>1秒</Option>
-              <Option value={5000}>5秒</Option>
-              <Option value={10000}>10秒</Option>
-              <Option value={30000}>30秒</Option>
-            </Select>
-            <Button icon={<SettingOutlined />} onClick={() => setSettingsVisible(true)}>
-              设置
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={loadMockData}>
-              刷新
-            </Button>
-          </Space>
-        </Col>
-      </Row>
-
-      {/* 实时状态概览 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="总余额"
-              value={accountBalances.reduce((sum, balance) => sum + balance.totalBalance, 0)}
-              prefix="$"
-              precision={2}
-              valueStyle={{ color: '#3f8600' }}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              24h变化: +${accountBalances.reduce((sum, balance) => sum + balance.change24h, 0).toFixed(2)}
-            </div>
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="今日盈亏"
-              value={recentTrades.reduce((sum, trade) => sum + (trade.pnl || 0), 0)}
-              prefix="$"
-              precision={2}
-              valueStyle={{ color: '#3f8600' }}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              交易次数: {recentTrades.length}
-            </div>
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="运行策略"
-              value={strategyStatus.filter(s => s.status === 'running').length}
-              suffix={`/ ${strategyStatus.length}`}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              总持仓: {currentPositions.length}
-            </div>
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="风险等级"
-              value={riskMetrics?.riskLevel === 'low' ? '低' : riskMetrics?.riskLevel === 'medium' ? '中' : '高'}
-              valueStyle={{ 
-                color: riskMetrics?.riskLevel === 'low' ? '#52c41a' : 
-                       riskMetrics?.riskLevel === 'medium' ? '#faad14' : '#ff4d4f' 
-              }}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              杠杆使用: {riskMetrics?.marginUsage.toFixed(1)}%
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 主要内容区域 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {/* 策略状态 */}
-        <Col span={12}>
-          <Card title="策略状态">
-            {strategyStatus.map(strategy => (
-              <div key={strategy.id} style={{ marginBottom: 16 }}>
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <div style={{ fontWeight: 'bold' }}>{strategy.name}</div>
-                    <Tag color={statusColor[strategy.status]} style={{ marginTop: 4 }}>
-                      {statusText[strategy.status]}
-                    </Tag>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ fontSize: 12, color: '#666' }}>运行时间</div>
-                    <div>{strategy.uptime}</div>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ fontSize: 12, color: '#666' }}>今日盈亏</div>
-                    <div style={{ color: strategy.totalPnl >= 0 ? '#3f8600' : '#cf1322' }}>
-                      ${strategy.totalPnl.toFixed(2)}
-                    </div>
-                  </Col>
-                </Row>
-                <Row gutter={16} style={{ marginTop: 8 }}>
-                  <Col span={6}>
-                    <div style={{ fontSize: 12, color: '#666' }}>交易次数</div>
-                    <div>{strategy.tradesCount}</div>
-                  </Col>
-                  <Col span={6}>
-                    <div style={{ fontSize: 12, color: '#666' }}>胜率</div>
-                    <div>{strategy.winRate.toFixed(1)}%</div>
-                  </Col>
-                  <Col span={6}>
-                    <div style={{ fontSize: 12, color: '#666' }}>持仓数</div>
-                    <div>{strategy.currentPositions}</div>
-                  </Col>
-                  <Col span={6}>
-                    <Space>
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={strategy.status === 'running' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                        onClick={() => handleControlStrategy(strategy.id, strategy.status === 'running' ? 'pause' : 'start')}
-                      />
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<StopOutlined />}
-                        onClick={() => handleControlStrategy(strategy.id, 'stop')}
-                      />
-                    </Space>
-                  </Col>
-                </Row>
-                <Divider style={{ margin: '8px 0' }} />
-              </div>
-            ))}
-          </Card>
-        </Col>
-
-        {/* 实时价格 */}
-        <Col span={12}>
-          <Card title="实时价格">
-            {realTimePrices.map(price => (
-              <div key={price.symbol} style={{ marginBottom: 16 }}>
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <div style={{ fontWeight: 'bold' }}>{price.symbol}</div>
-                    <div style={{ fontSize: 18, color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
-                      ${price.price.toFixed(2)}
-                    </div>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ fontSize: 12, color: '#666' }}>24h变化</div>
-                    <div style={{ color: price.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
-                      {price.changePercent24h >= 0 ? '+' : ''}{price.changePercent24h.toFixed(2)}%
-                    </div>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ fontSize: 12, color: '#666' }}>24h成交量</div>
-                    <div>${(price.volume24h / 1000000).toFixed(1)}M</div>
-                  </Col>
-                </Row>
-                <Divider style={{ margin: '8px 0' }} />
-              </div>
-            ))}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 实时交易表格 */}
-      <Card title="实时交易" style={{ marginBottom: 24 }}>
-        <Table
-          columns={tradeColumns}
-          dataSource={recentTrades}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true
-          }}
-          scroll={{ x: 1200 }}
-        />
-      </Card>
-
-      {/* 当前持仓 */}
-      <Card title="当前持仓">
-        <Table
-          columns={[
-            {
-              title: '策略',
-              dataIndex: 'strategyName',
-              key: 'strategyName'
-            },
-            {
-              title: '交易对',
-              dataIndex: 'symbol',
-              key: 'symbol',
-              render: (symbol: string) => <Tag color="blue">{symbol}</Tag>
-            },
-            {
-              title: '方向',
-              dataIndex: 'side',
-              key: 'side',
-              render: (side: string) => (
-                <Tag color={side === 'long' ? 'green' : 'red'}>
-                  {side === 'long' ? '多头' : '空头'}
-                </Tag>
-              )
-            },
-            {
-              title: '数量',
-              dataIndex: 'quantity',
-              key: 'quantity',
-              render: (quantity: number) => quantity.toFixed(4)
-            },
-            {
-              title: '入场价格',
-              dataIndex: 'entryPrice',
-              key: 'entryPrice',
-              render: (price: number) => `$${price.toFixed(2)}`
-            },
-            {
-              title: '当前价格',
-              dataIndex: 'currentPrice',
-              key: 'currentPrice',
-              render: (price: number) => `$${price.toFixed(2)}`
-            },
-            {
-              title: '盈亏',
-              dataIndex: 'pnl',
-              key: 'pnl',
-              render: (pnl: number) => (
-                <span style={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontWeight: 'bold' }}>
-                  {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-                </span>
-              )
-            },
-            {
-              title: '盈亏比例',
-              dataIndex: 'pnlPercent',
-              key: 'pnlPercent',
-              render: (percent: number) => (
-                <span style={{ color: percent >= 0 ? '#3f8600' : '#cf1322' }}>
-                  {percent >= 0 ? '+' : ''}{percent.toFixed(2)}%
-                </span>
-              )
-            },
-            {
-              title: '持仓时间',
-              dataIndex: 'duration',
-              key: 'duration'
-            },
-            {
-              title: '交易所',
-              dataIndex: 'exchange',
-              key: 'exchange'
-            }
-          ]}
-          dataSource={currentPositions}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true
-          }}
-        />
-      </Card>
-
-      {/* 交易详情模态框 */}
-      <Modal
-        title="交易详情"
-        open={detailVisible}
-        onCancel={() => setDetailVisible(false)}
-        footer={null}
-        width={600}
-      >
-        {selectedTrade && (
-          <div>
-            <Card title="基本信息" style={{ marginBottom: 16 }}>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Statistic title="交易ID" value={selectedTrade.id} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="策略名称" value={selectedTrade.strategyName} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="交易对" value={selectedTrade.symbol} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="交易所" value={selectedTrade.exchange} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="订单ID" value={selectedTrade.orderId} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="状态" value={selectedTrade.status} />
-                </Col>
-              </Row>
-            </Card>
-
-            <Card title="交易信息">
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Statistic title="方向" value={selectedTrade.side === 'buy' ? '买入' : '卖出'} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="价格" value={`$${selectedTrade.price.toFixed(2)}`} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="数量" value={selectedTrade.quantity.toFixed(4)} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="金额" value={`$${selectedTrade.amount.toFixed(2)}`} />
-                </Col>
-                <Col span={12}>
-                  <Statistic title="手续费" value={`$${selectedTrade.fee.toFixed(2)}`} />
-                </Col>
-                <Col span={12}>
-                  <Statistic 
-                    title="盈亏" 
-                    value={`$${selectedTrade.pnl?.toFixed(2) || '0.00'}`}
-                    valueStyle={{ color: (selectedTrade.pnl || 0) >= 0 ? '#3f8600' : '#cf1322' }}
-                  />
-                </Col>
-              </Row>
-            </Card>
-          </div>
-        )}
-      </Modal>
-
-      {/* 设置模态框 */}
-      <Modal
-        title="监控设置"
-        open={settingsVisible}
-        onCancel={() => setSettingsVisible(false)}
-        footer={null}
-        width={600}
-      >
-        <Form layout="vertical">
-          <Form.Item label="自动刷新">
-            <Switch checked={autoRefresh} onChange={setAutoRefresh} />
-          </Form.Item>
-          <Form.Item label="刷新间隔">
-            <Select value={refreshInterval} onChange={setRefreshInterval}>
-              <Option value={1000}>1秒</Option>
-              <Option value={5000}>5秒</Option>
-              <Option value={10000}>10秒</Option>
-              <Option value={30000}>30秒</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item label="告警设置">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <div>
-                <span>盈亏告警阈值: </span>
-                <InputNumber min={0} max={10000} defaultValue={1000} style={{ width: 120 }} />
-                <span style={{ marginLeft: 8 }}>美元</span>
-              </div>
-              <div>
-                <span>风险告警阈值: </span>
-                <InputNumber min={0} max={100} defaultValue={80} style={{ width: 120 }} />
-                <span style={{ marginLeft: 8 }}>%</span>
-              </div>
+      <Spin spinning={loading}>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={12}>
+            <Title level={2}>实时交易监控</Title>
+          </Col>
+          <Col span={12} style={{ textAlign: 'right' }}>
+            <Space>
+              <Button type="primary" icon={<PlayCircleOutlined />} onClick={() => setTradeModalVisible(true)}>
+                手动交易
+              </Button>
+              <span>自动刷新:</span>
+              <Switch
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
+              />
+              <Select
+                value={refreshInterval}
+                onChange={setRefreshInterval}
+                style={{ width: 120 }}
+              >
+                <Option value={1000}>1秒</Option>
+                <Option value={5000}>5秒</Option>
+                <Option value={10000}>10秒</Option>
+                <Option value={30000}>30秒</Option>
+              </Select>
+              <Button icon={<ReloadOutlined />} onClick={loadAllData}>
+                刷新
+              </Button>
             </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+          </Col>
+        </Row>
+        
+        {/* 实时状态概览 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="今日盈亏"
+                value={totalPnl}
+                prefix="$"
+                precision={2}
+                valueStyle={{ color: totalPnl >= 0 ? '#3f8600' : '#cf1322' }}
+              />
+              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                交易次数: {recentOrders.length}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="运行策略"
+                value={runningStrategies}
+                suffix={`/ ${strategies.length}`}
+              />
+              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                总持仓: {totalPositions}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="账户余额"
+                value={accountBalance}
+                prefix="$"
+                precision={2}
+              />
+              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                可用余额: ${availableBalance.toFixed(2)}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="总敞口"
+                value={totalExposure}
+                prefix="$"
+                precision={2}
+              />
+              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                杠杆使用: {accountBalance > 0 ? ((totalExposure / accountBalance) * 100).toFixed(1) : '0'}%
+              </div>
+            </Card>
+          </Col>
+        </Row>
+        
+        {/* 策略状态 */}
+        <Card title="策略状态" style={{ marginBottom: 24 }}>
+          <Row gutter={[16, 16]}>
+            {strategies.map(strategy => (
+              <Col span={12} key={strategy.id}>
+                <Card size="small">
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <div style={{ fontWeight: 'bold' }}>{strategy.name}</div>
+                      <Badge 
+                        color={strategyStatusColor[strategy.status]} 
+                        text={strategyStatusText[strategy.status]}
+                      />
+                    </Col>
+                    <Col span={8}>
+                      <div style={{ fontSize: 12, color: '#666' }}>类型</div>
+                      <div>{strategy.type}</div>
+                    </Col>
+                    <Col span={8}>
+                      <div style={{ fontSize: 12, color: '#666' }}>
+                        {strategy.performance ? '总盈亏' : '状态'}
+                      </div>
+                      <div style={{ color: strategy.performance?.totalPnl >= 0 ? '#3f8600' : '#cf1322' }}>
+                        {strategy.performance ? `$${strategy.performance.totalPnl.toFixed(2)}` : '-'}
+                      </div>
+                    </Col>
+                  </Row>
+                  {strategy.performance && (
+                    <Row gutter={16} style={{ marginTop: 8 }}>
+                      <Col span={6}>
+                        <div style={{ fontSize: 12, color: '#666' }}>胜率</div>
+                        <div>{strategy.performance.winRate.toFixed(1)}%</div>
+                      </Col>
+                      <Col span={6}>
+                        <div style={{ fontSize: 12, color: '#666' }}>交易次数</div>
+                        <div>{strategy.performance.tradesCount}</div>
+                      </Col>
+                      <Col span={6}>
+                        <div style={{ fontSize: 12, color: '#666' }}>最大回撤</div>
+                        <div>{strategy.performance.maxDrawdown.toFixed(2)}%</div>
+                      </Col>
+                      <Col span={6}>
+                        <Space>
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={strategy.status === 'running' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                            onClick={() => handleControlStrategy(strategy.id, strategy.status === 'running' ? 'stop' : 'start')}
+                          />
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<StopOutlined />}
+                            onClick={() => handleControlStrategy(strategy.id, 'stop')}
+                          />
+                        </Space>
+                      </Col>
+                    </Row>
+                  )}
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
+        
+        {/* 实时价格 */}
+        <Card title="实时价格" style={{ marginBottom: 24 }}>
+          <Row gutter={[16, 16]}>
+            {marketData.map(data => (
+              <Col span={8} key={data.symbol}>
+                <Card size="small">
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <div style={{ fontWeight: 'bold' }}>{data.symbol}</div>
+                      <div style={{ fontSize: 18, color: data.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
+                        ${data.price.toFixed(2)}
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div style={{ fontSize: 12, color: '#666' }}>24h变化</div>
+                      <div style={{ color: data.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
+                        {data.changePercent24h >= 0 ? '+' : ''}{data.changePercent24h.toFixed(2)}%
+                      </div>
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                        成交量: ${(data.volume24h / 1000000).toFixed(1)}M
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
+        
+        {/* 最近订单 */}
+        <Card title="最近订单" style={{ marginBottom: 24 }}>
+          <Table
+            columns={orderColumns}
+            dataSource={recentOrders}
+            rowKey="id"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true
+            }}
+            scroll={{ x: 1200 }}
+          />
+        </Card>
+        
+        {/* 当前持仓 */}
+        <Card title="当前持仓">
+          <Table
+            columns={positionColumns}
+            dataSource={positions}
+            rowKey="id"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true
+            }}
+          />
+        </Card>
+        
+        {/* 交易模态框 */}
+        <Modal
+          title="手动交易"
+          open={tradeModalVisible}
+          onCancel={() => {
+            setTradeModalVisible(false);
+            tradeForm.resetFields();
+          }}
+          footer={null}
+          width={600}
+        >
+          <Form
+            form={tradeForm}
+            layout="vertical"
+            onFinish={handleCreateOrder}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="交易对"
+                  name="symbol"
+                  rules={[{ required: true, message: '请选择交易对' }]}
+                >
+                  <Select placeholder="选择交易对">
+                    <Option value="BTCUSDT">BTC/USDT</Option>
+                    <Option value="ETHUSDT">ETH/USDT</Option>
+                    <Option value="BNBUSDT">BNB/USDT</Option>
+                    <Option value="ADAUSDT">ADA/USDT</Option>
+                    <Option value="DOTUSDT">DOT/USDT</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="方向"
+                  name="side"
+                  rules={[{ required: true, message: '请选择交易方向' }]}
+                >
+                  <Select placeholder="选择方向">
+                    <Option value="buy">买入</Option>
+                    <Option value="sell">卖出</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="类型"
+                  name="type"
+                  rules={[{ required: true, message: '请选择订单类型' }]}
+                >
+                  <Select placeholder="选择类型">
+                    <Option value="market">市价单</Option>
+                    <Option value="limit">限价单</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="策略ID"
+                  name="strategyId"
+                >
+                  <Select placeholder="选择策略（可选）">
+                    {strategies.map(strategy => (
+                      <Option key={strategy.id} value={strategy.id}>
+                        {strategy.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="价格"
+                  name="price"
+                  rules={[
+                    { required: true, message: '请输入价格' },
+                    { type: 'number', min: 0, message: '价格必须大于0' }
+                  ]}
+                >
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    placeholder="输入价格"
+                    precision={2}
+                    addonBefore="$"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="数量"
+                  name="quantity"
+                  rules={[
+                    { required: true, message: '请输入数量' },
+                    { type: 'number', min: 0, message: '数量必须大于0' }
+                  ]}
+                >
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    placeholder="输入数量"
+                    precision={4}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  提交订单
+                </Button>
+                <Button onClick={() => {
+                  setTradeModalVisible(false);
+                  tradeForm.resetFields();
+                }}>
+                  取消
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+        
+        {/* 订单详情模态框 */}
+        <Modal
+          title="订单详情"
+          open={detailVisible}
+          onCancel={() => setDetailVisible(false)}
+          footer={null}
+          width={600}
+        >
+          {selectedOrder && (
+            <div>
+              <Card title="基本信息" style={{ marginBottom: 16 }}>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Statistic title="订单ID" value={selectedOrder.id} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="策略ID" value={selectedOrder.strategyId} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="交易对" value={selectedOrder.symbol} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="状态" value={selectedOrder.status} />
+                  </Col>
+                </Row>
+              </Card>
+              
+              <Card title="交易信息">
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Statistic title="方向" value={selectedOrder.side === 'buy' ? '买入' : '卖出'} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="类型" value={selectedOrder.type === 'market' ? '市价' : '限价'} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="价格" value={`$${selectedOrder.price.toFixed(2)}`} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="数量" value={selectedOrder.quantity.toFixed(4)} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="成交数量" value={selectedOrder.filledQuantity.toFixed(4)} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="成交均价" value={`$${selectedOrder.averagePrice.toFixed(2)}`} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="手续费" value={`$${selectedOrder.fee.toFixed(2)}`} />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic 
+                      title="盈亏" 
+                      value={`$${selectedOrder.pnl?.toFixed(2) || '0.00'}`}
+                      valueStyle={{ color: (selectedOrder.pnl || 0) >= 0 ? '#3f8600' : '#cf1322' }}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </div>
+          )}
+        </Modal>
+      </Spin>
     </div>
   );
 };

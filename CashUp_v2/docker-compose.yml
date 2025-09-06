@@ -91,6 +91,7 @@ services:
       - CORE_SERVICE_URL=http://core-service:8001
       - TRADING_ENGINE_URL=http://trading-engine:8002
       - DEBUG=true
+      - PYTHONPATH=/app
     depends_on:
       - postgres
       - redis
@@ -103,7 +104,7 @@ services:
     restart: unless-stopped
     networks:
       - cashup_network
-    command: uvicorn main:app --host 0.0.0.0 --port 8003
+    command: uvicorn main:app --host 0.0.0.0 --port 8003 --reload
 
   # 通知服务
   notification-service:
@@ -138,17 +139,16 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8001
-      - REACT_APP_TRADING_URL=http://localhost:8002
-      - REACT_APP_STRATEGY_URL=http://localhost:8003
-      - REACT_APP_NOTIFICATION_URL=http://localhost:8004
+      - REACT_APP_API_URL=http://localhost/api/core
+      - REACT_APP_TRADING_URL=http://localhost/api/trading
+      - REACT_APP_STRATEGY_URL=http://localhost/api/strategy
+      - REACT_APP_NOTIFICATION_URL=http://localhost/api/notification
     depends_on:
       - core-service
       - trading-engine
       - strategy-platform
       - notification-service
     volumes:
-      - ./frontend:/app
       - /app/node_modules
     restart: unless-stopped
     networks:
