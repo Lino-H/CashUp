@@ -31,6 +31,10 @@ import {
   Statistic,
   Spin,
   QRCode,
+  Progress,
+  Tooltip,
+  Timeline,
+  Descriptions,
 } from 'antd';
 import {
   UserOutlined,
@@ -59,10 +63,25 @@ import {
   SyncOutlined,
   WarningOutlined,
   ReloadOutlined,
+  BarChartOutlined,
+  LineChartOutlined,
+  PieChartOutlined,
+  AreaChartOutlined,
+  TrophyOutlined,
+  RocketOutlined,
+  ShieldOutlined,
+  CloudSyncOutlined,
+  FileTextOutlined,
+  DashboardOutlined,
+ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload';
 import dayjs from 'dayjs';
 import { configAPI, userAPI } from '../services/api';
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -149,17 +168,27 @@ const UserSettings: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeData, setQrCodeData] = useState('');
+  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [performanceData, setPerformanceData] = useState<any[]>([]);
+  const [systemStats, setSystemStats] = useState({
+    uptime: '24小时',
+    cpuUsage: 45,
+    memoryUsage: 60,
+    diskUsage: 75,
+    activeConnections: 156,
+  });
 
   // 获取用户配置
   const fetchUserConfig = async () => {
     try {
       // 获取用户信息
-      const userResponse = await userAPI.getCurrentUser();
-      const userData = userResponse.data;
+      const userResponse: any = await userAPI.getCurrentUser();
+      const userData = userResponse;
       
       // 获取用户配置
-      const configsResponse = await configAPI.getMyConfigs();
-      const configs = configsResponse.data || [];
+      const configsResponse: any = await configAPI.getMyConfigs();
+      const configs = configsResponse || [];
       
       // 构建用户配置对象
       const config: UserConfig = {
@@ -227,8 +256,8 @@ const UserSettings: React.FC = () => {
   // 获取系统配置
   const fetchSystemConfigs = async () => {
     try {
-      const response = await configAPI.getConfigs();
-      setSystemConfigs(response.data || []);
+      const response: any = await configAPI.getConfigs();
+      setSystemConfigs(response || []);
     } catch (error) {
       console.error('获取系统配置失败:', error);
       message.error('获取系统配置失败');
@@ -343,94 +372,168 @@ const UserSettings: React.FC = () => {
     if (activeTab === 'system') {
       fetchSystemConfigs();
     }
-  }, [activeTab]);
+    
+    // 生成性能数据
+    generatePerformanceData();
+    
+    // 自动刷新
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchUserConfig();
+        if (activeTab === 'system') {
+          fetchSystemConfigs();
+        }
+        generatePerformanceData();
+      }, refreshInterval * 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, autoRefresh, refreshInterval]);
+  
+  // 生成性能数据
+  const generatePerformanceData = () => {
+    const data = [];
+    const now = dayjs();
+    
+    for (let i = 23; i >= 0; i--) {
+      const time = now.subtract(i, 'hour');
+      data.push({
+        time: time.format('HH:mm'),
+        cpu: Math.floor(Math.random() * 30) + 30,
+        memory: Math.floor(Math.random() * 20) + 50,
+        disk: Math.floor(Math.random() * 10) + 70,
+        connections: Math.floor(Math.random() * 50) + 130,
+      });
+    }
+    
+    setPerformanceData(data);
+  };
 
   // 渲染个人资料设置
   const renderProfileSettings = () => (
-    <Card>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSaveUserConfig}
-      >
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              label="用户名"
-              name="username"
-              rules={[{ required: true, message: '请输入用户名' }]}
-            >
-              <Input prefix={<UserOutlined />} />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="邮箱"
-              name="email"
-              rules={[{ required: true, type: 'email', message: '请输入有效邮箱' }]}
-            >
-              <Input prefix={<MailOutlined />} />
-            </Form.Item>
-          </Col>
-        </Row>
-        
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              label="手机号"
-              name="phone"
-            >
-              <Input prefix={<PhoneOutlined />} />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="时区"
-              name="timezone"
-            >
-              <Select>
-                <Option value="Asia/Shanghai">亚洲/上海</Option>
-                <Option value="UTC">UTC</Option>
-                <Option value="America/New_York">美洲/纽约</Option>
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
+    <div>
+      <Card title="基本信息" style={{ marginBottom: 16 }}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSaveUserConfig}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="用户名"
+                name="username"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
+                <Input prefix={<UserOutlined />} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="邮箱"
+                name="email"
+                rules={[{ required: true, type: 'email', message: '请输入有效邮箱' }]}
+              >
+                <Input prefix={<MailOutlined />} />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="手机号"
+                name="phone"
+              >
+                <Input prefix={<PhoneOutlined />} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="时区"
+                name="timezone"
+              >
+                <Select>
+                  <Option value="Asia/Shanghai">亚洲/上海</Option>
+                  <Option value="UTC">UTC</Option>
+                  <Option value="America/New_York">美洲/纽约</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="语言"
+                name="language"
+              >
+                <Select>
+                  <Option value="zh-CN">简体中文</Option>
+                  <Option value="en-US">English</Option>
+                  <Option value="ja-JP">日本語</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="主题"
+                name="theme"
+              >
+                <Select>
+                  <Option value="light">浅色</Option>
+                  <Option value="dark">深色</Option>
+                  <Option value="auto">自动</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              保存设置
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+
+      <Card title="账户统计">
         <Row gutter={16}>
           <Col span={12}>
-            <Form.Item
-              label="语言"
-              name="language"
-            >
-              <Select>
-                <Option value="zh-CN">简体中文</Option>
-                <Option value="en-US">English</Option>
-                <Option value="ja-JP">日本語</Option>
-              </Select>
-            </Form.Item>
+            <Statistic
+              title="账户创建时间"
+              value={dayjs(userConfig?.id).format('YYYY-MM-DD HH:mm:ss')}
+              prefix={<UserOutlined />}
+            />
           </Col>
           <Col span={12}>
-            <Form.Item
-              label="主题"
-              name="theme"
-            >
-              <Select>
-                <Option value="light">浅色</Option>
-                <Option value="dark">深色</Option>
-                <Option value="auto">自动</Option>
-              </Select>
-            </Form.Item>
+            <Statistic
+              title="最后登录时间"
+              value={dayjs().format('YYYY-MM-DD HH:mm:ss')}
+              prefix={<SecurityScanOutlined />}
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="总交易次数"
+              value={Math.floor(Math.random() * 1000) + 100}
+              prefix={<TrophyOutlined />}
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="胜率"
+              value={(Math.random() * 20 + 60).toFixed(1) + '%'}
+              prefix={<RocketOutlined />}
+              valueStyle={{ color: '#3f8600' }}
+            />
           </Col>
         </Row>
-
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            保存设置
-          </Button>
-        </Form.Item>
-      </Form>
-    </Card>
+      </Card>
+    </div>
   );
 
   // 渲染安全设置
@@ -556,287 +659,418 @@ const UserSettings: React.FC = () => {
 
   // 渲染通知设置
   const renderNotificationSettings = () => (
-    <Card>
-      <Title level={4}>通知设置</Title>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>邮件通知</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.email}
-                  onChange={(checked) => handleUpdateConfig('notifications.email', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.email ? '已启用' : '已禁用'}
-                </Text>
+    <div>
+      <Card title="通知设置" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>邮件通知</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.email}
+                    onChange={(checked) => handleUpdateConfig('notifications.email', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.email ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>推送通知</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.push}
-                  onChange={(checked) => handleUpdateConfig('notifications.push', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.push ? '已启用' : '已禁用'}
-                </Text>
+              
+              <div>
+                <Text>推送通知</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.push}
+                    onChange={(checked) => handleUpdateConfig('notifications.push', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.push ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>短信通知</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.sms}
-                  onChange={(checked) => handleUpdateConfig('notifications.sms', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.sms ? '已启用' : '已禁用'}
-                </Text>
+              
+              <div>
+                <Text>短信通知</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.sms}
+                    onChange={(checked) => handleUpdateConfig('notifications.sms', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.sms ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
-        
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>交易提醒</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.tradeAlerts}
-                  onChange={(checked) => handleUpdateConfig('notifications.tradeAlerts', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.tradeAlerts ? '已启用' : '已禁用'}
-                </Text>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>交易提醒</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.tradeAlerts}
+                    onChange={(checked) => handleUpdateConfig('notifications.tradeAlerts', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.tradeAlerts ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>风险提醒</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.riskAlerts}
-                  onChange={(checked) => handleUpdateConfig('notifications.riskAlerts', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.riskAlerts ? '已启用' : '已禁用'}
-                </Text>
+              
+              <div>
+                <Text>风险提醒</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.riskAlerts}
+                    onChange={(checked) => handleUpdateConfig('notifications.riskAlerts', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.riskAlerts ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>系统提醒</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.notifications.systemAlerts}
-                  onChange={(checked) => handleUpdateConfig('notifications.systemAlerts', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.notifications.systemAlerts ? '已启用' : '已禁用'}
-                </Text>
+              
+              <div>
+                <Text>系统提醒</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.notifications.systemAlerts}
+                    onChange={(checked) => handleUpdateConfig('notifications.systemAlerts', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.notifications.systemAlerts ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
-      </Row>
-    </Card>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card title="通知历史">
+        <Timeline>
+          <Timeline.Item color="green">
+            <Text strong>系统通知</Text>
+            <div>您的账户安全性已提升</div>
+            <Text type="secondary">{dayjs().subtract(1, 'hour').format('HH:mm')}</Text>
+          </Timeline.Item>
+          <Timeline.Item color="blue">
+            <Text strong>交易提醒</Text>
+            <div>BTC/USD 交易已执行</div>
+            <Text type="secondary">{dayjs().subtract(2, 'hour').format('HH:mm')}</Text>
+          </Timeline.Item>
+          <Timeline.Item color="orange">
+            <Text strong>风险提醒</Text>
+            <div>账户余额接近风险限制</div>
+            <Text type="secondary">{dayjs().subtract(3, 'hour').format('HH:mm')}</Text>
+          </Timeline.Item>
+          <Timeline.Item color="red">
+            <Text strong>系统警告</Text>
+            <div>API 连接暂时中断</div>
+            <Text type="secondary">{dayjs().subtract(5, 'hour').format('HH:mm')}</Text>
+          </Timeline.Item>
+        </Timeline>
+      </Card>
+    </div>
   );
 
   // 渲染交易设置
   const renderTradingSettings = () => (
-    <Card>
-      <Title level={4}>交易设置</Title>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>默认交易所</Text>
-              <div style={{ marginTop: 8 }}>
-                <Select
-                  value={userConfig?.trading.defaultExchange}
-                  onChange={(value) => handleUpdateConfig('trading.defaultExchange', value)}
-                  style={{ width: '100%' }}
-                >
-                  <Option value="binance">Binance</Option>
-                  <Option value="gateio">Gate.io</Option>
-                  <Option value="huobi">Huobi</Option>
-                </Select>
+    <div>
+      <Card title="交易设置" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>默认交易所</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Select
+                    value={userConfig?.trading.defaultExchange}
+                    onChange={(value) => handleUpdateConfig('trading.defaultExchange', value)}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="binance">Binance</Option>
+                    <Option value="gateio">Gate.io</Option>
+                    <Option value="huobi">Huobi</Option>
+                  </Select>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>默认杠杆</Text>
-              <div style={{ marginTop: 8 }}>
-                <InputNumber
-                  value={userConfig?.trading.defaultLeverage}
-                  onChange={(value) => handleUpdateConfig('trading.defaultLeverage', value || 1)}
-                  min={1}
-                  max={125}
-                  style={{ width: '100%' }}
-                />
+              
+              <div>
+                <Text>默认杠杆</Text>
+                <div style={{ marginTop: 8 }}>
+                  <InputNumber
+                    value={userConfig?.trading.defaultLeverage}
+                    onChange={(value) => handleUpdateConfig('trading.defaultLeverage', value || 1)}
+                    min={1}
+                    max={125}
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>每笔交易风险</Text>
-              <div style={{ marginTop: 8 }}>
-                <Slider
-                  value={userConfig?.trading.riskPerTrade}
-                  onChange={(value) => handleUpdateConfig('trading.riskPerTrade', value)}
-                  min={0.1}
-                  max={10}
-                  step={0.1}
-                />
-                <Text>{userConfig?.trading.riskPerTrade}%</Text>
+              
+              <div>
+                <Text>每笔交易风险</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Slider
+                    value={userConfig?.trading.riskPerTrade}
+                    onChange={(value) => handleUpdateConfig('trading.riskPerTrade', value)}
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                  />
+                  <Text>{userConfig?.trading.riskPerTrade}%</Text>
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>最大每日亏损</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Slider
+                    value={userConfig?.trading.maxDailyLoss}
+                    onChange={(value) => handleUpdateConfig('trading.maxDailyLoss', value)}
+                    min={1}
+                    max={20}
+                    step={0.5}
+                  />
+                  <Text>{userConfig?.trading.maxDailyLoss}%</Text>
+                </div>
+              </div>
+              
+              <div>
+                <Text>最大持仓数</Text>
+                <div style={{ marginTop: 8 }}>
+                  <InputNumber
+                    value={userConfig?.trading.maxPositions}
+                    onChange={(value) => handleUpdateConfig('trading.maxPositions', value || 1)}
+                    min={1}
+                    max={50}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Text>滑点容忍度</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Slider
+                    value={userConfig?.trading.slippageTolerance}
+                    onChange={(value) => handleUpdateConfig('trading.slippageTolerance', value)}
+                    min={0.1}
+                    max={2}
+                    step={0.1}
+                  />
+                  <Text>{userConfig?.trading.slippageTolerance}%</Text>
+                </div>
+              </div>
+            </Space>
+          </Col>
+        </Row>
         
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>最大每日亏损</Text>
-              <div style={{ marginTop: 8 }}>
-                <Slider
-                  value={userConfig?.trading.maxDailyLoss}
-                  onChange={(value) => handleUpdateConfig('trading.maxDailyLoss', value)}
-                  min={1}
-                  max={20}
-                  step={0.5}
-                />
-                <Text>{userConfig?.trading.maxDailyLoss}%</Text>
-              </div>
-            </div>
-            
-            <div>
-              <Text>最大持仓数</Text>
-              <div style={{ marginTop: 8 }}>
-                <InputNumber
-                  value={userConfig?.trading.maxPositions}
-                  onChange={(value) => handleUpdateConfig('trading.maxPositions', value || 1)}
-                  min={1}
-                  max={50}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Text>滑点容忍度</Text>
-              <div style={{ marginTop: 8 }}>
-                <Slider
-                  value={userConfig?.trading.slippageTolerance}
-                  onChange={(value) => handleUpdateConfig('trading.slippageTolerance', value)}
-                  min={0.1}
-                  max={2}
-                  step={0.1}
-                />
-                <Text>{userConfig?.trading.slippageTolerance}%</Text>
-              </div>
-            </div>
-          </Space>
-        </Col>
-      </Row>
-      
-      <Divider />
-      
-      <Row gutter={16}>
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>自动止损</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.trading.autoStopLoss}
-                  onChange={(checked) => handleUpdateConfig('trading.autoStopLoss', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.trading.autoStopLoss ? '已启用' : '已禁用'}
-                </Text>
-              </div>
-            </div>
-          </Space>
-        </Col>
+        <Divider />
         
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>自动止盈</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.trading.autoTakeProfit}
-                  onChange={(checked) => handleUpdateConfig('trading.autoTakeProfit', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.trading.autoTakeProfit ? '已启用' : '已禁用'}
-                </Text>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>自动止损</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.trading.autoStopLoss}
+                    onChange={(checked) => handleUpdateConfig('trading.autoStopLoss', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.trading.autoStopLoss ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
-      </Row>
-    </Card>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>自动止盈</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.trading.autoTakeProfit}
+                    onChange={(checked) => handleUpdateConfig('trading.autoTakeProfit', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.trading.autoTakeProfit ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
+              </div>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card title="交易统计">
+        <Row gutter={16}>
+          <Col span={12}>
+            <Statistic
+              title="今日交易次数"
+              value={Math.floor(Math.random() * 50) + 10}
+              prefix={<TrophyOutlined />}
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="今日盈亏"
+              value={(Math.random() * 1000 - 500).toFixed(2)}
+              prefix={<RocketOutlined />}
+              valueStyle={{ color: Math.random() > 0.5 ? '#3f8600' : '#cf1322' }}
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="胜率"
+              value={(Math.random() * 20 + 60).toFixed(1) + '%'}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#3f8600' }}
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="平均持仓时间"
+              value={(Math.random() * 10 + 5).toFixed(1) + '小时'}
+              prefix={<ClockCircleOutlined />}
+            />
+          </Col>
+        </Row>
+      </Card>
+    </div>
   );
 
   // 渲染API设置
   const renderAPISettings = () => (
-    <Card>
-      <Title level={4}>API设置</Title>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>启用API访问</Text>
-              <div style={{ marginTop: 8 }}>
-                <Switch
-                  checked={userConfig?.api.enabled}
-                  onChange={(checked) => handleUpdateConfig('api.enabled', checked)}
-                />
-                <Text style={{ marginLeft: 8 }}>
-                  {userConfig?.api.enabled ? '已启用' : '已禁用'}
-                </Text>
+    <div>
+      <Card title="API设置" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>启用API访问</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={userConfig?.api.enabled}
+                    onChange={(checked) => handleUpdateConfig('api.enabled', checked)}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {userConfig?.api.enabled ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <Text>请求限制</Text>
-              <div style={{ marginTop: 8 }}>
-                <InputNumber
-                  value={userConfig?.api.rateLimit}
-                  onChange={(value) => handleUpdateConfig('api.rateLimit', value || 1000)}
-                  min={1}
-                  max={10000}
-                  style={{ width: '100%' }}
-                />
+              
+              <div>
+                <Text>请求限制</Text>
+                <div style={{ marginTop: 8 }}>
+                  <InputNumber
+                    value={userConfig?.api.rateLimit}
+                    onChange={(value) => handleUpdateConfig('api.rateLimit', value || 1000)}
+                    min={1}
+                    max={10000}
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
-        
-        <Col span={12}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Text>IP白名单</Text>
-              <div style={{ marginTop: 8 }}>
-                <TextArea
-                  value={userConfig?.api.ipWhitelist.join('\n')}
-                  onChange={(e) => handleUpdateConfig('api.ipWhitelist', e.target.value.split('\n').filter(ip => ip.trim()))}
-                  placeholder="每行一个IP地址"
-                  rows={4}
-                />
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text>IP白名单</Text>
+                <div style={{ marginTop: 8 }}>
+                  <TextArea
+                    value={userConfig?.api.ipWhitelist.join('\n')}
+                    onChange={(e) => handleUpdateConfig('api.ipWhitelist', e.target.value.split('\n').filter(ip => ip.trim()))}
+                    placeholder="每行一个IP地址"
+                    rows={4}
+                  />
+                </div>
               </div>
-            </div>
-          </Space>
-        </Col>
-      </Row>
-    </Card>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card title="API密钥管理">
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>API密钥列表</Title>
+              <List
+                dataSource={[
+                  { key: '1', name: '交易API', key: 'sk_live_xxxxxxxxxxxx', permissions: ['读取', '交易'] },
+                  { key: '2', name: '数据API', key: 'sk_live_yyyyyyyyyyyy', permissions: ['读取'] },
+                ]}
+                renderItem={(item) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={item.name}
+                      description={
+                        <div>
+                          <div>密钥: {item.key}</div>
+                          <div>权限: {item.permissions.join(', ')}</div>
+                        </div>
+                      }
+                    />
+                    <Space>
+                      <Button size="small">查看</Button>
+                      <Button size="small" danger>删除</Button>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+              <Button type="dashed" block icon={<PlusOutlined />}>
+                创建新API密钥
+              </Button>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>Webhook配置</Title>
+              <List
+                dataSource={[
+                  { key: '1', url: 'https://example.com/webhook', events: ['trade', 'order'], active: true },
+                  { key: '2', url: 'https://example.com/alert', events: ['alert'], active: false },
+                ]}
+                renderItem={(item) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={item.url}
+                      description={
+                        <div>
+                          <div>事件: {item.events.join(', ')}</div>
+                          <div>状态: <Tag color={item.active ? 'green' : 'red'}>{item.active ? '活跃' : '禁用'}</Tag></div>
+                        </div>
+                      }
+                    />
+                    <Space>
+                      <Button size="small">编辑</Button>
+                      <Button size="small" danger>删除</Button>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+              <Button type="dashed" block icon={<PlusOutlined />}>
+                添加Webhook
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+    </div>
   );
 
   // 渲染数据管理
@@ -950,6 +1184,63 @@ const UserSettings: React.FC = () => {
           </Col>
         </Row>
       </Card>
+
+      <Card title="数据可视化">
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>数据统计图表</Title>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: '交易记录', value: Math.floor(Math.random() * 1000) + 100 },
+                    { name: '订单记录', value: Math.floor(Math.random() * 2000) + 500 },
+                    { name: '持仓记录', value: Math.floor(Math.random() * 100) + 50 },
+                    { name: '策略记录', value: Math.floor(Math.random() * 50) + 10 },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>数据分布</Title>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: '盈利', value: Math.floor(Math.random() * 50) + 30 },
+                        { name: '亏损', value: Math.floor(Math.random() * 30) + 20 },
+                        { name: '持平', value: Math.floor(Math.random() * 20) + 10 },
+                      ]}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      label
+                    >
+                      <Cell fill="#52c41a" />
+                      <Cell fill="#ff4d4f" />
+                      <Cell fill="#faad14" />
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
     </div>
   );
   
@@ -979,14 +1270,131 @@ const UserSettings: React.FC = () => {
   // 渲染系统设置
   const renderSystemSettings = () => (
     <div>
+      <Card title="系统监控" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>系统性能</Title>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic
+                    title="CPU使用率"
+                    value={systemStats.cpuUsage}
+                    suffix="%"
+                    valueStyle={{ color: systemStats.cpuUsage > 80 ? '#cf1322' : '#3f8600' }}
+                  />
+                  <Progress percent={systemStats.cpuUsage} size="small" />
+                </Col>
+                <Col span={12}>
+                  <Statistic
+                    title="内存使用率"
+                    value={systemStats.memoryUsage}
+                    suffix="%"
+                    valueStyle={{ color: systemStats.memoryUsage > 80 ? '#cf1322' : '#3f8600' }}
+                  />
+                  <Progress percent={systemStats.memoryUsage} size="small" />
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic
+                    title="磁盘使用率"
+                    value={systemStats.diskUsage}
+                    suffix="%"
+                    valueStyle={{ color: systemStats.diskUsage > 80 ? '#cf1322' : '#3f8600' }}
+                  />
+                  <Progress percent={systemStats.diskUsage} size="small" />
+                </Col>
+                <Col span={12}>
+                  <Statistic
+                    title="活跃连接"
+                    value={systemStats.activeConnections}
+                    prefix={<DashboardOutlined />}
+                  />
+                </Col>
+              </Row>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>实时性能图表</Title>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Line type="monotone" dataKey="cpu" stroke="#8884d8" strokeWidth={2} />
+                    <Line type="monotone" dataKey="memory" stroke="#82ca9d" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
       <Card title="系统配置" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>刷新设置</Title>
+              <div>
+                <Text>自动刷新</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Switch
+                    checked={autoRefresh}
+                    onChange={setAutoRefresh}
+                  />
+                  <Text style={{ marginLeft: 8 }}>
+                    {autoRefresh ? '已启用' : '已禁用'}
+                  </Text>
+                </div>
+              </div>
+              <div>
+                <Text>刷新间隔</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Select
+                    value={refreshInterval}
+                    onChange={setRefreshInterval}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value={10}>10秒</Option>
+                    <Option value={30}>30秒</Option>
+                    <Option value={60}>1分钟</Option>
+                    <Option value={300}>5分钟</Option>
+                  </Select>
+                </div>
+              </div>
+            </Space>
+          </Col>
+          
+          <Col span={12}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={5}>系统信息</Title>
+              <Descriptions column={2} size="small">
+                <Descriptions.Item label="系统版本">2.0.0</Descriptions.Item>
+                <Descriptions.Item label="运行时间">{systemStats.uptime}</Descriptions.Item>
+                <Descriptions.Item label="数据库版本">PostgreSQL 15</Descriptions.Item>
+                <Descriptions.Item label="Redis版本">Redis 7</Descriptions.Item>
+                <Descriptions.Item label="Python版本">3.12</Descriptions.Item>
+                <Descriptions.Item label="Node.js版本">18</Descriptions.Item>
+              </Descriptions>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+      
+      <Card title="系统配置管理">
         <Table
           dataSource={systemConfigs}
           pagination={{
             pageSize: 10,
             showSizeChanger: true
           }}
-          columns={[ 
+          columns={[
             {
               title: '配置键',
               dataIndex: 'key',
@@ -1034,7 +1442,7 @@ const UserSettings: React.FC = () => {
         />
       </Card>
       
-      <Card title="系统管理" style={{ marginBottom: 16 }}>
+      <Card title="系统管理">
         <Row gutter={16}>
           <Col span={12}>
             <Space direction="vertical" style={{ width: '100%' }}>
@@ -1065,28 +1473,6 @@ const UserSettings: React.FC = () => {
                 </Button>
               </Space>
             </Space>
-          </Col>
-        </Row>
-      </Card>
-      
-      <Card title="系统信息">
-        <Row gutter={16}>
-          <Col span={8}>
-            <Statistic title="配置总数" value={systemConfigs.length} />
-          </Col>
-          <Col span={8}>
-            <Statistic 
-              title="系统配置" 
-              value={systemConfigs.filter(c => c.isSystem).length}
-              valueStyle={{ color: '#cf1322' }}
-            />
-          </Col>
-          <Col span={8}>
-            <Statistic 
-              title="用户配置" 
-              value={systemConfigs.filter(c => !c.isSystem).length}
-              valueStyle={{ color: '#3f8600' }}
-            />
           </Col>
         </Row>
       </Card>

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Tabs, Typography, Row, Col } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Card, message, Tabs, Typography, Row, Col, Spin, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { authAPI, handleApiError } from '../services/api';
 
 const { Title, Text } = Typography;
 
@@ -20,31 +23,39 @@ interface RegisterForm {
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [initialValues, setInitialValues] = useState<Partial<LoginForm>>({});
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  // 初始化时检查是否有记住的用户名
+  useEffect(() => {
+    const rememberedUsername = localStorage.getItem('remembered_username');
+    if (rememberedUsername) {
+      setInitialValues({
+        username: rememberedUsername,
+      });
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (values: LoginForm) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        message.success('登录成功！');
-        // 存储token
-        localStorage.setItem('token', data.access_token);
-        // 跳转到首页
-        window.location.href = '/';
+      await login(values.username, values.password);
+      
+      // 如果选择了记住密码，保存用户名
+      if (rememberMe) {
+        localStorage.setItem('remembered_username', values.username);
       } else {
-        const error = await response.json();
-        message.error(error.message || '登录失败');
+        localStorage.removeItem('remembered_username');
       }
-    } catch (error) {
-      message.error('网络错误，请稍后重试');
+      
+      message.success('登录成功！');
+      navigate('/');
+    } catch (error: any) {
+      const errorMessage = handleApiError(error);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -53,23 +64,18 @@ const LoginPage: React.FC = () => {
   const handleRegister = async (values: RegisterForm) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (response.ok) {
+      // 移除confirm_password字段
+      const { confirm_password, ...registerData } = values;
+      
+      const response = await authAPI.register(registerData);
+      
+      if (response) {
         message.success('注册成功！请登录');
         setActiveTab('login');
-      } else {
-        const error = await response.json();
-        message.error(error.message || '注册失败');
       }
     } catch (error) {
-      message.error('网络错误，请稍后重试');
+      const errorMessage = handleApiError(error);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -98,6 +104,7 @@ const LoginPage: React.FC = () => {
                   <Form
                     name="login"
                     onFinish={handleLogin}
+                    initialValues={initialValues}
                     autoComplete="off"
                     size="large"
                   >
@@ -119,6 +126,17 @@ const LoginPage: React.FC = () => {
                         prefix={<LockOutlined />} 
                         placeholder="密码" 
                       />
+                    </Form.Item>
+
+                    <Form.Item>
+                      <Form.Item name="remember" valuePropName="checked" noStyle>
+                        <Checkbox 
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                        >
+                          记住用户名
+                        </Checkbox>
+                      </Form.Item>
                     </Form.Item>
 
                     <Form.Item>

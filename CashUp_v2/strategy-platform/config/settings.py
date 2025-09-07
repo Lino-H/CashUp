@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """策略平台配置"""
     
     # 基础配置
-    DEBUG: bool = Field(default=True, env="DEBUG")
+    DEBUG: bool = Field(default=False, env="DEBUG")  # 生产环境关闭调试
     HOST: str = Field(default="0.0.0.0", env="HOST")
     PORT: int = Field(default=8003, env="PORT")
     
@@ -45,9 +45,9 @@ class Settings(BaseSettings):
     # API配置
     API_V1_STR: str = "/api/v1"
     
-    # CORS配置
+    # CORS配置 - 生产环境只允许特定域名
     ALLOWED_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080"],
+        default=["http://localhost:3000", "https://cashup.com", "https://www.cashup.com"],
         env="ALLOWED_ORIGINS"
     )
     

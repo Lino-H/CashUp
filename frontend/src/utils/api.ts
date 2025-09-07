@@ -3,11 +3,6 @@ import { message } from 'antd'
 
 // API基础配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
-const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'http://localhost:8001'
-const TRADING_API_URL = import.meta.env.VITE_TRADING_API_URL || 'http://localhost:8002'
-const EXCHANGE_API_URL = import.meta.env.VITE_EXCHANGE_API_URL || 'http://localhost:8003'
-const ORDER_API_URL = import.meta.env.VITE_ORDER_API_URL || 'http://localhost:8006'
-const MONITORING_API_URL = import.meta.env.VITE_MONITORING_API_URL || 'http://localhost:8009'
 const API_TIMEOUT = 30000
 
 // 创建axios实例
@@ -16,7 +11,8 @@ const api: AxiosInstance = axios.create({
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // 启用cookie支持
 })
 
 // 请求拦截器
@@ -330,40 +326,46 @@ setupInterceptors(monitoringApi)
 // 用户服务
 export class UserService {
   // 登录
-  static async login(email: string, password: string) {
-    const response = await userApi.post('/auth/login', { email, password })
+  static async login(username: string, password: string) {
+    const response = await api.post('/api/auth/login', { username, password })
     return response.data
   }
   
   // 注册
   static async register(userData: {
+    username: string
     email: string
     password: string
-    username: string
-    invite_code?: string
+    full_name?: string
   }) {
-    const response = await userApi.post('/auth/register', userData)
+    const response = await api.post('/api/auth/register', userData)
     return response.data
   }
   
   // 获取用户信息
   static async getUserProfile() {
-    const response = await userApi.get('/users/profile')
+    const response = await api.get('/api/auth/me')
     return response.data
   }
   
   // 更新用户信息
   static async updateUserProfile(userData: any) {
-    const response = await userApi.put('/users/profile', userData)
+    const response = await api.put('/api/users/profile', userData)
     return response.data
   }
   
   // 修改密码
   static async changePassword(oldPassword: string, newPassword: string) {
-    const response = await userApi.post('/users/change-password', {
+    const response = await api.post('/api/auth/change-password', {
       old_password: oldPassword,
       new_password: newPassword
     })
+    return response.data
+  }
+  
+  // 登出
+  static async logout() {
+    const response = await api.post('/api/auth/logout')
     return response.data
   }
 }

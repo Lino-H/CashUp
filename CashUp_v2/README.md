@@ -246,6 +246,151 @@ exchanges:
     rate_limit: 10
 ```
 
+## 前端认证功能
+
+### 认证系统概述
+
+CashUp_v2 前端采用 React Context API 实现认证状态管理，支持会话认证机制。所有前端代码位于 `frontend/src/` 目录下。
+
+### 认证架构
+
+```
+frontend/src/
+├── contexts/AuthContext.tsx      # 认证上下文管理
+├── components/ProtectedRoute.tsx # 受保护路由组件
+├── pages/LoginPage.tsx           # 登录页面
+├── services/api.ts              # API服务配置
+└── App.tsx                      # 主应用组件
+```
+
+### 登录流程
+
+1. **用户输入**: 用户名和密码
+2. **API调用**: 发送到 `POST /api/auth/login`
+3. **会话创建**: 后端返回 `session_id` 和用户信息
+4. **状态管理**: 前端存储 `session_id` 并设置认证状态
+5. **页面跳转**: 自动跳转到仪表板页面
+
+### 关键功能
+
+#### 1. 认证上下文 (AuthContext)
+```typescript
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+```
+
+#### 2. 受保护路由 (ProtectedRoute)
+- 检查用户认证状态
+- 未认证用户自动重定向到登录页
+- 支持加载状态显示
+
+#### 3. API拦截器
+- 自动添加 `session_id` 到请求头
+- 统一错误处理
+- 响应数据预处理
+
+### 登录信息
+
+- **管理员账户**: `admin` / `admin123`
+- **API端点**: `POST /api/auth/login`
+- **响应格式**: 
+  ```json
+  {
+    "session_id": "...",
+    "user": {
+      "id": 8,
+      "username": "admin",
+      "email": "admin@cashup.com",
+      "full_name": "系统管理员",
+      "role": "ADMIN"
+    }
+  }
+  ```
+
+### 测试认证功能
+
+#### 方法1: 浏览器测试
+1. 访问: `http://localhost:3000`
+2. 使用 `admin` / `admin123` 登录
+3. 验证页面跳转到仪表板
+4. 检查用户信息显示在右上角
+
+#### 方法2: API测试
+```bash
+# 测试登录
+curl -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# 测试用户信息
+curl -X GET http://localhost:8001/api/auth/me \
+  -H "Cookie: session_id=你的session_id"
+```
+
+#### 方法3: 控制台测试
+在浏览器控制台运行以下脚本：
+```javascript
+// 复制 frontend/public/auth-test.js 到控制台
+await runFullTest();
+```
+
+### 故障排除
+
+#### 常见问题
+
+1. **登录后页面不跳转**
+   - 检查浏览器控制台是否有错误
+   - 确认 `localStorage` 中有 `access_token`
+   - 验证 `isAuthenticated` 状态是否更新
+
+2. **401认证错误**
+   - 检查 `session_id` 是否正确存储
+   - 确认API请求是否包含Cookie头
+   - 验证用户状态是否正常
+
+3. **页面显示空白**
+   - 检查React应用是否正常加载
+   - 确认路由配置是否正确
+   - 查看浏览器控制台是否有JavaScript错误
+
+#### 调试工具
+
+- **浏览器开发者工具**: 查看网络请求和控制台错误
+- **Docker日志**: `docker-compose logs -f frontend`
+- **API测试**: 使用curl或Postman测试后端API
+
+### 配置说明
+
+#### 环境变量
+在 `frontend/.env` 中配置：
+```env
+REACT_APP_API_URL=http://localhost:8001/api
+REACT_APP_TRADING_URL=http://localhost:8002/api
+REACT_APP_STRATEGY_URL=http://localhost:8003/api
+REACT_APP_NOTIFICATION_URL=http://localhost:8004/api
+```
+
+#### API路由配置
+前端API调用使用以下格式：
+```typescript
+// 认证相关
+authAPI.login(username, password)           // POST /api/auth/login
+authAPI.getCurrentUser()                    // GET /api/auth/me
+
+// 策略相关
+strategyAPI.getStrategies()                 // GET /strategies
+strategyAPI.createStrategy(data)           // POST /strategies
+
+// 交易相关
+tradingAPI.getOrders()                      // GET /orders
+tradingAPI.createOrder(data)                // POST /orders
+```
+
 ## 常用命令
 
 ### 开发命令

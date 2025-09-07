@@ -3,7 +3,7 @@
  * Real-time Trading Monitoring Page - Connected to Real APIs
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Row,
@@ -27,12 +27,14 @@ import {
   Progress,
   Popconfirm,
 } from 'antd';
+import { handleApiResponse, handleApiError, MarketDataResponse } from '../services/api';
+import { dataCache } from '../utils/cache';
 import {
-  RiseOutlined as TrendingUp,
-  FallOutlined as TrendingDown,
-  DollarCircleOutlined as DollarCircle,
-  PercentageOutlined as Percentage,
-  ClockCircleOutlined as ClockCircle,
+  RiseOutlined,
+  FallOutlined,
+  DollarCircleOutlined,
+  PercentageOutlined,
+  ClockCircleOutlined,
   BarChartOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -47,7 +49,6 @@ import moment from 'moment';
 import {
   strategyAPI,
   tradingAPI,
-  MarketData,
   Strategy,
   Order,
   Position,
@@ -64,7 +65,7 @@ const RealTimeTrading: React.FC = () => {
   
   // 数据状态
   const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [marketData, setMarketData] = useState<MarketData[]>([]);
+  const [marketData, setMarketData] = useState<MarketDataResponse[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [marketOverview, setMarketOverview] = useState<any>(null);
@@ -88,7 +89,7 @@ const RealTimeTrading: React.FC = () => {
   const fetchAccountInfo = async () => {
     try {
       const response = await tradingAPI.getAccountInfo();
-      setAccountInfo(response.data);
+      setAccountInfo(response);
     } catch (error) {
       console.error('获取账户信息失败:', error);
     }
@@ -135,11 +136,24 @@ const RealTimeTrading: React.FC = () => {
   // 获取策略列表
   const fetchStrategies = async () => {
     try {
-      const response = await strategyAPI.getStrategies();
-      setStrategies(response.data || []);
+      const response = await dataCache.fetchWithCache(
+        'strategies',
+        async () => {
+          const apiResponse = await strategyAPI.getStrategies();
+          return handleApiResponse(apiResponse) as Strategy[];
+        },
+        { ttl: 2 * 60 * 1000 } // 2分钟缓存
+      );
+      
+      if (response && Array.isArray(response)) {
+        setStrategies(response);
+      } else if (response && (response as any).strategies) {
+        setStrategies((response as any).strategies);
+      }
     } catch (error) {
+      const errorMessage = handleApiError(error);
       console.error('获取策略列表失败:', error);
-      message.error('获取策略列表失败');
+      message.error(errorMessage);
     }
   };
   
@@ -149,8 +163,8 @@ const RealTimeTrading: React.FC = () => {
       const promises = selectedSymbols.map(symbol => 
         strategyAPI.getRealTimeData(symbol)
       );
-      const responses = await Promise.all(promises);
-      const data = responses.map(response => response.data);
+      const responses: any = await Promise.all(promises);
+      const data = responses.map((response: any) => response);
       setMarketData(data);
     } catch (error) {
       console.error('获取市场数据失败:', error);
@@ -162,7 +176,7 @@ const RealTimeTrading: React.FC = () => {
   const fetchMarketOverview = async () => {
     try {
       const response = await strategyAPI.getMarketOverview();
-      setMarketOverview(response.data);
+      setMarketOverview(response);
     } catch (error) {
       console.error('获取市场概览失败:', error);
     }
@@ -171,12 +185,12 @@ const RealTimeTrading: React.FC = () => {
   // 获取最近订单
   const fetchRecentOrders = async () => {
     try {
-      const response = await tradingAPI.getOrders({ 
+      const response: any = await tradingAPI.getOrders({ 
         limit: 50, 
         sort_by: 'timestamp', 
         sort_order: 'desc' 
       });
-      setRecentOrders(response.data || []);
+      setRecentOrders(response || []);
     } catch (error) {
       console.error('获取最近订单失败:', error);
       message.error('获取最近订单失败');
@@ -186,8 +200,8 @@ const RealTimeTrading: React.FC = () => {
   // 获取持仓数据
   const fetchPositions = async () => {
     try {
-      const response = await tradingAPI.getPositions();
-      setPositions(response.data || []);
+      const response: any = await tradingAPI.getPositions();
+      setPositions(response || []);
     } catch (error) {
       console.error('获取持仓数据失败:', error);
       message.error('获取持仓数据失败');
@@ -243,11 +257,14 @@ const RealTimeTrading: React.FC = () => {
   useEffect(() => {
     loadAllData();
     if (autoRefresh) {
-      const interval = setInterval(() => {
-        fetchMarketData();
-        fetchRecentOrders();
-        fetchPositions();
-        fetchAccountInfo();
+      const interval = setInterval(async () => {
+        const promises = [
+          fetchMarketData(),
+          fetchRecentOrders(),
+          fetchPositions(),
+          fetchAccountInfo()
+        ];
+        await Promise.all(promises);
       }, refreshInterval);
       return () => clearInterval(interval);
     }
@@ -665,7 +682,7 @@ const RealTimeTrading: React.FC = () => {
                     <Col span={12}>
                       <div style={{ fontWeight: 'bold' }}>{data.symbol}</div>
                       <div style={{ fontSize: 18, color: data.changePercent24h >= 0 ? '#3f8600' : '#cf1322' }}>
-                        ${data.price.toFixed(2)}
+  ${Number(data.price || 0).toFixed(2)}
                       </div>
                     </Col>
                     <Col span={12}>

@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message, Checkbox, Divider } fro
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { UserService } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const { Title, Text, Link } = Typography
 
@@ -24,6 +25,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const [form] = Form.useForm()
+  const { login } = useAuth()
 
   const handleLogin = async (values: LoginForm) => {
     setLoading(true)
@@ -31,28 +33,36 @@ const Login: React.FC = () => {
       // 调用真实的登录API
       const response = await UserService.login(values.email, values.password)
       
-      if (response.access_token) {
-        // 保存token和用户信息
-        localStorage.setItem('access_token', response.access_token)
-        if (response.refresh_token) {
-          localStorage.setItem('refresh_token', response.refresh_token)
-        }
+      if (response.session_id) {
+        // 保存session ID
+        localStorage.setItem('access_token', response.session_id)
         
         // 获取用户信息
         try {
           const userProfile = await UserService.getUserProfile()
-          localStorage.setItem('user_info', JSON.stringify(userProfile))
+          // 使用auth context登录
+          login(userProfile.user, response.session_id)
+          message.success('登录成功！')
+          navigate('/dashboard')
         } catch (profileError) {
           console.warn('获取用户信息失败:', profileError)
           // 使用基本信息
-          localStorage.setItem('user_info', JSON.stringify({
+          const basicUser = {
+            id: 0,
+            username: values.email,
             email: values.email,
-            username: values.email.split('@')[0]
-          }))
+            full_name: '',
+            bio: '',
+            timezone: 'UTC',
+            language: 'zh-CN',
+            is_email_verified: false,
+            roles: ['user'],
+            created_at: new Date().toISOString()
+          }
+          login(basicUser, response.session_id)
+          message.success('登录成功！')
+          navigate('/dashboard')
         }
-        
-        message.success('登录成功！')
-        navigate('/dashboard')
       } else {
         message.error('登录失败：无效的响应格式')
       }
@@ -107,8 +117,8 @@ const Login: React.FC = () => {
 
   const handleDemoLogin = () => {
     form.setFieldsValue({
-      email: 'demo@cashup.com',
-      password: 'demo123',
+      email: 'admin',
+      password: 'admin123',
       remember: true
     })
   }

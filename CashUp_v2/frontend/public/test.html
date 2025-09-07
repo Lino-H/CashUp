@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth</title>
+</head>
+<body>
+    <h1>Test Authentication</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testUserInfo()">Test User Info</button>
+    <button onclick="checkToken()">Check Token</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                if (response.ok) {
+                    // 保存session_id用于后续测试
+                    if (data.session_id) {
+                        localStorage.setItem('access_token', data.session_id);
+                    }
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        async function testUserInfo() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('result').innerHTML = 'No token found';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cookie': `session_id=${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        function checkToken() {
+            const token = localStorage.getItem('access_token');
+            document.getElementById('result').innerHTML = 'Token: ' + (token ? 'Found' : 'Not found');
+        }
+    </script>
+</body>
+</html>

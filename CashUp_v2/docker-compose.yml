@@ -66,6 +66,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - DEBUG=true
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
     depends_on:
       - postgres
       - redis
@@ -92,6 +93,7 @@ services:
       - TRADING_ENGINE_URL=http://trading-engine:8002
       - DEBUG=true
       - PYTHONPATH=/app
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
     depends_on:
       - postgres
       - redis
@@ -104,7 +106,7 @@ services:
     restart: unless-stopped
     networks:
       - cashup_network
-    command: uvicorn main:app --host 0.0.0.0 --port 8003 --reload
+    command: sh -c "PYTHONPATH=/app uvicorn minimal_main:app --host 0.0.0.0 --port 8003 --reload-dir /app"
 
   # 通知服务
   notification-service:
@@ -119,6 +121,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - DEBUG=true
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
     depends_on:
       - postgres
       - redis
@@ -139,10 +142,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost/api/core
-      - REACT_APP_TRADING_URL=http://localhost/api/trading
-      - REACT_APP_STRATEGY_URL=http://localhost/api/strategy
-      - REACT_APP_NOTIFICATION_URL=http://localhost/api/notification
+      - REACT_APP_API_URL=http://localhost:8001/api
+      - REACT_APP_TRADING_URL=http://localhost:8002/api
+      - REACT_APP_STRATEGY_URL=http://localhost:8003/api
+      - REACT_APP_NOTIFICATION_URL=http://localhost:8004/api
     depends_on:
       - core-service
       - trading-engine
@@ -162,7 +165,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./frontend/nginx/default.conf:/etc/nginx/nginx.conf
+      - ./frontend/build:/usr/share/nginx/html
+      - ./frontend/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - core-service
       - trading-engine

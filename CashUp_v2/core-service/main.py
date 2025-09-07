@@ -72,9 +72,12 @@ app = FastAPI(
 )
 
 # 配置CORS
+import os
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

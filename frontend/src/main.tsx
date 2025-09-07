@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { router } from './router'
+import { router, AppWithAuthProvider } from './router'
 import './index.css'
 
 // 配置 dayjs 中文

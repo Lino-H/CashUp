@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Dropdown, Badge, Typography, Space } from 'antd'
+import { useAuth } from './contexts/AuthContext'
+import { UserService } from './utils/api'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -20,6 +22,7 @@ const { Title } = Typography
 
 function App() {
   const [collapsed, setCollapsed] = useState(false)
+  const { isAuthenticated, user, loading, logout } = useAuth()
 
   // 菜单项配置
   const menuItems = [
@@ -91,10 +94,14 @@ function App() {
   }
 
   // 处理用户菜单点击
-  const handleUserMenuClick = ({ key }: { key: string }) => {
+  const handleUserMenuClick = async ({ key }: { key: string }) => {
     if (key === 'logout') {
-      localStorage.removeItem('access_token')
-      navigate('/login')
+      try {
+        await UserService.logout()
+      } catch (error) {
+        console.error('Logout API call failed:', error)
+      }
+      logout()
     }
   }
 
@@ -156,12 +163,18 @@ function App() {
             </Badge>
 
             {/* 用户头像和下拉菜单 */}
-            <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
-              <Space className="cursor-pointer hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors">
-                <Avatar size="small" icon={<UserOutlined />} />
-                <span className="text-gray-700">交易员</span>
-              </Space>
-            </Dropdown>
+            {isAuthenticated && user ? (
+              <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
+                <Space className="cursor-pointer hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors">
+                  <Avatar size="small" icon={<UserOutlined />} />
+                  <span className="text-gray-700">{user.username || user.email || '用户'}</span>
+                </Space>
+              </Dropdown>
+            ) : (
+              <div className="text-gray-500">
+                未登录
+              </div>
+            )}
           </div>
         </Header>
 
