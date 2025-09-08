@@ -151,8 +151,6 @@ services:
       - trading-engine
       - strategy-platform
       - notification-service
-    volumes:
-      - /app/node_modules
     restart: unless-stopped
     networks:
       - cashup_network
@@ -168,10 +166,6 @@ services:
       - ./frontend/build:/usr/share/nginx/html
       - ./frontend/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - core-service
-      - trading-engine
-      - strategy-platform
-      - notification-service
       - frontend
     restart: unless-stopped
     networks:

@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18-alpine as builder
 
 # 设置工作目录
 WORKDIR /app
@@ -6,8 +6,8 @@ WORKDIR /app
 # 复制package文件
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production
+# 安装依赖（包括开发依赖）
+RUN npm ci
 
 # 复制源代码
 COPY . .
@@ -19,10 +19,10 @@ RUN npm run build
 FROM nginx:alpine
 
 # 复制构建的文件到nginx
-COPY --from=0 /app/build /usr/share/nginx/html
+COPY --from=builder /app/build /usr/share/nginx/html
 
 # 复制nginx配置
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx/simple.conf /etc/nginx/nginx.conf
 
 # 暴露端口
 EXPOSE 3000

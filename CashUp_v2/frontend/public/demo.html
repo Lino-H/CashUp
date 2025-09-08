@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CashUp v2 高级分析模块演示</title>
+    <script src="https://cdn.jsdelivr.net/npm/antd@5.12.8/dist/antd.min.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #1890ff;
+        }
+        .header h1 {
+            color: #1890ff;
+            margin-bottom: 16px;
+        }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .module-card {
+            border: 1px solid #d9d9d9;
+            border-radius: 12px;
+            padding: 24px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .module-card h3 {
+            color: #1890ff;
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+        .module-card .metric {
+            font-size: 32px;
+            font-weight: bold;
+            color: #52c41a;
+            margin-bottom: 8px;
+        }
+        .module-card .description {
+            color: #666;
+            line-height: 1.6;
+        }
+        .module-card .features {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        .module-card .features ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .module-card .features li {
+            margin-bottom: 4px;
+            color: #333;
+        }
+        .status-section {
+            background: #f0f2f5;
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 40px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .status-card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #d9d9d9;
+        }
+        .status-card h4 {
+            margin-top: 0;
+            color: #1890ff;
+        }
+        .status-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #52c41a;
+        }
+        .login-notice {
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .login-notice h3 {
+            color: #fa8c16;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CashUp v2 量化交易平台</h1>
+            <p>专业级量化交易平台 - 集成高级分析模块</p>
+        </div>
+
+        <div class="login-notice">
+            <h3>🔐 登录提示</h3>
+            <p>要体验完整功能，请使用以下账号登录：<strong>admin / admin123</strong></p>
+            <p>登录后即可访问所有高级分析模块和自动化功能</p>
+        </div>
+
+        <h2>🎯 高级分析模块</h2>
+        <div class="module-grid">
+            <div class="module-card" onclick="showModule('technical')">
+                <h3>📈 技术分析模块</h3>
+                <div class="metric">94%</div>
+                <div class="description">专业技术指标分析</div>
+                <div class="features">
+                    <ul>
+                        <li>MA、MACD、RSI、KDJ指标</li>
+                        <li>布林带、威廉指标</li>
+                        <li>量价分析、支撑阻力位</li>
+                        <li>实时图表和预警</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="module-card" onclick="showModule('fundamental')">
+                <h3>💰 基本面分析模块</h3>
+                <div class="metric">87%</div>
+                <div class="description">深度财务指标分析</div>
+                <div class="features">
+                    <ul>
+                        <li>PE、PB、ROE、ROA</li>
+                        <li>负债率、流动比率</li>
+                        <li>现金流分析</li>
+                        <li>行业对比和估值</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="module-card" onclick="showModule('sentiment')">
+                <h3>😊 情绪分析模块</h3>
+                <div class="metric">76%</div>
+                <div class="description">市场情绪监控</div>
+                <div class="features">
+                    <ul>
+                        <li>恐慌贪婪指数</li>
+                        <li>新闻情感分析</li>
+                        <li>社交媒体情绪</li>
+                        <li>情绪指标预警</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="module-card" onclick="showModule('risk')">
+                <h3>⚠️ 风险管理模块</h3>
+                <div class="metric">82%</div>
+                <div class="description">专业风险评估</div>
+                <div class="features">
+                    <ul>
+                        <li>VaR计算</li>
+                        <li>最大回撤分析</li>
+                        <li>夏普比率</li>
+                        <li>风险控制建议</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="module-card" onclick="showModule('auto-trading')">
+                <h3>🤖 自动化交易模块</h3>
+                <div class="metric">12个策略</div>
+                <div class="description">智能交易执行</div>
+                <div class="features">
+                    <ul>
+                        <li>24/7自动执行</li>
+                        <li>智能调优</li>
+                        <li>订单管理</li>
+                        <li>止损止盈</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="module-card" onclick="showModule('strategy-auto')">
+                <h3>🎯 策略自动化模块</h3>
+                <div class="metric">8个任务</div>
+                <div class="description">策略开发和优化</div>
+                <div class="features">
+                    <ul>
+                        <li>策略开发</li>
+                        <li>参数优化</li>
+                        <li>回测引擎</li>
+                        <li>自动报告</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-section">
+            <h2>📊 系统状态</h2>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h4>核心服务</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+                <div class="status-card">
+                    <h4>交易引擎</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+                <div class="status-card">
+                    <h4>策略平台</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+                <div class="status-card">
+                    <h4>通知服务</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+                <div class="status-card">
+                    <h4>数据库</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+                <div class="status-card">
+                    <h4>缓存服务</h4>
+                    <div class="value">✓ 正常</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showModule(moduleName) {
+            const messages = {
+                'technical': '技术分析模块：包含MA、MACD、RSI、KDJ、布林带等专业指标分析功能',
+                'fundamental': '基本面分析模块：PE、PB、ROE、负债率等基本面指标深度分析',
+                'sentiment': '情绪分析模块：市场情绪、新闻情感、社交媒体情绪监控',
+                'risk': '风险管理模块：VaR计算、最大回撤、夏普比率等风险评估工具',
+                'auto-trading': '自动化交易模块：智能调优、策略执行、24/7自动交易',
+                'strategy-auto': '策略自动化模块：策略开发、参数优化、回测引擎'
+            };
+            
+            antd.message.info(messages[moduleName] || '模块信息加载中...', 3);
+        }
+
+        // 页面加载动画
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.module-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -35,7 +35,7 @@ import {
 } from 'antd';
 import {
   WarningOutlined,
-  ExclamationTriangleOutlined,
+  ExclamationCircleOutlined,
   SafetyOutlined,
   ShieldOutlined,
   FireOutlined,
@@ -261,7 +261,7 @@ const getAlertIcon = (type: string): React.ReactNode => {
     case 'error': return <CloseCircleOutlined />;
     case 'warning': return <WarningOutlined />;
     case 'info': return <InfoCircleOutlined />;
-    default: return <ExclamationTriangleOutlined />;
+    default: return <ExclamationCircleOutlined />;
   }
 };
 

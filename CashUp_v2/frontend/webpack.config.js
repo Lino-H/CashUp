@@ -25,9 +25,10 @@ module.exports = (env) => {
     
     output: {
       path: path.resolve(__dirname, 'build'),
-      filename: 'js/[name].[contenthash].js',
-      chunkFilename: 'js/[name].[contenthash].chunk.js',
+      filename: '[name].[contenthash].js',
+      chunkFilename: '[name].[contenthash].chunk.js',
       publicPath: '/',
+      assetModuleFilename: 'static/media/[name].[hash][ext]',
       clean: true,
     },
     
