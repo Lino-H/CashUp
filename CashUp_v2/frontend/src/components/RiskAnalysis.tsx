@@ -32,12 +32,13 @@ import {
   Calendar,
   Tabs,
   Spin,
+  message,
 } from 'antd';
 import {
   WarningOutlined,
   ExclamationCircleOutlined,
   SafetyOutlined,
-  ShieldOutlined,
+  SafetyCertificateOutlined,
   FireOutlined,
   ThunderboltOutlined,
   DashboardOutlined,
@@ -68,14 +69,13 @@ import {
   ClockCircleOutlined,
   PercentageOutlined,
   HomeOutlined,
-  BanknoteOutlined,
-  SafetyCertificateOutlined,
-  RocketLaunchOutlined,
+  BankOutlined as BanknoteOutlined,
+  RocketOutlined as RocketLaunchOutlined,
   AntDesignOutlined,
   FundOutlined,
   FundProjectionScreenOutlined,
   StockOutlined as StockOutlined2,
-  WarningFilledOutlined,
+  WarningOutlined as WarningFilledOutlined,
 } from '@ant-design/icons';
 
 import {
@@ -104,7 +104,7 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RadioGroup } = Radio;
+const RadioGroup = Radio.Group;
 const { TabPane } = Tabs;
 
 // 风险数据类型定义
@@ -145,85 +145,20 @@ export interface RiskAlert {
   category: 'market' | 'position' | 'portfolio' | 'system';
 }
 
-// 生成模拟风险数据
-const generateMockRiskData = (): RiskData[] => {
-  const data: RiskData[] = [];
-  const now = Date.now();
-  
-  for (let i = 30; i >= 0; i--) {
-    const timestamp = now - (i * 60 * 60 * 1000); // 每小时一个数据点
-    const baseVaR = 0.02 + Math.sin(i * 0.1) * 0.01;
-    const baseMarket = 0.015 + Math.random() * 0.01;
-    const baseCredit = 0.008 + Math.random() * 0.005;
-    const baseLiquidity = 0.01 + Math.random() * 0.008;
-    const baseOperational = 0.005 + Math.random() * 0.003;
-    
-    data.push({
-      timestamp,
-      portfolioVaR: baseVaR,
-      positionVaR: baseVaR * 0.8,
-      marketRisk: baseMarket,
-      creditRisk: baseCredit,
-      liquidityRisk: baseLiquidity,
-      operationalRisk: baseOperational,
-      overallRisk: baseVaR * 1.2,
-      stressTest: baseVaR * 1.8,
-    });
-  }
-  
-  return data;
+// API调用函数
+const fetchRiskData = async (portfolioId: string, timeframe: string): Promise<RiskData[]> => {
+  // 这里应该调用真实的风险分析API
+  throw new Error('风险数据API尚未实现');
 };
 
-// 生成模拟持仓风险数据
-const generateMockPositionRisk = (): PositionRisk[] => {
-  const positions = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'SOL/USDT'];
-  return positions.map((symbol, index) => ({
-    symbol,
-    positionSize: 0.5 + Math.random() * 2,
-    currentPrice: 1000 + Math.random() * 50000,
-    dailyPnL: (Math.random() - 0.5) * 1000,
-    riskScore: Math.random() * 100,
-    VaR: Math.random() * 0.05,
-    beta: 0.8 + Math.random() * 0.4,
-    correlation: Math.random(),
-    concentrationRisk: Math.random() * 50,
-    stopLoss: -0.05 + Math.random() * 0.1,
-    takeProfit: 0.05 + Math.random() * 0.2,
-  }));
+const fetchPositionRisk = async (portfolioId: string): Promise<PositionRisk[]> => {
+  // 这里应该调用真实的持仓风险API
+  throw new Error('持仓风险API尚未实现');
 };
 
-// 生成模拟风险警报
-const generateMockRiskAlerts = (): RiskAlert[] => {
-  const alerts: RiskAlert[] = [];
-  const alertTypes = ['warning', 'error', 'info'] as const;
-  const severities = ['low', 'medium', 'high', 'critical'] as const;
-  const categories = ['market', 'position', 'portfolio', 'system'] as const;
-  
-  const titles = [
-    'VaR 超过阈值',
-    '持仓集中度过高',
-    '市场波动率异常',
-    '流动性风险增加',
-    '相关性风险上升',
-    '压力测试结果异常',
-    '系统风险监测',
-    '信用风险预警',
-  ];
-  
-  for (let i = 0; i < 8; i++) {
-    alerts.push({
-      id: `alert_${i}`,
-      type: alertTypes[Math.floor(Math.random() * alertTypes.length)],
-      severity: severities[Math.floor(Math.random() * severities.length)],
-      title: titles[Math.floor(Math.random() * titles.length)],
-      description: `风险警报详情 ${i + 1}`,
-      timestamp: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      acknowledged: Math.random() > 0.3,
-      category: categories[Math.floor(Math.random() * categories.length)],
-    });
-  }
-  
-  return alerts.sort((a, b) => b.timestamp - a.timestamp);
+const fetchRiskAlerts = async (portfolioId: string): Promise<RiskAlert[]> => {
+  // 这里应该调用真实的风险警报API
+  throw new Error('风险警报API尚未实现');
 };
 
 // 风险颜色映射
@@ -265,6 +200,21 @@ const getAlertIcon = (type: string): React.ReactNode => {
   }
 };
 
+// 数据验证工具函数
+const validateRiskData = (data: RiskData[]): RiskData[] => {
+  return data.map(item => ({
+    ...item,
+    portfolioVaR: item.portfolioVaR || 0,
+    marketRisk: item.marketRisk || 0,
+    creditRisk: item.creditRisk || 0,
+    liquidityRisk: item.liquidityRisk || 0,
+    operationalRisk: item.operationalRisk || 0,
+    overallRisk: item.overallRisk || 0,
+    stressTest: item.stressTest || 0,
+    positionVaR: item.positionVaR || 0,
+  }));
+};
+
 interface RiskAnalysisProps {
   portfolioId?: string;
   timeframe?: string;
@@ -292,55 +242,92 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
     const initializeData = async () => {
       setLoading(true);
       try {
-        const mockRiskData = generateMockRiskData();
-        const mockPositionRisk = generateMockPositionRisk();
-        const mockRiskAlerts = generateMockRiskAlerts();
+        const [riskDataResult, positionRiskResult, riskAlertsResult] = await Promise.allSettled([
+          fetchRiskData(portfolioId, selectedTimeframe),
+          fetchPositionRisk(portfolioId),
+          fetchRiskAlerts(portfolioId)
+        ]);
         
-        setRiskData(mockRiskData);
-        setPositionRisk(mockPositionRisk);
-        setRiskAlerts(mockRiskAlerts);
+        if (riskDataResult.status === 'fulfilled') {
+          setRiskData(riskDataResult.value);
+          if (riskDataResult.value.length > 0) {
+            onRiskChange?.(riskDataResult.value[riskDataResult.value.length - 1]);
+          }
+        } else {
+          console.error('获取风险数据失败:', riskDataResult.reason);
+          message.error(`风险数据加载失败: ${riskDataResult.reason.message}`);
+        }
         
-        if (mockRiskData.length > 0) {
-          onRiskChange?.(mockRiskData[mockRiskData.length - 1]);
+        if (positionRiskResult.status === 'fulfilled') {
+          setPositionRisk(positionRiskResult.value);
+        } else {
+          console.error('获取持仓风险失败:', positionRiskResult.reason);
+          message.error(`持仓风险数据加载失败: ${positionRiskResult.reason.message}`);
+        }
+        
+        if (riskAlertsResult.status === 'fulfilled') {
+          setRiskAlerts(riskAlertsResult.value);
+        } else {
+          console.error('获取风险警报失败:', riskAlertsResult.reason);
+          message.error(`风险警报数据加载失败: ${riskAlertsResult.reason.message}`);
         }
       } catch (error) {
-        console.error('Failed to initialize risk data:', error);
+        console.error('初始化风险数据失败:', error);
       } finally {
         setLoading(false);
       }
     };
 
     initializeData();
-  }, []);
+  }, [portfolioId, selectedTimeframe]);
 
   // 自动刷新
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(() => {
-      const newData = generateMockRiskData();
-      const newPositionRisk = generateMockPositionRisk();
-      const newRiskAlerts = generateMockRiskAlerts();
-      
-      setRiskData(newData);
-      setPositionRisk(newPositionRisk);
-      setRiskAlerts(newRiskAlerts);
-      
-      if (newData.length > 0) {
-        onRiskChange?.(newData[newData.length - 1]);
+    const interval = setInterval(async () => {
+      try {
+        const [riskDataResult, positionRiskResult, riskAlertsResult] = await Promise.allSettled([
+          fetchRiskData(portfolioId, selectedTimeframe),
+          fetchPositionRisk(portfolioId),
+          fetchRiskAlerts(portfolioId)
+        ]);
+        
+        if (riskDataResult.status === 'fulfilled') {
+          setRiskData(riskDataResult.value);
+          if (riskDataResult.value.length > 0) {
+            onRiskChange?.(riskDataResult.value[riskDataResult.value.length - 1]);
+          }
+        }
+        
+        if (positionRiskResult.status === 'fulfilled') {
+          setPositionRisk(positionRiskResult.value);
+        }
+        
+        if (riskAlertsResult.status === 'fulfilled') {
+          setRiskAlerts(riskAlertsResult.value);
+        }
+      } catch (error) {
+        console.error('自动刷新风险数据失败:', error);
       }
     }, 30000); // 每30秒刷新一次
 
     return () => clearInterval(interval);
-  }, [autoRefresh, onRiskChange]);
+  }, [autoRefresh, onRiskChange, portfolioId, selectedTimeframe]);
 
   // 处理时间周期变化
-  const handleTimeframeChange = useCallback((value: string) => {
+  const handleTimeframeChange = useCallback(async (value: string) => {
     setSelectedTimeframe(value);
-    // 这里可以根据新的时间周期重新获取数据
-    const newData = generateMockRiskData();
-    setRiskData(newData);
-  }, []);
+    setLoading(true);
+    try {
+      const newData = await fetchRiskData(portfolioId, value);
+      setRiskData(newData);
+    } catch (error) {
+      console.error('获取新时间周期数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [portfolioId]);
 
   // 处理警报详情
   const handleAlertClick = useCallback((alert: RiskAlert) => {
@@ -359,7 +346,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
 
   // 渲染风险趋势图
   const renderRiskTrendChart = () => {
-    if (!riskData.length || loading) {
+    if (loading) {
       return (
         <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Spin size="large" />
@@ -367,14 +354,25 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       );
     }
 
-    const latestData = riskData[riskData.length - 1];
-    const chartData = riskData.map(data => ({
+    if (!riskData || riskData.length === 0) {
+      return (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <Alert message="暂无风险数据" type="info" />
+        </div>
+      );
+    }
+    
+    // 确保数据字段存在
+    const validatedData = validateRiskData(riskData);
+
+    const latestData = validatedData[validatedData.length - 1];
+    const chartData = validatedData.map(data => ({
       time: new Date(data.timestamp).toLocaleDateString(),
-      portfolioVaR: data.portfolioVaR * 100,
-      marketRisk: data.marketRisk * 100,
-      creditRisk: data.creditRisk * 100,
-      liquidityRisk: data.liquidityRisk * 100,
-      overallRisk: data.overallRisk * 100,
+      portfolioVaR: (data.portfolioVaR || 0) * 100,
+      marketRisk: (data.marketRisk || 0) * 100,
+      creditRisk: (data.creditRisk || 0) * 100,
+      liquidityRisk: (data.liquidityRisk || 0) * 100,
+      overallRisk: (data.overallRisk || 0) * 100,
     }));
 
     return (
@@ -387,7 +385,6 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
           <Area 
             type="monotone" 
             dataKey="portfolioVaR" 
-            stackId="1"
             stroke="#1890ff" 
             fill="#1890ff" 
             fillOpacity={0.3}
@@ -396,7 +393,6 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
           <Area 
             type="monotone" 
             dataKey="marketRisk" 
-            stackId="2"
             stroke="#52c41a" 
             fill="#52c41a" 
             fillOpacity={0.3}
@@ -405,7 +401,6 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
           <Area 
             type="monotone" 
             dataKey="creditRisk" 
-            stackId="3"
             stroke="#faad14" 
             fill="#faad14" 
             fillOpacity={0.3}
@@ -414,7 +409,6 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
           <Area 
             type="monotone" 
             dataKey="liquidityRisk" 
-            stackId="4"
             stroke="#fa8c16" 
             fill="#fa8c16" 
             fillOpacity={0.3}
@@ -436,7 +430,9 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
   const renderRiskMetrics = () => {
     if (!riskData.length || loading) return null;
 
-    const latestData = riskData[riskData.length - 1];
+    const validatedData = validateRiskData(riskData);
+    
+    const latestData = validatedData[validatedData.length - 1];
 
     return (
       <Row gutter={[16, 16]}>
@@ -554,7 +550,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
             percent={text}
             strokeColor={getRiskColor(text / 100)}
             trailColor="#f0f0f0"
-            width={60}
+            size={60}
             format={() => text.toFixed(0)}
           />
         ),
@@ -686,14 +682,16 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
   const renderRiskRadar = () => {
     if (!riskData.length || loading) return null;
 
-    const latestData = riskData[riskData.length - 1];
+    const validatedData = validateRiskData(riskData);
+    
+    const latestData = validatedData[validatedData.length - 1];
     const radarData = [
-      { subject: '市场风险', A: latestData.marketRisk * 100, fullMark: 100 },
-      { subject: '信用风险', A: latestData.creditRisk * 100, fullMark: 100 },
-      { subject: '流动性风险', A: latestData.liquidityRisk * 100, fullMark: 100 },
-      { subject: '操作风险', A: latestData.operationalRisk * 100, fullMark: 100 },
-      { subject: 'VaR风险', A: latestData.portfolioVaR * 100, fullMark: 100 },
-      { subject: '压力测试', A: latestData.stressTest * 100, fullMark: 100 },
+      { subject: '市场风险', A: (latestData.marketRisk || 0) * 100, fullMark: 100 },
+      { subject: '信用风险', A: (latestData.creditRisk || 0) * 100, fullMark: 100 },
+      { subject: '流动性风险', A: (latestData.liquidityRisk || 0) * 100, fullMark: 100 },
+      { subject: '操作风险', A: (latestData.operationalRisk || 0) * 100, fullMark: 100 },
+      { subject: 'VaR风险', A: (latestData.portfolioVaR || 0) * 100, fullMark: 100 },
+      { subject: '压力测试', A: (latestData.stressTest || 0) * 100, fullMark: 100 },
     ];
 
     return (

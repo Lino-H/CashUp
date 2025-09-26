@@ -11,10 +11,11 @@ const CompressionPlugin = require('compression-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = (env) => {
-  const isProduction = env.NODE_ENV === 'production';
-  
+  const isProduction = env === 'production';
+
   return {
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
@@ -87,7 +88,7 @@ module.exports = (env) => {
         {
           test: /\.css$/,
           use: [
-            'style-loader',
+            isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
             'css-loader',
             {
               loader: 'postcss-loader',
@@ -253,6 +254,23 @@ module.exports = (env) => {
     },
     
     plugins: [
+      // 生成HTML文件
+      new HtmlWebpackPlugin({
+        template: './public/index.html',
+        filename: 'index.html',
+        minify: isProduction ? {
+          removeComments: true,
+          collapseWhitespace: true,
+          removeRedundantAttributes: true,
+          useShortDoctype: true,
+          removeEmptyAttributes: true,
+          removeStyleLinkTypeAttributes: true,
+          keepClosingSlash: true,
+          minifyCSS: true,
+          minifyJS: true,
+        } : false,
+      }),
+      
       // 压缩插件
       ...(isProduction ? [
         new CompressionPlugin({
@@ -275,8 +293,14 @@ module.exports = (env) => {
       
       // 定义环境变量
       new webpack.DefinePlugin({
-        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+        'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
         'process.env.VERSION': JSON.stringify(require('./package.json').version),
+        'window.ENV': {
+          REACT_APP_API_URL: JSON.stringify('/api'),
+          REACT_APP_TRADING_URL: JSON.stringify('/api/trading'),
+          REACT_APP_STRATEGY_URL: JSON.stringify('/api/strategy'),
+          REACT_APP_NOTIFICATION_URL: JSON.stringify('/api/notification'),
+        },
       }),
     ],
     
@@ -289,14 +313,79 @@ module.exports = (env) => {
       static: {
         directory: path.join(__dirname, 'public'),
       },
+      onBeforeSetupMiddleware: (devServer) => {
+        if (!devServer) {
+          throw new Error('webpack-dev-server is not defined');
+        }
+
+        const http = require('http');
+        const { createProxyMiddleware } = require('http-proxy-middleware');
+
+        devServer.app.use('/api/core', createProxyMiddleware({
+          target: 'http://localhost:8001',
+          changeOrigin: true,
+          pathRewrite: {
+            '^/api/core': ''
+          },
+          secure: false,
+        }));
+
+        devServer.app.use('/api/trading', createProxyMiddleware({
+          target: 'http://localhost:8002',
+          changeOrigin: true,
+          pathRewrite: {
+            '^/api/trading': ''
+          },
+          secure: false,
+        }));
+
+        devServer.app.use('/api/strategy', createProxyMiddleware({
+          target: 'http://localhost:8003',
+          changeOrigin: true,
+          pathRewrite: {
+            '^/api/strategy': ''
+          },
+          secure: false,
+        }));
+
+        devServer.app.use('/api/notification', createProxyMiddleware({
+          target: 'http://localhost:8004',
+          changeOrigin: true,
+          pathRewrite: {
+            '^/api/notification': ''
+          },
+          secure: false,
+        }));
+      },
       proxy: {
+        '/api/core': {
+          target: 'http://localhost:8001',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/core/, ''),
+        },
+        '/api/trading': {
+          target: 'http://localhost:8002',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/trading/, ''),
+        },
+        '/api/strategy': {
+          target: 'http://localhost:8003',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/strategy/, ''),
+        },
+        '/api/notification': {
+          target: 'http://localhost:8004',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/notification/, ''),
+        },
         '/api': {
           target: 'http://localhost:8001',
           changeOrigin: true,
           secure: false,
-          pathRewrite: {
-            '^/api': '/api',
-          },
         },
       },
       headers: {

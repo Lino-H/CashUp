@@ -5,8 +5,20 @@
 
 import axios from 'axios';
 
-// API基础配置
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+// API基础配置 - 使用webpack DefinePlugin注入环境变量
+declare global {
+  interface Window {
+    ENV: {
+      REACT_APP_API_URL?: string;
+      REACT_APP_TRADING_URL?: string;
+      REACT_APP_STRATEGY_URL?: string;
+      REACT_APP_NOTIFICATION_URL?: string;
+    };
+  }
+}
+
+// API基础配置 - 开发环境使用相对路径，生产环境使用绝对路径
+const API_BASE_URL = process.env.NODE_ENV === 'development' ? '/api' : (window.ENV?.REACT_APP_API_URL || 'http://localhost:8001/api');
 
 // 创建axios实例
 const api = axios.create({
@@ -27,6 +39,47 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Cookie认证API - 直接发送请求不添加Authorization头，但允许发送cookies
+const cookieApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  withCredentials: true, // 允许发送cookies
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Cookie认证API响应拦截器
+cookieApi.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    // 统一错误处理
+    if (error.response?.status === 401) {
+      // 未授权，清除token并跳转到登录页
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    } else if (error.response?.status === 429) {
+      // 请求频率限制
+      console.error('请求频率限制:', error.response.data);
+    } else if (error.response?.status >= 500) {
+      // 服务器错误
+      console.error('服务器错误:', error.response.data);
+    } else if (error.response?.status >= 400) {
+      // 客户端错误
+      console.error('客户端错误:', error.response.data);
+    } else if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      console.error('请求超时:', error.message);
+    } else if (!error.response) {
+      // 网络错误
+      console.error('网络错误:', error.message);
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -80,83 +133,80 @@ export const authAPI = {
     api.post('/auth/refresh', { refresh_token: refreshToken }),
 };
 
+export const authAPIWithCookies = {
+  login: (username: string, password: string) =>
+    cookieApi.post('/auth/login', { username, password }),
+  
+  logout: () =>
+    cookieApi.post('/auth/logout'),
+  
+  getCurrentUser: () =>
+    cookieApi.get('/auth/me'),
+};
+
 // 用户相关API
 export const userAPI = {
   getUsers: (params?: any) =>
-    api.get('/users', { params }),
+    cookieApi.get('/users', { params }),
   
   getUserById: (userId: string) =>
-    api.get(`/users/${userId}`),
+    cookieApi.get(`/users/${userId}`),
   
   getCurrentUser: () =>
-    api.get('/users/me'),
+    cookieApi.get('/users/me'),
   
   updateUser: (userId: string, userData: any) =>
-    api.put(`/users/${userId}`, userData),
+    cookieApi.put(`/users/${userId}`, userData),
   
   updateCurrentUser: (userData: any) =>
-    api.put('/users/me', userData),
+    cookieApi.put('/users/me', userData),
   
   changePassword: (passwordData: any) =>
-    api.post('/users/me/change-password', passwordData),
+    cookieApi.post('/users/me/change-password', passwordData),
 };
 
 // 配置相关API
 export const configAPI = {
   getConfigs: (params?: any) =>
-    api.get('/config', { params }),
+    cookieApi.get('/config', { params }),
   
   getConfigById: (configId: string) =>
-    api.get(`/config/${configId}`),
+    cookieApi.get(`/config/${configId}`),
   
   getConfigByKey: (key: string) =>
-    api.get(`/config/by-key/${key}`),
+    cookieApi.get(`/config/by-key/${key}`),
   
   getConfigsByCategory: (category: string) =>
-    api.get(`/config/category/${category}`),
+    cookieApi.get(`/config/category/${category}`),
   
   createConfig: (configData: any) =>
-    api.post('/config', configData),
+    cookieApi.post('/config', configData),
   
   updateConfig: (configId: string, configData: any) =>
-    api.put(`/config/${configId}`, configData),
+    cookieApi.put(`/config/${configId}`, configData),
   
   updateConfigByKey: (key: string, value: any) =>
-    api.put(`/config/key/${key}`, { value }),
+    cookieApi.put(`/config/key/${key}`, { value }),
   
   deleteConfig: (configId: string) =>
-    api.delete(`/config/${configId}`),
+    cookieApi.delete(`/config/${configId}`),
   
   batchUpdateConfigs: (configs: any[]) =>
-    api.post('/config/batch', configs),
+    cookieApi.post('/config/batch', configs),
   
   getMyConfigs: () =>
-    api.get('/config/my'),
+    cookieApi.get('/config/my'),
 };
 
   // 策略平台API (端口8003)
 const strategyApi = axios.create({
-  baseURL: process.env.REACT_APP_STRATEGY_URL || 'http://localhost:8003/api',
+  baseURL: (window.ENV?.REACT_APP_STRATEGY_URL) || 'http://localhost:8003/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true, // 允许跨域请求携带cookies
 });
-
-// 添加相同的拦截器
-strategyApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // 策略平台API响应拦截器
 strategyApi.interceptors.response.use(
@@ -322,27 +372,13 @@ export interface Position {
 
 // 交易服务API (端口8002)
 const tradingApi = axios.create({
-  baseURL: process.env.REACT_APP_TRADING_URL || 'http://localhost:8002/api',
+  baseURL: (window.ENV?.REACT_APP_TRADING_URL) || 'http://localhost:8002/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true, // 允许跨域请求携带cookies
 });
-
-// 添加相同的拦截器
-tradingApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // 交易API响应拦截器
 tradingApi.interceptors.response.use(

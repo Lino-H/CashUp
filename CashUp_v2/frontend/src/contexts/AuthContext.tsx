@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { message } from 'antd';
-import { authAPI, handleApiError } from '../services/api';
+import { authAPI, authAPIWithCookies, handleApiError } from '../services/api';
 
 interface User {
   id: string;
@@ -172,7 +172,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserInfo = async () => {
     try {
-      const response = await authAPI.getCurrentUser();
+      // 使用Cookie认证API获取用户信息
+      const response = await authAPIWithCookies.getCurrentUser();
       if (response) {
         setUser(response as unknown as User);
         setIsAuthenticated(true);
@@ -266,7 +267,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     setLoading(true);
     try {
-      const response = await authAPI.login(username, password);
+      // 使用Cookie认证API
+      const response = await authAPIWithCookies.login(username, password);
       
       if (response) {
         // 根据API响应处理token
@@ -285,15 +287,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if ((response as any).user) {
           setUser((response as any).user);
         } else {
-          // 如果没有用户信息，默认设置
-          const defaultUser: User = {
-            id: '1',
-            username: username,
-            email: 'admin@cashup.com',
-            full_name: '系统管理员',
-            role: 'admin'
-          };
-          setUser(defaultUser);
+          // 如果没有用户信息，获取当前用户信息
+          try {
+            const userResponse = await authAPIWithCookies.getCurrentUser();
+            if (userResponse) {
+              setUser(userResponse as unknown as User);
+            } else {
+              // 如果没有用户信息，默认设置
+              const defaultUser: User = {
+                id: '1',
+                username: username,
+                email: 'admin@cashup.com',
+                full_name: '系统管理员',
+                role: 'admin'
+              };
+              setUser(defaultUser);
+            }
+          } catch (userError) {
+            console.warn('获取用户信息失败，使用默认信息:', userError);
+            const defaultUser: User = {
+              id: '1',
+              username: username,
+              email: 'admin@cashup.com',
+              full_name: '系统管理员',
+              role: 'admin'
+            };
+            setUser(defaultUser);
+          }
         }
         
         setIsAuthenticated(true);
@@ -310,8 +330,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    clearAuthState();
+  const logout = async () => {
+    try {
+      // 调用后端登出API清除Cookie
+      await authAPIWithCookies.logout();
+    } catch (error) {
+      console.warn('登出API调用失败:', error);
+    } finally {
+      clearAuthState();
+    }
   };
 
   return (

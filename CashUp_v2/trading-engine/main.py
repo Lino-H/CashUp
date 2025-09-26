@@ -5,14 +5,23 @@ CashUp交易引擎主应用
 """
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import logging
+from typing import List, Dict, Any
+from dataclasses import asdict
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 导入路由
+from api.routes.strategies import router as strategies_router
+from api.routes.trading import router as trading_router
+from api.routes.market_data import router as market_data_router
+from api.routes.account import router as account_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +53,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 包含API路由
+app.include_router(strategies_router)
+app.include_router(trading_router)
+app.include_router(market_data_router)
+app.include_router(account_router)
+
 @app.get("/")
 async def root():
     """根路径接口"""
@@ -65,38 +80,157 @@ async def health_check():
         "status": "healthy",
         "service": "trading-engine",
         "version": "2.0.0",
-        "timestamp": "2024-01-01T00:00:00Z"
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
-# 交易管理API
-@app.get("/api/v1/orders")
-async def get_orders():
-    """获取订单列表"""
-    return {"orders": [], "message": "交易引擎订单接口暂时返回空数据"}
+# 策略管理API
+@app.get("/api/v1/strategies/status")
+async def get_strategies_status():
+    """获取所有策略状态"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+        status = await strategy_manager.get_strategy_status()
+        return {
+            "status": "success",
+            "strategies": status,
+            "total_strategies": len(status)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取策略状态失败: {str(e)}")
 
-@app.post("/api/v1/orders")
-async def create_order(order_data: dict):
-    """创建订单"""
-    return {"order_id": "temp_order_123", "message": "交易引擎订单创建接口暂时返回模拟数据"}
+@app.post("/api/v1/strategies/{strategy_name}/start")
+async def start_strategy(strategy_name: str):
+    """启动指定策略"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
 
-@app.get("/api/v1/positions")
-async def get_positions():
-    """获取持仓列表"""
-    return {"positions": [], "message": "交易引擎持仓接口暂时返回空数据"}
+        success = await strategy_manager.start_strategy(strategy_name)
 
-@app.get("/api/v1/balances")
-async def get_balances():
-    """获取账户余额"""
-    return {"balances": [], "message": "交易引擎余额接口暂时返回空数据"}
+        if success:
+            return {
+                "status": "success",
+                "message": f"策略 {strategy_name} 启动成功"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"策略 {strategy_name} 启动失败")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动策略失败: {str(e)}")
 
-@app.get("/api/v1/account/info")
-async def get_account_info():
-    """获取账户信息"""
-    return {
-        "total_balance": 10000.0,
-        "available_balance": 8000.0,
-        "message": "交易引擎账户信息接口暂时返回模拟数据"
-    }
+@app.post("/api/v1/strategies/{strategy_name}/stop")
+async def stop_strategy(strategy_name: str):
+    """停止单个策略"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        success = await strategy_manager.stop_strategy(strategy_name)
+
+        if success:
+            return {
+                "status": "success",
+                "message": f"策略 {strategy_name} 停止成功"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"策略 {strategy_name} 停止失败")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"停止策略失败: {str(e)}")
+
+@app.post("/api/v1/strategies/start-all")
+async def start_all_strategies():
+    """启动所有策略"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        await strategy_manager.start_all_strategies()
+
+        return {
+            "status": "success",
+            "message": "所有策略启动成功"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动所有策略失败: {str(e)}")
+
+@app.post("/api/v1/strategies/stop-all")
+async def stop_all_strategies():
+    """停止所有策略"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        await strategy_manager.stop_all_strategies()
+
+        return {
+            "status": "success",
+            "message": "所有策略停止成功"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"停止所有策略失败: {str(e)}")
+
+@app.get("/api/v1/strategies/{strategy_name}/signals")
+async def get_strategy_signals(strategy_name: str, limit: int = 10):
+    """获取策略交易信号"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        signals = await strategy_manager.get_strategy_signals(strategy_name, limit)
+
+        return {
+            "status": "success",
+            "strategy_name": strategy_name,
+            "signals": [asdict(signal) for signal in signals],
+            "count": len(signals)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取策略信号失败: {str(e)}")
+
+@app.get("/api/v1/strategies/{strategy_name}/positions")
+async def get_strategy_positions(strategy_name: str):
+    """获取策略持仓"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        positions = await strategy_manager.get_strategy_positions(strategy_name)
+
+        return {
+            "status": "success",
+            "strategy_name": strategy_name,
+            "positions": [asdict(position) for position in positions],
+            "count": len(positions)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取策略持仓失败: {str(e)}")
+
+@app.put("/api/v1/strategies/{strategy_name}/config")
+async def update_strategy_config(strategy_name: str, config: Dict[str, Any]):
+    """更新策略配置"""
+    try:
+        from strategies.strategy_manager import get_strategy_manager
+        strategy_manager = await get_strategy_manager()
+
+        success = await strategy_manager.update_strategy_config(strategy_name, config)
+
+        if success:
+            return {
+                "status": "success",
+                "message": f"策略 {strategy_name} 配置更新成功"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"策略 {strategy_name} 不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新策略配置失败: {str(e)}")
+
+    return result["data"]
 
 if __name__ == "__main__":
     uvicorn.run(

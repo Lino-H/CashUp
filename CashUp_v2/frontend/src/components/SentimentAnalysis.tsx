@@ -23,6 +23,7 @@ import {
   Avatar,
   Rate,
   Badge,
+  message,
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -65,6 +66,7 @@ import {
   Area,
   ComposedChart,
   Bar,
+  BarChart,
   PieChart,
   Pie,
   Cell,
@@ -125,114 +127,25 @@ export interface SentimentSource {
   lastUpdate: number;
 }
 
-// 生成模拟情绪数据
-const generateMockSentimentData = (): SentimentData[] => {
-  const data: SentimentData[] = [];
-  const now = Date.now();
-  
-  for (let i = 30; i >= 0; i--) {
-    const timestamp = now - (i * 60 * 60 * 1000); // 每小时一个数据点
-    const baseScore = Math.sin(i * 0.2) * 0.3 + Math.random() * 0.4 - 0.2;
-    const score = Math.max(-1, Math.min(1, baseScore));
-    const confidence = 0.6 + Math.random() * 0.4;
-    
-    data.push({
-      timestamp,
-      score,
-      confidence,
-      category: score > 0.2 ? 'bullish' : score < -0.2 ? 'bearish' : 'neutral',
-      source: `Source_${Math.floor(Math.random() * 5) + 1}`,
-      text: `市场情绪分析数据点 ${i}`,
-      symbols: ['BTC', 'ETH', 'BNB'],
-    });
+// API调用函数
+const fetchSentimentData = async (): Promise<SentimentData[]> => {
+  // 这里应该调用真实的情绪分析API
+  throw new Error('情绪分析数据API尚未实现');
+};
+
+const fetchMarketSentiment = async (): Promise<MarketSentiment> => {
+  // 这里应该调用真实的市场情绪API
+  throw new Error('市场情绪API尚未实现');
+};
+
+// 获取情绪来源数据
+const fetchSentimentSources = async (): Promise<SentimentSource[]> => {
+  const response = await fetch('/api/sentiment/sources');
+  if (!response.ok) {
+    throw new Error(`情绪来源API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return data;
+  return response.json();
 };
-
-// 生成模拟市场情绪数据
-const generateMockMarketSentiment = (): MarketSentiment => {
-  const overall = Math.random() * 0.6 - 0.3; // -0.3 到 0.3
-  const fearGreedIndex = Math.floor(Math.random() * 100);
-  
-  return {
-    overall,
-    fearGreedIndex,
-    socialMedia: {
-      twitter: Math.random() * 2 - 1,
-      reddit: Math.random() * 2 - 1,
-      telegram: Math.random() * 2 - 1,
-      wechat: Math.random() * 2 - 1,
-    },
-    news: {
-      positive: Math.random() * 100,
-      negative: Math.random() * 100,
-      neutral: Math.random() * 100,
-    },
-    technical: {
-      bullish: Math.random() * 100,
-      bearish: Math.random() * 100,
-      neutral: Math.random() * 100,
-    },
-    volume: {
-      buy: Math.random() * 1000,
-      sell: Math.random() * 1000,
-      neutral: Math.random() * 500,
-    },
-  };
-};
-
-// 情绪来源数据
-const sentimentSources: SentimentSource[] = [
-  {
-    name: 'Twitter',
-    type: 'social',
-    score: 0.65,
-    trend: 'up',
-    volume: 1250,
-    lastUpdate: Date.now() - 30 * 60 * 1000,
-  },
-  {
-    name: 'Reddit',
-    type: 'social',
-    score: -0.45,
-    trend: 'down',
-    volume: 890,
-    lastUpdate: Date.now() - 45 * 60 * 1000,
-  },
-  {
-    name: 'Telegram',
-    type: 'social',
-    score: 0.23,
-    trend: 'stable',
-    volume: 567,
-    lastUpdate: Date.now() - 20 * 60 * 1000,
-  },
-  {
-    name: '财经新闻',
-    type: 'news',
-    score: 0.78,
-    trend: 'up',
-    volume: 2341,
-    lastUpdate: Date.now() - 15 * 60 * 1000,
-  },
-  {
-    name: '技术分析',
-    type: 'technical',
-    score: 0.34,
-    trend: 'stable',
-    volume: 1567,
-    lastUpdate: Date.now() - 10 * 60 * 1000,
-  },
-  {
-    name: '交易量',
-    type: 'volume',
-    score: -0.12,
-    trend: 'down',
-    volume: 3456,
-    lastUpdate: Date.now() - 5 * 60 * 1000,
-  },
-];
 
 // 情绪颜色映射
 const getSentimentColor = (score: number): string => {
@@ -289,14 +202,27 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
     const initializeData = async () => {
       setLoading(true);
       try {
-        const mockSentimentData = generateMockSentimentData();
-        const mockMarketSentiment = generateMockMarketSentiment();
+        const [sentimentDataResult, marketSentimentResult] = await Promise.allSettled([
+          fetchSentimentData(),
+          fetchMarketSentiment()
+        ]);
         
-        setSentimentData(mockSentimentData);
-        setMarketSentiment(mockMarketSentiment);
-        onSentimentChange?.(mockMarketSentiment);
+        if (sentimentDataResult.status === 'fulfilled') {
+          setSentimentData(sentimentDataResult.value);
+        } else {
+          console.error('获取情绪数据失败:', sentimentDataResult.reason);
+          message.error(`情绪数据加载失败: ${sentimentDataResult.reason.message}`);
+        }
+        
+        if (marketSentimentResult.status === 'fulfilled') {
+          setMarketSentiment(marketSentimentResult.value);
+          onSentimentChange?.(marketSentimentResult.value);
+        } else {
+          console.error('获取市场情绪失败:', marketSentimentResult.reason);
+          message.error(`市场情绪数据加载失败: ${marketSentimentResult.reason.message}`);
+        }
       } catch (error) {
-        console.error('Failed to initialize sentiment data:', error);
+        console.error('初始化情绪数据失败:', error);
       } finally {
         setLoading(false);
       }
@@ -309,24 +235,41 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(() => {
-      const newData = generateMockSentimentData();
-      const newMarketSentiment = generateMockMarketSentiment();
-      
-      setSentimentData(newData);
-      setMarketSentiment(newMarketSentiment);
-      onSentimentChange?.(newMarketSentiment);
+    const interval = setInterval(async () => {
+      try {
+        const [sentimentDataResult, marketSentimentResult] = await Promise.allSettled([
+          fetchSentimentData(),
+          fetchMarketSentiment()
+        ]);
+        
+        if (sentimentDataResult.status === 'fulfilled') {
+          setSentimentData(sentimentDataResult.value);
+        }
+        
+        if (marketSentimentResult.status === 'fulfilled') {
+          setMarketSentiment(marketSentimentResult.value);
+          onSentimentChange?.(marketSentimentResult.value);
+        }
+      } catch (error) {
+        console.error('自动刷新情绪数据失败:', error);
+      }
     }, 30000); // 每30秒刷新一次
 
     return () => clearInterval(interval);
   }, [autoRefresh, onSentimentChange]);
 
   // 处理时间周期变化
-  const handleTimeframeChange = useCallback((value: string) => {
+  const handleTimeframeChange = useCallback(async (value: string) => {
     setSelectedTimeframe(value);
-    // 这里可以根据新的时间周期重新获取数据
-    const newData = generateMockSentimentData();
-    setSentimentData(newData);
+    setLoading(true);
+    try {
+      const newData = await fetchSentimentData();
+      setSentimentData(newData);
+    } catch (error) {
+      console.error('获取新时间周期数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // 处理来源选择
@@ -435,7 +378,7 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
                   percent={Math.abs(item.score) * 50}
                   strokeColor={item.color}
                   trailColor="#f0f0f0"
-                  width={60}
+                  size={60}
                   format={(percent) => `${(item.score * 100).toFixed(0)}`}
                 />
                 <div style={{ marginTop: 8, fontSize: 12 }}>

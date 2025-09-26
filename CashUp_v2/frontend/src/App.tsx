@@ -39,10 +39,10 @@ interface AnalysisScores {
 const AppContent: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [services, setServices] = useState<ServiceStatus[]>([
-    { name: '核心服务', status: 'unknown', url: 'http://localhost:8001/health' },
-    { name: '交易引擎', status: 'unknown', url: 'http://localhost:8002/health' },
-    { name: '策略平台', status: 'unknown', url: 'http://localhost:8003/health' },
-    { name: '通知服务', status: 'unknown', url: 'http://localhost:8004/health' },
+    { name: '核心服务', status: 'unknown', url: '/api/core/health' },
+    { name: '交易引擎', status: 'unknown', url: '/api/trading/health' },
+    { name: '策略平台', status: 'unknown', url: '/api/strategy/health' },
+    { name: '通知服务', status: 'unknown', url: '/api/notification/health' },
   ]);
   const [loading, setLoading] = useState(false);
   const [analysisScores, setAnalysisScores] = useState<AnalysisScores>({
@@ -69,6 +69,51 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
+  // 根据路径获取选中的菜单key
+  const getSelectedMenuKey = (pathname: string): string => {
+    // 移除末尾的斜杠并标准化路径
+    const normalizedPath = pathname.replace(/\/$/, '') || '/';
+    
+    switch (normalizedPath) {
+      case '/':
+        return 'dashboard';
+      case '/technical-analysis':
+        return 'technical-analysis';
+      case '/fundamental-analysis':
+        return 'fundamental-analysis';
+      case '/sentiment-analysis':
+        return 'sentiment-analysis';
+      case '/risk-analysis':
+        return 'risk-analysis';
+      case '/trading':
+        return 'trading';
+      case '/trading-management':
+        return 'trading-management';
+      case '/strategies':
+        return 'strategies';
+      case '/auto-trading':
+        return 'auto-trading';
+      case '/strategy-automation':
+        return 'strategy-automation';
+      case '/settings':
+        return 'settings';
+      case '/network-optimization':
+        return 'network-optimization';
+      case '/websocket-trading':
+        return 'websocket-trading';
+      default:
+        // 如果没有精确匹配，尝试部分匹配
+        if (normalizedPath.includes('risk-analysis')) return 'risk-analysis';
+        if (normalizedPath.includes('technical-analysis')) return 'technical-analysis';
+        if (normalizedPath.includes('fundamental-analysis')) return 'fundamental-analysis';
+        if (normalizedPath.includes('sentiment-analysis')) return 'sentiment-analysis';
+        if (normalizedPath.includes('trading')) return 'trading';
+        if (normalizedPath.includes('strategies')) return 'strategies';
+        if (normalizedPath.includes('settings')) return 'settings';
+        return 'dashboard';
+    }
+  };
+
   useEffect(() => {
     checkServices();
     fetchAnalysisScores();
@@ -83,7 +128,7 @@ const AppContent: React.FC = () => {
       // 获取技术分析分数
       setLoadingTechnical(true);
       try {
-        const technicalResponse = await fetch('http://localhost:8001/api/config/analysis/technical', {
+        const technicalResponse = await fetch('/api/config/analysis/technical', {
           credentials: 'include'
         });
         if (technicalResponse.ok) {
@@ -98,7 +143,7 @@ const AppContent: React.FC = () => {
       // 获取基本面分析分数
       setLoadingFundamental(true);
       try {
-        const fundamentalResponse = await fetch('http://localhost:8001/api/config/analysis/fundamental', {
+        const fundamentalResponse = await fetch('/api/config/analysis/fundamental', {
           credentials: 'include'
         });
         if (fundamentalResponse.ok) {
@@ -113,7 +158,7 @@ const AppContent: React.FC = () => {
       // 获取情绪分析分数
       setLoadingSentiment(true);
       try {
-        const sentimentResponse = await fetch('http://localhost:8001/api/config/analysis/sentiment', {
+        const sentimentResponse = await fetch('/api/config/analysis/sentiment', {
           credentials: 'include'
         });
         if (sentimentResponse.ok) {
@@ -128,7 +173,7 @@ const AppContent: React.FC = () => {
       // 获取风险分析分数
       setLoadingRisk(true);
       try {
-        const riskResponse = await fetch('http://localhost:8001/api/config/analysis/risk', {
+        const riskResponse = await fetch('/api/config/analysis/risk', {
           credentials: 'include'
         });
         if (riskResponse.ok) {
@@ -157,7 +202,7 @@ const AppContent: React.FC = () => {
 
       setLoadingStrategyAutomation(true);
       try {
-        const strategyAutoResponse = await fetch('http://localhost:8001/api/config/analysis/fundamental', {
+        const strategyAutoResponse = await fetch('/api/config/analysis/fundamental', {
           credentials: 'include'
         });
         if (strategyAutoResponse.ok) {
@@ -171,7 +216,7 @@ const AppContent: React.FC = () => {
 
       setLoadingScheduledTasks(true);
       try {
-        const scheduledResponse = await fetch('http://localhost:8001/api/config/analysis/sentiment', {
+        const scheduledResponse = await fetch('/api/config/analysis/sentiment', {
           credentials: 'include'
         });
         if (scheduledResponse.ok) {
@@ -185,7 +230,7 @@ const AppContent: React.FC = () => {
 
       setLoadingAutoReports(true);
       try {
-        const reportsResponse = await fetch('http://localhost:8001/api/config/analysis/risk', {
+        const reportsResponse = await fetch('/api/config/analysis/risk', {
           credentials: 'include'
         });
         if (reportsResponse.ok) {
@@ -252,7 +297,7 @@ const AppContent: React.FC = () => {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname === '/trading' ? 'trading' : location.pathname === '/trading-management' ? 'trading-management' : location.pathname === '/strategies' ? 'strategies' : location.pathname === '/settings' ? 'settings' : location.pathname === '/network-optimization' ? 'network-optimization' : location.pathname === '/websocket-trading' ? 'websocket-trading' : 'dashboard']}
+          selectedKeys={[getSelectedMenuKey(location.pathname)]}
           items={[
             {
               key: 'dashboard',

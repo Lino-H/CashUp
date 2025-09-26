@@ -1,24 +1,42 @@
 version: '3.8'
 
 services:
-  # PostgreSQL 数据库
+  # PostgreSQL 数据库 - 生产环境
   postgres:
     image: postgres:15
     container_name: cashup_postgres
     environment:
       POSTGRES_DB: cashup
       POSTGRES_USER: cashup
-      POSTGRES_PASSWORD: cashup
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cashup}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cashup"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
-  # Redis 缓存
+  # Redis 缓存 - 生产环境
   redis:
     image: redis:7-alpine
     container_name: cashup_redis
@@ -29,8 +47,26 @@ services:
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
-  # 核心服务
+  # 核心服务 - 生产环境
   core-service:
     build:
       context: ./core-service
@@ -41,19 +77,42 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=your-secret-key-change-in-production
-      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DEBUG=True
+      - TRADING_ENGINE_URL=http://trading-engine:8002
+      - STRATEGY_PLATFORM_URL=http://strategy-platform:8003
+      - NOTIFICATION_URL=http://notification-service:8004
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./core-service:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
 
-  # 交易引擎
+  # 交易引擎 - 生产环境
   trading-engine:
     build:
       context: ./trading-engine
@@ -65,20 +124,41 @@ services:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
-      - DEBUG=true
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
+      - DEBUG=false
+      - ALLOWED_ORIGINS=http://localhost,http://127.0.0.1,https://cashup.com,https://www.cashup.com
     depends_on:
-      - postgres
-      - redis
-      - core-service
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
     volumes:
       - ./trading-engine:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 768M
+        reservations:
+          cpus: '0.3'
+          memory: 384M
 
-  # 策略平台
+  # 策略平台 - 生产环境
   strategy-platform:
     build:
       context: ./strategy-platform
@@ -91,14 +171,17 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - TRADING_ENGINE_URL=http://trading-engine:8002
-      - DEBUG=true
+      - DEBUG=false
       - PYTHONPATH=/app
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
     depends_on:
-      - postgres
-      - redis
-      - core-service
-      - trading-engine
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
+      trading-engine:
+        condition: service_healthy
     volumes:
       - ./strategy-platform:/app
       - ./strategies:/app/strategies
@@ -106,9 +189,27 @@ services:
     restart: unless-stopped
     networks:
       - cashup_network
-    command: sh -c "PYTHONPATH=/app uvicorn minimal_main:app --host 0.0.0.0 --port 8003 --reload-dir /app"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: uvicorn main:app --host 0.0.0.0 --port 8003
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.4'
+          memory: 512M
 
-  # 通知服务
+  # 通知服务 - 生产环境
   notification-service:
     build:
       context: ./notification-service
@@ -120,56 +221,79 @@ services:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
-      - DEBUG=true
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com
+      - DEBUG=false
+      - ALLOWED_ORIGINS=http://localhost,http://127.0.0.1,https://cashup.com,https://www.cashup.com
     depends_on:
-      - postgres
-      - redis
-      - core-service
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
     volumes:
       - ./notification-service:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
-  # 前端应用
+  # 前端应用 - 生产环境
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: cashup_frontend
     ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:8001/api
-      - REACT_APP_TRADING_URL=http://localhost:8002/api
-      - REACT_APP_STRATEGY_URL=http://localhost:8003/api
-      - REACT_APP_NOTIFICATION_URL=http://localhost:8004/api
-    depends_on:
-      - core-service
-      - trading-engine
-      - strategy-platform
-      - notification-service
-    restart: unless-stopped
-    networks:
-      - cashup_network
-
-  # Nginx 反向代理
-  nginx:
-    image: nginx:alpine
-    container_name: cashup_nginx
-    ports:
       - "80:80"
       - "443:443"
-    volumes:
-      - ./frontend/build:/usr/share/nginx/html
-      - ./frontend/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - frontend
+      core-service:
+        condition: service_healthy
+      trading-engine:
+        condition: service_healthy
+      strategy-platform:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - cashup_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
 volumes:
   postgres_data:

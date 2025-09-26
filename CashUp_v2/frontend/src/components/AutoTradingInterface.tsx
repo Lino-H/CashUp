@@ -252,127 +252,31 @@ export interface RiskControl {
   description: string;
 }
 
-// 生成模拟交易策略数据
-const generateMockTradingStrategies = (): TradingStrategy[] => {
-  const strategies: TradingStrategy[] = [];
-  const strategyNames = ['趋势跟踪策略', '动量突破策略', '均值回归策略', '套利策略', '高频交易策略'];
-  const strategyTypes = ['trend', 'momentum', 'mean_reversion', 'arbitrage', 'scalping'] as const;
-  const statuses = ['active', 'paused', 'stopped', 'error'] as const;
-  const symbols = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'SOL/USDT'];
-  
-  for (let i = 0; i < 5; i++) {
-    strategies.push({
-      id: `strategy_${i}`,
-      name: strategyNames[i],
-      description: `这是一个专业的${strategyNames[i]}，采用先进的算法模型进行交易决策。`,
-      type: strategyTypes[i],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      symbol: symbols[Math.floor(Math.random() * symbols.length)],
-      timeframe: '1h',
-      parameters: {
-        stopLoss: 0.02 + Math.random() * 0.08,
-        takeProfit: 0.03 + Math.random() * 0.12,
-        positionSize: 0.1 + Math.random() * 0.9,
-        maxPosition: 1 + Math.random() * 4,
-        riskPerTrade: 0.01 + Math.random() * 0.04,
-      },
-      performance: {
-        totalTrades: Math.floor(Math.random() * 1000),
-        winRate: 0.4 + Math.random() * 0.4,
-        profitFactor: 0.8 + Math.random() * 1.4,
-        totalPnL: (Math.random() - 0.5) * 10000,
-        maxDrawdown: Math.random() * 0.3,
-        sharpeRatio: Math.random() * 2,
-      },
-      createdAt: Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-      lastUpdate: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      running: Math.random() > 0.3,
-    });
+// 获取交易策略数据
+const fetchTradingStrategies = async (): Promise<TradingStrategy[]> => {
+  const response = await fetch('/api/trading/strategies');
+  if (!response.ok) {
+    throw new Error(`交易策略API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return strategies;
+  return response.json();
 };
 
-// 生成模拟自动交易订单数据
-const generateMockAutoOrders = (): AutoOrder[] => {
-  const orders: AutoOrder[] = [];
-  const strategies = generateMockTradingStrategies();
-  const types = ['buy', 'sell', 'stop_loss', 'take_profit'] as const;
-  const statuses = ['pending', 'executed', 'cancelled', 'failed'] as const;
-  
-  for (let i = 0; i < 20; i++) {
-    const strategy = strategies[Math.floor(Math.random() * strategies.length)];
-    orders.push({
-      id: `order_${i}`,
-      strategyId: strategy.id,
-      strategyName: strategy.name,
-      type: types[Math.floor(Math.random() * types.length)],
-      symbol: strategy.symbol,
-      price: 1000 + Math.random() * 50000,
-      quantity: 0.01 + Math.random() * 2,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      timestamp: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      executedAt: Math.random() > 0.3 ? Date.now() - Math.random() * 24 * 60 * 60 * 1000 : undefined,
-      reason: `自动交易订单 ${i + 1}`,
-      pnl: (Math.random() - 0.5) * 1000,
-      fees: Math.random() * 10,
-    });
+// 获取自动交易订单数据
+const fetchAutoOrders = async (): Promise<AutoOrder[]> => {
+  const response = await fetch('/api/trading/orders');
+  if (!response.ok) {
+    throw new Error(`交易订单API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return orders.sort((a, b) => b.timestamp - a.timestamp);
+  return response.json();
 };
 
-// 生成模拟风险控制数据
-const generateMockRiskControls = (): RiskControl[] => {
-  const controls: RiskControl[] = [
-    {
-      id: 'rc1',
-      name: '单笔止损',
-      enabled: true,
-      type: 'stop_loss',
-      value: 0.02,
-      action: 'pause',
-      description: '单笔交易最大亏损2%',
-    },
-    {
-      id: 'rc2',
-      name: '持仓限制',
-      enabled: true,
-      type: 'position_limit',
-      value: 5,
-      action: 'stop',
-      description: '最大同时持仓5个品种',
-    },
-    {
-      id: 'rc3',
-      name: '日亏损限制',
-      enabled: true,
-      type: 'daily_loss',
-      value: 0.05,
-      action: 'stop',
-      description: '单日最大亏损5%',
-    },
-    {
-      id: 'rc4',
-      name: '最大回撤',
-      enabled: true,
-      type: 'max_drawdown',
-      value: 0.1,
-      action: 'stop',
-      description: '最大回撤10%时停止交易',
-    },
-    {
-      id: 'rc5',
-      name: '并发交易',
-      enabled: true,
-      type: 'concurrent_trades',
-      value: 10,
-      action: 'pause',
-      description: '最大并发交易10笔',
-    },
-  ];
-  
-  return controls;
+// 获取风险控制数据
+const fetchRiskControls = async (): Promise<RiskControl[]> => {
+  const response = await fetch('/api/trading/risk-controls');
+  if (!response.ok) {
+    throw new Error(`风险控制API错误: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
 };
 
 // 策略状态颜色
@@ -442,16 +346,31 @@ const AutoTradingInterface: React.FC<AutoTradingInterfaceProps> = ({
     const initializeData = async () => {
       setLoading(true);
       try {
-        const mockStrategies = generateMockTradingStrategies();
-        const mockOrders = generateMockAutoOrders();
-        const mockRiskControls = generateMockRiskControls();
+        const [strategiesData, ordersData, riskControlsData] = await Promise.allSettled([
+          fetchTradingStrategies(),
+          fetchAutoOrders(),
+          fetchRiskControls()
+        ]);
         
-        setStrategies(mockStrategies);
-        setOrders(mockOrders);
-        setRiskControls(mockRiskControls);
+        if (strategiesData.status === 'rejected') {
+          message.error(`策略数据加载失败: ${strategiesData.reason.message}`);
+        } else {
+          setStrategies(strategiesData.value);
+          onStrategyChange?.(strategiesData.value);
+        }
         
-        onStrategyChange?.(mockStrategies);
-        onOrderChange?.(mockOrders);
+        if (ordersData.status === 'rejected') {
+          message.error(`订单数据加载失败: ${ordersData.reason.message}`);
+        } else {
+          setOrders(ordersData.value);
+          onOrderChange?.(ordersData.value);
+        }
+        
+        if (riskControlsData.status === 'rejected') {
+          message.error(`风险控制数据加载失败: ${riskControlsData.reason.message}`);
+        } else {
+          setRiskControls(riskControlsData.value);
+        }
       } catch (error) {
         console.error('Failed to initialize auto trading data:', error);
         message.error('初始化数据失败');
@@ -467,10 +386,14 @@ const AutoTradingInterface: React.FC<AutoTradingInterfaceProps> = ({
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(() => {
-      const mockOrders = generateMockAutoOrders();
-      setOrders(mockOrders);
-      onOrderChange?.(mockOrders);
+    const interval = setInterval(async () => {
+      try {
+        const ordersData = await fetchAutoOrders();
+        setOrders(ordersData);
+        onOrderChange?.(ordersData);
+      } catch (error) {
+        console.error('Failed to refresh orders:', error);
+      }
     }, 5000); // 每5秒刷新一次订单数据
 
     return () => clearInterval(interval);

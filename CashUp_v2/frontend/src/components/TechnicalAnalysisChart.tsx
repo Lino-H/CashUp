@@ -51,7 +51,7 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RadioGroup } = Radio;
+const { Group: RadioGroup } = Radio;
 
 export interface PriceData {
   timestamp: number;

@@ -19,6 +19,7 @@ import {
   Badge,
   Drawer,
   Form,
+  Input,
   InputNumber,
   Select,
   message,
@@ -124,7 +125,7 @@ const RealTimeTradingWebSocket: React.FC = () => {
     try {
       const client = createTradingWebSocketClient(
         {
-          url: 'ws://localhost:8004/ws/trading',
+          url: 'ws://localhost/ws/trading',
           enableReconnect: autoReconnect,
           reconnectInterval: 5000,
           maxReconnectAttempts: 10,

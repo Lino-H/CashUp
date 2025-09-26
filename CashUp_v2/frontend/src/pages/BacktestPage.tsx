@@ -206,36 +206,22 @@ const BacktestPage: React.FC = () => {
     }
   }, [apiCallWithRetry]);
 
-  // 生成模拟性能数据
-  const generateMockData = useCallback((count: number = 50) => {
-    return Array.from({ length: count }, (_, i) => ({
-      date: `Day ${i + 1}`,
-      equity: 10000 + Math.random() * 5000 + i * 100,
-      drawdown: Math.random() * 20,
-      trades: Math.floor(Math.random() * 5) + 1,
-      winRate: Math.random() * 100,
-      sharpe: Math.random() * 3
-    }));
+  // 获取性能数据
+  const fetchPerformanceData = useCallback(async (backtestId: string) => {
+    const response = await fetch(`/api/backtest/${backtestId}/performance`);
+    if (!response.ok) {
+      throw new Error(`性能数据API错误: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
   }, []);
 
-  // 生成交易分析数据
-  const generateTradeAnalysis = useCallback((count: number = 20) => {
-    return Array.from({ length: count }, (_, i) => ({
-      id: `trade_${i + 1}`,
-      symbol: 'BTC/USDT',
-      side: Math.random() > 0.5 ? 'buy' : 'sell',
-      entryTime: `2023-01-${String(i + 1).padStart(2, '0')} 10:00:00`,
-      exitTime: `2023-01-${String(i + 1).padStart(2, '0')} 15:30:00`,
-      entryPrice: 45000 + Math.random() * 10000,
-      exitPrice: 45000 + Math.random() * 10000,
-      quantity: 0.1 + Math.random() * 0.5,
-      pnl: (Math.random() - 0.3) * 500,
-      commission: 2.5,
-      slippage: 0.5,
-      status: Math.random() > 0.5 ? 'win' : 'loss',
-      holdingPeriod: Math.floor(Math.random() * 300) + 60,
-      reason: '信号触发'
-    }));
+  // 获取交易分析数据
+  const fetchTradeAnalysis = useCallback(async (backtestId: string) => {
+    const response = await fetch(`/api/backtest/${backtestId}/trades`);
+    if (!response.ok) {
+      throw new Error(`交易分析API错误: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
   }, []);
 
   // 数据导出功能
@@ -385,8 +371,8 @@ const BacktestPage: React.FC = () => {
         setModalVisible(false);
         form.resetFields();
         
-        // 模拟回测进度
-        simulateBacktestProgress(result);
+        // 开始轮询回测状态
+        pollBacktestStatus(result.id);
       }
     } catch (error) {
       const errorMessage = handleApiError(error);
@@ -396,119 +382,40 @@ const BacktestPage: React.FC = () => {
     }
   };
 
-  // 模拟回测进度
-  const simulateBacktestProgress = (backtestData: any) => {
-    const mockResult: BacktestResult = {
-      id: backtestData.id || Date.now().toString(),
-      strategyName: strategies.find(s => s.id === backtestData.strategyId)?.name || '未知策略',
-      symbol: backtestData.symbol,
-      timeframe: backtestData.timeframe,
-      startDate: backtestData.startDate,
-      endDate: backtestData.endDate,
-      totalReturn: Math.random() * 200 - 50,
-      annualizedReturn: Math.random() * 100 - 20,
-      maxDrawdown: Math.random() * 30 + 5,
-      sharpeRatio: Math.random() * 3 + 0.5,
-      winRate: Math.random() * 40 + 40,
-      totalTrades: Math.floor(Math.random() * 200) + 50,
-      profitFactor: Math.random() * 3 + 1,
-      calmarRatio: Math.random() * 2 + 0.5,
-      sortinoRatio: Math.random() * 2.5 + 0.5,
-      beta: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 20 - 5,
-      status: 'running',
-      progress: 0,
-      createdAt: new Date().toISOString(),
-      equityCurve: [],
-      trades: [],
-      metrics: {
-        avgTrade: 0,
-        avgWinTrade: 0,
-        avgLossTrade: 0,
-        maxConsecutiveWins: 0,
-        maxConsecutiveLosses: 0,
-        recoveryFactor: 0,
-        profitFactor: 0
-      }
-    };
-
-    setCurrentBacktest(mockResult);
-    
-    // 模拟进度更新
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress >= 100) {
-        progress = 100;
+  // 轮询回测状态
+  const pollBacktestStatus = (backtestId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/backtest/${backtestId}/status`);
+        if (!response.ok) {
+          throw new Error(`回测状态API错误: ${response.status} ${response.statusText}`);
+        }
+        const result = await response.json();
+        
+        setCurrentBacktest(result);
+        
+        if (result.status === 'completed' || result.status === 'failed') {
+          clearInterval(interval);
+          if (result.status === 'completed') {
+            message.success('回测完成！');
+          } else {
+            message.error('回测失败！');
+          }
+          loadBacktestHistory();
+        }
+      } catch (error) {
+        console.error('Failed to poll backtest status:', error);
         clearInterval(interval);
-        
-        // 完成回测
-        const completedResult = {
-          ...mockResult,
-          status: 'completed' as const,
-          progress: 100,
-          completedAt: new Date().toISOString(),
-          equityCurve: generateEquityCurve(),
-          trades: generateTrades(),
-          metrics: generateMetrics()
-        };
-        
-        setCurrentBacktest(completedResult);
-        setBacktestHistory(prev => [completedResult, ...prev]);
-        message.success('回测完成！');
-      } else {
-        setCurrentBacktest(prev => prev ? { ...prev, progress } : null);
+        message.error('轮询回测状态失败');
       }
-    }, 1000);
+    }, 2000);
   };
 
-  // 生成权益曲线数据
-  const generateEquityCurve = () => {
-    const data = [];
-    let value = 100000;
-    for (let i = 0; i < 100; i++) {
-      value += (Math.random() - 0.4) * 2000;
-      data.push({
-        date: moment().subtract(100 - i, 'days').format('YYYY-MM-DD'),
-        value: Math.max(value, 50000)
-      });
-    }
-    return data;
-  };
 
-  // 生成交易记录
-  const generateTrades = () => {
-    const trades = [];
-    for (let i = 0; i < 50; i++) {
-      const isWin = Math.random() > 0.4;
-      trades.push({
-        id: `trade_${i}`,
-        symbol: 'BTC/USDT',
-        side: (Math.random() > 0.5 ? 'buy' : 'sell') as 'buy' | 'sell',
-        entryTime: moment().subtract(Math.random() * 90, 'days').format('YYYY-MM-DD HH:mm:ss'),
-        exitTime: moment().subtract(Math.random() * 89, 'days').format('YYYY-MM-DD HH:mm:ss'),
-        entryPrice: 30000 + Math.random() * 20000,
-        exitPrice: 30000 + Math.random() * 20000,
-        quantity: Math.random() * 2 + 0.1,
-        pnl: isWin ? Math.random() * 2000 + 100 : -(Math.random() * 1500 + 100),
-        commission: Math.random() * 10 + 1,
-        slippage: Math.random() * 5 + 1,
-        status: (isWin ? 'win' : 'loss') as 'win' | 'loss'
-      });
-    }
-    return trades;
-  };
 
-  // 生成性能指标
-  const generateMetrics = () => ({
-    avgTrade: Math.random() * 1000 - 200,
-    avgWinTrade: Math.random() * 2000 + 500,
-    avgLossTrade: -(Math.random() * 1000 + 200),
-    maxConsecutiveWins: Math.floor(Math.random() * 10) + 1,
-    maxConsecutiveLosses: Math.floor(Math.random() * 5) + 1,
-    recoveryFactor: Math.random() * 5 + 1,
-    profitFactor: Math.random() * 3 + 1
-  });
+
+
+
 
   // 查看回测结果
   const handleViewResult = (result: BacktestResult) => {
@@ -963,10 +870,35 @@ const BacktestPage: React.FC = () => {
                     )}
                     <Button 
                       icon={<EyeOutlined />}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedResult(currentBacktest);
-                        setPerformanceData(generateMockData());
-                        setTradeAnalysis(generateTradeAnalysis());
+                        if (currentBacktest) {
+                          try {
+                            const [performanceData, tradeData] = await Promise.allSettled([
+                              fetchPerformanceData(currentBacktest.id),
+                              fetchTradeAnalysis(currentBacktest.id)
+                            ]);
+                            
+                            if (performanceData.status === 'fulfilled') {
+                              setPerformanceData(performanceData.value);
+                            } else {
+                              message.error(`性能数据加载失败: ${performanceData.reason.message}`);
+                              setPerformanceData([]);
+                            }
+                            
+                            if (tradeData.status === 'fulfilled') {
+                              setTradeAnalysis(tradeData.value);
+                            } else {
+                              message.error(`交易数据加载失败: ${tradeData.reason.message}`);
+                              setTradeAnalysis([]);
+                            }
+                          } catch (error) {
+                            console.error('Failed to load backtest details:', error);
+                            message.error('加载回测详情失败');
+                            setPerformanceData([]);
+                            setTradeAnalysis([]);
+                          }
+                        }
                         setResultModalVisible(true);
                       }}
                     >

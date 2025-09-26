@@ -1,0 +1,107 @@
+# 交易所配置文件
+# 支持多个交易所的配置管理
+
+# Binance 配置
+binance:
+  type: "binance"
+  name: "Binance"
+  sandbox: false
+  rate_limit: 10
+  api_key: "${BINANCE_API_KEY}"
+  api_secret: "${BINANCE_API_SECRET}"
+  base_url: "https://api.binance.com"
+  stream_url: "wss://stream.binance.com:9443"
+  testnet_base_url: "https://testnet.binance.vision"
+  testnet_stream_url: "wss://testnet.binance.vision"
+  symbols:
+    - "BTCUSDT"
+    - "ETHUSDT"
+    - "BNBUSDT"
+    - "ADAUSDT"
+    - "SOLUSDT"
+  enabled: true
+
+# Gate.io 配置
+gateio:
+  type: "gateio"
+  name: "Gate.io"
+  sandbox: false
+  rate_limit: 10
+  api_key: "${GATEIO_API_KEY}"
+  api_secret: "${GATEIO_API_SECRET}"
+  base_url: "https://api.gateio.ws"
+  stream_url: "wss://ws.gate.io"
+  testnet_base_url: "https://fx-api-testnet.gateio.ws"
+  testnet_stream_url: "wss://fx-ws-testnet.gateio.ws"
+  symbols:
+    - "BTC_USDT"
+    - "ETH_USDT"
+    - "ADA_USDT"
+    - "SOL_USDT"
+  enabled: true
+
+# OKX 配置 (示例，可选)
+okx:
+  type: "okx"
+  name: "OKX"
+  sandbox: false
+  rate_limit: 10
+  api_key: "${OKX_API_KEY}"
+  api_secret: "${OKX_API_SECRET}"
+  passphrase: "${OKX_PASSPHRASE}"
+  base_url: "https://www.okx.com"
+  stream_url: "wss://ws.okx.com:8443/ws/v5/public"
+  testnet_base_url: "https://www.okx.com"
+  testnet_stream_url: "wss://wspap.okx.com:8443/ws/v5/public"
+  symbols:
+    - "BTC-USDT"
+    - "ETH-USDT"
+    - "ADA-USDT"
+    - "SOL-USDT"
+  enabled: false
+
+# 通用配置
+common:
+  # 默认超时时间（秒）
+  timeout: 30
+  # 重试次数
+  retry_count: 3
+  # 重试间隔（秒）
+  retry_interval: 1
+  # 数据缓存时间（秒）
+  cache_ttl: 60
+  # 日志级别
+  log_level: "INFO"
+  # 是否启用WebSocket
+  enable_websocket: true
+  # 心跳间隔（秒）
+  heartbeat_interval: 30
+
+# 风险控制配置
+risk_control:
+  # 最大订单金额
+  max_order_amount: 10000
+  # 最大持仓比例
+  max_position_ratio: 0.8
+  # 最小订单金额
+  min_order_amount: 10
+  # 每日最大亏损
+  max_daily_loss: 1000
+  # 每日最大交易次数
+  max_daily_trades: 100
+
+# 监控配置
+monitoring:
+  # 启用监控
+  enabled: true
+  # 监控间隔（秒）
+  interval: 60
+  # 告警阈值
+  alert_threshold:
+    - error_rate: 0.05  # 5%错误率
+    - response_time: 5  # 5秒响应时间
+    - failure_count: 10  # 10次失败
+  # 通知渠道
+  notification_channels:
+    - email: "admin@example.com"
+    - webhook: "https://hooks.slack.com/services/..."

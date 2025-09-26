@@ -92,6 +92,7 @@ const RealTimeTrading: React.FC = () => {
       setAccountInfo(response);
     } catch (error) {
       console.error('获取账户信息失败:', error);
+      message.error(`获取账户信息失败: ${error.response?.data?.detail || error.message}`);
     }
   };
   
@@ -168,7 +169,7 @@ const RealTimeTrading: React.FC = () => {
       setMarketData(data);
     } catch (error) {
       console.error('获取市场数据失败:', error);
-      message.error('获取市场数据失败');
+      message.error(`获取市场数据失败: ${error.response?.data?.detail || error.message}`);
     }
   };
   
@@ -179,6 +180,7 @@ const RealTimeTrading: React.FC = () => {
       setMarketOverview(response);
     } catch (error) {
       console.error('获取市场概览失败:', error);
+      message.error(`获取市场概览失败: ${error.response?.data?.detail || error.message}`);
     }
   };
   
@@ -193,7 +195,7 @@ const RealTimeTrading: React.FC = () => {
       setRecentOrders(response || []);
     } catch (error) {
       console.error('获取最近订单失败:', error);
-      message.error('获取最近订单失败');
+      message.error(`获取最近订单失败: ${error.response?.data?.detail || error.message}`);
     }
   };
   
@@ -204,7 +206,7 @@ const RealTimeTrading: React.FC = () => {
       setPositions(response || []);
     } catch (error) {
       console.error('获取持仓数据失败:', error);
-      message.error('获取持仓数据失败');
+      message.error(`获取持仓数据失败: ${error.response?.data?.detail || error.message}`);
     }
   };
   

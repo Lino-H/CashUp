@@ -243,219 +243,40 @@ export interface BacktestJob {
   estimatedDuration: number;
 }
 
-// 生成模拟策略模板数据
-const generateMockStrategyTemplates = (): StrategyTemplate[] => {
-  const templates: StrategyTemplate[] = [];
-  const categoryNames = {
-    trend: '趋势跟踪',
-    momentum: '动量',
-    mean_reversion: '均值回归',
-    arbitrage: '套利',
-    scalping: '高频',
-    breakout: '突破',
-    hft: '超高频',
-    ml: '机器学习',
-  };
-  const difficultyNames = {
-    beginner: '初级',
-    intermediate: '中级',
-    advanced: '高级',
-    expert: '专家',
-  };
-  
-  const templateNames = [
-    '移动平均线策略',
-    'MACD策略',
-    'RSI策略',
-    '布林带策略',
-    'KDJ策略',
-    '网格交易策略',
-    '套利策略',
-    '机器学习预测策略',
-  ];
-  
-  for (let i = 0; i < 8; i++) {
-    const categories = Object.keys(categoryNames);
-    const difficulties = Object.keys(difficultyNames);
-    
-    templates.push({
-      id: `template_${i}`,
-      name: templateNames[i],
-      description: `这是一个专业的${templateNames[i]}，采用先进的算法模型进行交易决策。`,
-      category: categories[i % categories.length] as keyof typeof categoryNames,
-      difficulty: difficulties[Math.floor(Math.random() * difficulties.length)] as keyof typeof difficultyNames,
-      parameters: {
-        period: Math.floor(Math.random() * 50) + 10,
-        threshold: Math.random() * 0.1,
-        positionSize: Math.random() * 0.5 + 0.1,
-        stopLoss: Math.random() * 0.05 + 0.01,
-        takeProfit: Math.random() * 0.1 + 0.02,
-        maxPosition: Math.floor(Math.random() * 5) + 1,
-      },
-      performance: {
-        winRate: 0.4 + Math.random() * 0.4,
-        avgReturn: Math.random() * 0.2 - 0.1,
-        maxDrawdown: Math.random() * 0.3,
-        sharpeRatio: Math.random() * 2,
-        totalTrades: Math.floor(Math.random() * 1000),
-        profitFactor: Math.random() * 1.5 + 0.5,
-      },
-      code: `// ${templateNames[i]} 代码\nfunction strategy(data) {\n  // 策略逻辑\n  return signals;\n}`,
-      createdAt: Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-      updatedAt: Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
-      author: `Author_${Math.floor(Math.random() * 10) + 1}`,
-      tags: ['趋势', '技术分析', '自动交易'],
-      rating: Math.random() * 5,
-      downloads: Math.floor(Math.random() * 1000),
-    });
+// 获取策略模板数据
+const fetchStrategyTemplates = async (): Promise<StrategyTemplate[]> => {
+  const response = await fetch('/api/strategies/templates');
+  if (!response.ok) {
+    throw new Error(`策略模板API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return templates.sort((a, b) => b.downloads - a.downloads);
+  return response.json();
 };
 
-// 生成模拟策略实例数据
-const generateMockStrategyInstances = (): StrategyInstance[] => {
-  const instances: StrategyInstance[] = [];
-  const templates = generateMockStrategyTemplates();
-  const statuses = ['draft', 'backtesting', 'optimizing', 'running', 'paused', 'stopped', 'error'] as const;
-  
-  for (let i = 0; i < 10; i++) {
-    const template = templates[i % templates.length];
-    instances.push({
-      id: `instance_${i}`,
-      templateId: template.id,
-      name: `${template.name}_实例_${i + 1}`,
-      description: `${template.description} - 实例${i + 1}`,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      progress: Math.random() * 100,
-      parameters: {
-        period: Math.floor(Math.random() * 50) + 10,
-        threshold: Math.random() * 0.1,
-        positionSize: Math.random() * 0.5 + 0.1,
-        stopLoss: Math.random() * 0.05 + 0.01,
-        takeProfit: Math.random() * 0.1 + 0.02,
-        maxPosition: Math.floor(Math.random() * 5) + 1,
-      },
-      backtestResults: {
-        totalReturn: Math.random() * 0.5 - 0.2,
-        winRate: Math.random() * 0.6 + 0.2,
-        maxDrawdown: Math.random() * 0.3,
-        sharpeRatio: Math.random() * 2,
-        profitFactor: Math.random() * 1.5 + 0.5,
-        trades: Math.floor(Math.random() * 500),
-      },
-      optimizationResults: {
-        bestParameters: {
-          period: Math.floor(Math.random() * 50) + 10,
-          threshold: Math.random() * 0.1,
-          positionSize: Math.random() * 0.5 + 0.1,
-        },
-        bestReturn: Math.random() * 0.5 - 0.2,
-        bestWinRate: Math.random() * 0.6 + 0.2,
-        bestSharpeRatio: Math.random() * 2,
-      },
-      schedule: {
-        enabled: Math.random() > 0.3,
-        frequency: ['realtime', '1m', '5m', '15m', '1h', '4h', '1d', '1w'][Math.floor(Math.random() * 8)] as any,
-        startTime: '09:00',
-        endTime: '17:00',
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
-      riskManagement: {
-        stopLoss: Math.random() * 0.05 + 0.01,
-        takeProfit: Math.random() * 0.1 + 0.02,
-        maxPosition: Math.floor(Math.random() * 5) + 1,
-        dailyLoss: Math.random() * 0.05,
-        maxDrawdown: Math.random() * 0.1,
-      },
-      createdAt: Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-      lastRun: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      nextRun: Date.now() + Math.random() * 24 * 60 * 60 * 1000,
-      running: Math.random() > 0.5,
-    });
+// 获取策略实例数据
+const fetchStrategyInstances = async (): Promise<StrategyInstance[]> => {
+  const response = await fetch('/api/strategies/instances');
+  if (!response.ok) {
+    throw new Error(`策略实例API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return instances;
+  return response.json();
 };
 
-// 生成模拟自动化规则数据
-const generateMockAutomationRules = (): AutomationRule[] => {
-  const rules: AutomationRule[] = [];
-  const ruleNames = [
-    '止损触发规则',
-    '止盈触发规则',
-    '时间触发规则',
-    '条件触发规则',
-    '价格触发规则',
-  ];
-  const types = ['schedule', 'trigger', 'condition', 'alert'] as const;
-  
-  for (let i = 0; i < 5; i++) {
-    rules.push({
-      id: `rule_${i}`,
-      name: ruleNames[i],
-      type: types[Math.floor(Math.random() * types.length)],
-      enabled: Math.random() > 0.2,
-      conditions: {
-        priceThreshold: Math.random() * 100 + 100,
-        timeCondition: '09:00',
-        volumeCondition: Math.random() * 1000,
-        marketCondition: 'bullish',
-      },
-      actions: {
-        action: 'stop_loss',
-        quantity: 1.0,
-        message: '止损触发',
-      },
-      priority: Math.floor(Math.random() * 10) + 1,
-      createdAt: Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-      lastExecuted: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      executionCount: Math.floor(Math.random() * 100),
-    });
+// 获取自动化规则数据
+const fetchAutomationRules = async (): Promise<AutomationRule[]> => {
+  const response = await fetch('/api/strategies/automation-rules');
+  if (!response.ok) {
+    throw new Error(`自动化规则API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return rules.sort((a, b) => b.priority - a.priority);
+  return response.json();
 };
 
-// 生成模拟回测作业数据
-const generateMockBacktestJobs = (): BacktestJob[] => {
-  const jobs: BacktestJob[] = [];
-  const statuses = ['pending', 'running', 'completed', 'failed', 'cancelled'] as const;
-  
-  for (let i = 0; i < 10; i++) {
-    jobs.push({
-      id: `job_${i}`,
-      strategyInstanceId: `instance_${i % 5}`,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      progress: Math.random() * 100,
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      timeframe: '1h',
-      data: {
-        totalTrades: Math.floor(Math.random() * 500) + 50,
-        winningTrades: Math.floor(Math.random() * 300) + 50,
-        losingTrades: Math.floor(Math.random() * 200) + 50,
-        totalReturn: Math.random() * 0.5 - 0.2,
-        annualizedReturn: Math.random() * 0.3 - 0.1,
-        maxDrawdown: Math.random() * 0.3,
-        sharpeRatio: Math.random() * 2,
-        profitFactor: Math.random() * 1.5 + 0.5,
-        avgTradeTime: Math.random() * 100,
-        winRate: Math.random() * 0.6 + 0.2,
-      },
-      logs: [
-        '开始回测...',
-        '加载数据...',
-        '执行策略...',
-        '完成回测...',
-      ],
-      createdAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-      completedAt: Math.random() > 0.5 ? Date.now() - Math.random() * 24 * 60 * 60 * 1000 : undefined,
-      estimatedDuration: Math.random() * 3600 + 600,
-    });
+// 获取回测作业数据
+const fetchBacktestJobs = async (): Promise<BacktestJob[]> => {
+  const response = await fetch('/api/strategies/backtest-jobs');
+  if (!response.ok) {
+    throw new Error(`回测作业API错误: ${response.status} ${response.statusText}`);
   }
-  
-  return jobs.sort((a, b) => b.createdAt - a.createdAt);
+  return response.json();
 };
 
 // 状态颜色映射
@@ -547,18 +368,38 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
     const initializeData = async () => {
       setLoading(true);
       try {
-        const mockTemplates = generateMockStrategyTemplates();
-        const mockInstances = generateMockStrategyInstances();
-        const mockRules = generateMockAutomationRules();
-        const mockJobs = generateMockBacktestJobs();
+        const [templatesData, instancesData, rulesData, jobsData] = await Promise.allSettled([
+          fetchStrategyTemplates(),
+          fetchStrategyInstances(),
+          fetchAutomationRules(),
+          fetchBacktestJobs()
+        ]);
         
-        setTemplates(mockTemplates);
-        setInstances(mockInstances);
-        setRules(mockRules);
-        setJobs(mockJobs);
+        if (templatesData.status === 'rejected') {
+          message.error(`策略模板数据加载失败: ${templatesData.reason.message}`);
+        } else {
+          setTemplates(templatesData.value);
+          onTemplateChange?.(templatesData.value);
+        }
         
-        onTemplateChange?.(mockTemplates);
-        onInstanceChange?.(mockInstances);
+        if (instancesData.status === 'rejected') {
+          message.error(`策略实例数据加载失败: ${instancesData.reason.message}`);
+        } else {
+          setInstances(instancesData.value);
+          onInstanceChange?.(instancesData.value);
+        }
+        
+        if (rulesData.status === 'rejected') {
+          message.error(`自动化规则数据加载失败: ${rulesData.reason.message}`);
+        } else {
+          setRules(rulesData.value);
+        }
+        
+        if (jobsData.status === 'rejected') {
+          message.error(`回测作业数据加载失败: ${jobsData.reason.message}`);
+        } else {
+          setJobs(jobsData.value);
+        }
       } catch (error) {
         console.error('Failed to initialize strategy automation data:', error);
         message.error('初始化数据失败');
@@ -574,14 +415,24 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(() => {
-      const mockInstances = generateMockStrategyInstances();
-      const mockJobs = generateMockBacktestJobs();
-      
-      setInstances(mockInstances);
-      setJobs(mockJobs);
-      
-      onInstanceChange?.(mockInstances);
+    const interval = setInterval(async () => {
+      try {
+        const [instancesData, jobsData] = await Promise.allSettled([
+          fetchStrategyInstances(),
+          fetchBacktestJobs()
+        ]);
+        
+        if (instancesData.status === 'fulfilled') {
+          setInstances(instancesData.value);
+          onInstanceChange?.(instancesData.value);
+        }
+        
+        if (jobsData.status === 'fulfilled') {
+          setJobs(jobsData.value);
+        }
+      } catch (error) {
+        console.error('Failed to refresh strategy automation data:', error);
+      }
     }, 10000); // 每10秒刷新一次
 
     return () => clearInterval(interval);

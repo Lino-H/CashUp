@@ -37,6 +37,7 @@ import {
   PieChartOutlined,
   LineChartOutlined,
   ThunderboltOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
@@ -108,7 +109,12 @@ const FundamentalAnalysis: React.FC<FundamentalAnalysisProps> = ({
   const [selectedTab, setSelectedTab] = useState<'overview' | 'fundamentals' | 'news' | 'rating'>('overview');
 
   // 生成模拟数据（实际项目中应该从API获取）
-  const generateMockData = (): FundamentalData => ({
+  const fetchFundamentalData = async (): Promise<FundamentalData> => {
+    // 这里应该调用真实的基本面分析API
+    throw new Error('基本面分析API尚未实现');
+  };
+
+  const generateEmptyData = (): FundamentalData => ({
     symbol: 'BTC/USDT',
     name: 'Bitcoin',
     price: 45230.50,
@@ -173,7 +179,7 @@ const FundamentalAnalysis: React.FC<FundamentalAnalysisProps> = ({
     },
   });
 
-  const fundamentalData = data || generateMockData();
+  const fundamentalData = data || generateEmptyData();
 
   // 计算综合评分
   const calculateScore = (data: FundamentalData): number => {

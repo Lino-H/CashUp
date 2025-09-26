@@ -592,6 +592,70 @@ sudo -u postgres psql -d cashup -f scripts/init_database.sql
 sudo -u postgres psql -d cashup -c "\dt"
 ```
 
+### 5. 配置初始化到数据库
+
+配置初始化是将 .env 文件中的参数写入到数据库中，确保系统能够正确读取和使用配置信息。
+
+```bash
+# 1. 检查配置初始化脚本
+ls -la scripts/init_database_config.py
+# 确认脚本存在
+
+# 2. 运行配置初始化脚本
+python scripts/init_database_config.py
+
+# 3. 验证配置是否正确导入
+# 进入容器执行检查
+docker exec cashup_postgres psql -U cashup -d cashup -c "
+SELECT name, enabled FROM exchange_configs WHERE name IN ('gateio', 'binance');
+"
+# 期望输出:
+# name  | enabled
+#-------+----------
+# gateio| t
+# binance| f
+
+# 4. 检查交易配置
+docker exec cashup_postgres psql -U cashup -d cashup -c "
+SELECT key, value FROM system_configs WHERE type = 'trading' LIMIT 5;
+"
+# 期望输出包含默认杠杆、最大持仓大小等配置
+
+# 5. 验证模拟交易配置
+docker exec cashup_postgres psql -U cashup -d cashup -c "
+SELECT key, value FROM system_configs WHERE type = 'simulation' LIMIT 3;
+"
+# 期望输出包含初始资金、佣金率等配置
+
+# 6. 检查系统配置
+docker exec cashup_postgres psql -U cashup -d cashup -c "
+SELECT key, value FROM system_configs WHERE type = 'api' LIMIT 3;
+"
+# 期望输出包含API限制、超时时间等配置
+```
+
+**配置初始化脚本功能说明**：
+
+- **交易所配置初始化**：将 .env 文件中的 API 密钥信息写入数据库中的 `exchange_configs` 表
+- **交易配置初始化**：设置默认交易参数（杠杆、最大持仓大小、风险管理等）
+- **模拟交易配置初始化**：设置模拟交易的初始资金和参数
+- **系统配置初始化**：设置 API 限制、日志级别、数据库连接池等系统参数
+- **用户配置初始化**：设置默认的用户界面和通知偏好
+
+**配置初始化的重要性**：
+
+1. **安全性**：API 密钥存储在数据库中，而不是硬编码在代码中
+2. **灵活性**：前端可以通过管理界面动态修改配置
+3. **一致性**：确保所有服务使用统一的配置信息
+4. **可维护性**：配置集中管理，便于维护和更新
+
+**如果配置初始化失败，请检查以下内容**：
+
+1. 确认 `.env` 文件存在且包含必要的配置项
+2. 确认数据库连接正常
+3. 确认 Python 环境和依赖包正确安装
+4. 查看脚本执行日志以获取详细错误信息
+
 ## 🚀 服务部署
 
 ### 1. 创建Docker Compose配置

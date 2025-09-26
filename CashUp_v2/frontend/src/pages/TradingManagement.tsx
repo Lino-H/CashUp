@@ -89,6 +89,7 @@ import {
   Strategy,
   apiCallWithRetry
 } from '../services/api';
+import { useDataCache } from '../hooks/useDataCache';
 import moment from 'moment';
 
 const { Title, Text } = Typography;
