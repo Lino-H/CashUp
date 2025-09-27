@@ -7,6 +7,7 @@ import json
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,110 @@ class ConfigService:
             return success
         except Exception as e:
             logger.error(f"更新交易所配置失败: {e}")
+            return False
+
+    async def update_trading_config(self, config: Dict[str, Any]) -> bool:
+        """更新交易配置"""
+        try:
+            if not self.db_pool:
+                return False
+
+            # 更新数据库
+            async with self.db_pool.acquire() as conn:
+                key = "trading_config"
+                description = "交易配置"
+                
+                # 检查是否已存在
+                check_query = "SELECT id FROM configs WHERE key = $1"
+                existing = await conn.fetchrow(check_query, key)
+                
+                if existing:
+                    # 更新现有配置
+                    update_query = """
+                    UPDATE configs 
+                    SET value = $1, updated_at = $2 
+                    WHERE key = $3
+                    """
+                    await conn.execute(
+                        update_query,
+                        json.dumps(config),
+                        datetime.now(),
+                        key
+                    )
+                else:
+                    # 插入新配置
+                    insert_query = """
+                    INSERT INTO configs (key, value, description, category, is_system, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """
+                    await conn.execute(
+                        insert_query,
+                        key,
+                        json.dumps(config),
+                        description,
+                        'system',
+                        True,
+                        datetime.now(),
+                        datetime.now()
+                    )
+
+            # 更新缓存
+            await self._set_cache("trading_config", config)
+            return True
+        except Exception as e:
+            logger.error(f"更新交易配置失败: {e}")
+            return False
+
+    async def update_simulation_config(self, config: Dict[str, Any]) -> bool:
+        """更新模拟配置"""
+        try:
+            if not self.db_pool:
+                return False
+
+            # 更新数据库
+            async with self.db_pool.acquire() as conn:
+                key = "simulation_config"
+                description = "模拟交易配置"
+                
+                # 检查是否已存在
+                check_query = "SELECT id FROM configs WHERE key = $1"
+                existing = await conn.fetchrow(check_query, key)
+                
+                if existing:
+                    # 更新现有配置
+                    update_query = """
+                    UPDATE configs 
+                    SET value = $1, updated_at = $2 
+                    WHERE key = $3
+                    """
+                    await conn.execute(
+                        update_query,
+                        json.dumps(config),
+                        datetime.now(),
+                        key
+                    )
+                else:
+                    # 插入新配置
+                    insert_query = """
+                    INSERT INTO configs (key, value, description, category, is_system, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """
+                    await conn.execute(
+                        insert_query,
+                        key,
+                        json.dumps(config),
+                        description,
+                        'system',
+                        True,
+                        datetime.now(),
+                        datetime.now()
+                    )
+
+            # 更新缓存
+            await self._set_cache("simulation_config", config)
+            return True
+        except Exception as e:
+            logger.error(f"更新模拟配置失败: {e}")
             return False
 
     async def set_api_credentials(self, exchange_name: str, credentials: Dict[str, str]) -> bool:
@@ -207,13 +312,23 @@ class ConfigService:
 
         try:
             async with self.db_pool.acquire() as conn:
-                # 注意：这里应该使用正确的SQL查询
-                # 以下是简化示例
-                query = "SELECT config FROM exchange_configs WHERE name = $1"
-                result = await conn.fetchrow(query, exchange_name)
+                # 使用现有的 configs 表结构
+                query = "SELECT value FROM configs WHERE key = $1 AND category = 'exchange'"
+                result = await conn.fetchrow(query, f"exchange_{exchange_name}")
 
                 if result:
-                    return json.loads(result['config'])
+                    config_data = result['value']
+                    # 解析JSON字符串为字典
+                    if isinstance(config_data, str):
+                        try:
+                            config_data = json.loads(config_data)
+                        except json.JSONDecodeError:
+                            logger.error(f"解析交易所配置失败: {exchange_name}")
+                            return self._get_default_exchange_config(exchange_name)
+                    # 确保返回的配置包含必要字段
+                    config_data.setdefault('name', exchange_name)
+                    config_data.setdefault('enabled', True)
+                    return config_data
         except Exception as e:
             logger.error(f"从数据库获取交易所配置失败: {e}")
 
@@ -226,19 +341,43 @@ class ConfigService:
 
         try:
             async with self.db_pool.acquire() as conn:
-                # 注意：这里应该使用正确的SQL查询
-                query = """
-                INSERT INTO exchange_configs (name, config, updated_at)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (name) DO UPDATE SET
-                config = $2, updated_at = $3
-                """
-                await conn.execute(
-                    query,
-                    exchange_name,
-                    json.dumps(config),
-                    datetime.now().isoformat()
-                )
+                # 使用现有的 configs 表结构
+                key = f"exchange_{exchange_name}"
+                description = f"{config.get('name', exchange_name)} 交易所配置"
+                
+                # 检查是否已存在
+                check_query = "SELECT id FROM configs WHERE key = $1"
+                existing = await conn.fetchrow(check_query, key)
+                
+                if existing:
+                    # 更新现有配置
+                    update_query = """
+                    UPDATE configs 
+                    SET value = $1, updated_at = $2 
+                    WHERE key = $3
+                    """
+                    await conn.execute(
+                        update_query,
+                        json.dumps(config),
+                        datetime.now(),
+                        key
+                    )
+                else:
+                    # 插入新配置
+                    insert_query = """
+                    INSERT INTO configs (key, value, description, category, is_system, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """
+                    await conn.execute(
+                        insert_query,
+                        key,
+                        json.dumps(config),
+                        description,
+                        'exchange',
+                        True,
+                        datetime.now(),
+                        datetime.now()
+                    )
                 return True
         except Exception as e:
             logger.error(f"更新数据库配置失败: {e}")
@@ -251,9 +390,16 @@ class ConfigService:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = "SELECT config FROM system_configs WHERE type = 'trading'"
+                # 使用现有的 configs 表结构
+                query = "SELECT value FROM configs WHERE key = 'trading_config' AND category = 'system'"
                 result = await conn.fetchrow(query)
-                return json.loads(result['config']) if result else None
+                if result:
+                    value = result['value']
+                    # 解析JSON字符串为字典
+                    if isinstance(value, str):
+                        return json.loads(value)
+                    return value
+                return None
         except Exception as e:
             logger.error(f"从数据库获取交易配置失败: {e}")
             return None
@@ -265,9 +411,16 @@ class ConfigService:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = "SELECT config FROM system_configs WHERE type = 'simulation'"
+                # 使用现有的 configs 表结构
+                query = "SELECT value FROM configs WHERE key = 'simulation_config' AND category = 'system'"
                 result = await conn.fetchrow(query)
-                return json.loads(result['config']) if result else None
+                if result:
+                    value = result['value']
+                    # 解析JSON字符串为字典
+                    if isinstance(value, str):
+                        return json.loads(value)
+                    return value
+                return None
         except Exception as e:
             logger.error(f"从数据库获取模拟配置失败: {e}")
             return None
@@ -279,14 +432,24 @@ class ConfigService:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = "SELECT name, config FROM exchange_configs WHERE enabled = true"
+                # 使用现有的 configs 表结构
+                query = "SELECT key, value FROM configs WHERE category = 'exchange' AND (value->>'enabled')::boolean = true"
                 results = await conn.fetch(query)
 
                 exchanges = {}
                 for row in results:
-                    config = json.loads(row['config'])
-                    exchanges[row['name']] = {
-                        'name': config.get('name', row['name']),
+                    key = row['key']
+                    config_str = row['value']
+                    # 解析JSON字符串为字典
+                    try:
+                        config = json.loads(config_str) if isinstance(config_str, str) else config_str
+                    except json.JSONDecodeError:
+                        logger.warning(f"解析交易所配置失败: {key}")
+                        continue
+                    # 从 key 中提取交易所名称 (exchange_gateio -> gateio)
+                    exchange_name = key.replace('exchange_', '')
+                    exchanges[exchange_name] = {
+                        'name': config.get('name', exchange_name),
                         'type': config.get('type', 'unknown'),
                         'enabled': config.get('enabled', True)
                     }

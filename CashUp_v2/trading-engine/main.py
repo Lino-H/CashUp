@@ -54,10 +54,10 @@ app.add_middleware(
 )
 
 # 包含API路由
-app.include_router(strategies_router)
-app.include_router(trading_router)
-app.include_router(market_data_router)
-app.include_router(account_router)
+app.include_router(strategies_router, prefix="/api/v1")
+app.include_router(trading_router, prefix="/api/v1")
+app.include_router(market_data_router, prefix="/api/v1")
+app.include_router(account_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

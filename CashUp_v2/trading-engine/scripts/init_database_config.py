@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 from pathlib import Path
+import asyncpg
 
 # 添加项目路径到Python路径
 import sys
@@ -18,8 +19,27 @@ sys.path.insert(0, str(project_root))
 
 from services.config_service import ConfigService
 
+# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 数据库连接配置
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://cashup:cashup@localhost:5432/cashup')
+
+async def create_db_pool():
+    """创建数据库连接池"""
+    try:
+        pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=10,
+            command_timeout=60
+        )
+        logger.info("数据库连接池创建成功")
+        return pool
+    except Exception as e:
+        logger.error(f"创建数据库连接池失败: {e}")
+        raise
 
 def load_env_file() -> Dict[str, str]:
     """加载.env文件"""
@@ -121,8 +141,12 @@ async def init_trading_config(config_service: ConfigService):
         else:
             logger.info("创建新的交易配置")
 
-        # 这里应该有更新交易配置的方法，如果没有就创建
-        logger.info("✅ 交易配置初始化成功")
+        # 使用 ConfigService 的方法更新交易配置
+        success = await config_service.update_trading_config(trading_config)
+        if success:
+            logger.info("✅ 交易配置初始化成功")
+        else:
+            logger.error("❌ 交易配置初始化失败")
     except Exception as e:
         logger.error(f"❌ 交易配置初始化失败: {e}")
 
@@ -144,7 +168,12 @@ async def init_simulation_config(config_service: ConfigService):
     }
 
     try:
-        logger.info("✅ 模拟交易配置初始化成功")
+        # 使用 ConfigService 的方法更新模拟配置
+        success = await config_service.update_simulation_config(simulation_config)
+        if success:
+            logger.info("✅ 模拟交易配置初始化成功")
+        else:
+            logger.error("❌ 模拟交易配置初始化失败")
     except Exception as e:
         logger.error(f"❌ 模拟交易配置初始化失败: {e}")
 
@@ -243,16 +272,21 @@ async def backup_existing_configs(config_service: ConfigService):
 async def main():
     """主函数"""
     logger.info("🚀 开始初始化数据库配置...")
+    db_pool = None
 
     # 加载.env文件
     env_vars = load_env_file()
     logger.info(f"✅ 已加载 {len(env_vars)} 个环境变量")
 
-    # 创建配置服务
-    config_service = ConfigService()
-    await config_service.initialize()
-
     try:
+        # 创建数据库连接池
+        logger.info("创建数据库连接池...")
+        db_pool = await create_db_pool()
+
+        # 创建配置服务（传入数据库连接池）
+        config_service = ConfigService(db_pool=db_pool)
+        config_service.initialize()  # 同步方法，不需要 await
+
         # 备份现有配置
         await backup_existing_configs(config_service)
 
@@ -287,6 +321,11 @@ async def main():
     except Exception as e:
         logger.error(f"❌ 数据库配置初始化失败: {e}")
         raise
+    finally:
+        # 关闭数据库连接池
+        if db_pool:
+            await db_pool.close()
+            logger.info("数据库连接池已关闭")
 
     logger.info("🎉 配置初始化流程完成")
 
