@@ -585,3 +585,41 @@ BEGIN
     RAISE NOTICE '默认管理员用户: admin / admin@cashup.com';
     RAISE NOTICE '默认密码: admin123 (请在生产环境中修改)';
 END $$;
+
+-- RSS 源配置表
+CREATE TABLE IF NOT EXISTS rss_feeds (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    url VARCHAR(500) NOT NULL UNIQUE,
+    category VARCHAR(50),
+    language VARCHAR(10) DEFAULT 'en',
+    is_active BOOLEAN DEFAULT true,
+    last_fetch TIMESTAMP,
+    fetch_interval INTEGER DEFAULT 300,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_rss_active ON rss_feeds(is_active);
+
+-- 市场新闻表
+CREATE TABLE IF NOT EXISTS market_news (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    source VARCHAR(100),
+    title TEXT NOT NULL,
+    content TEXT,
+    summary TEXT,
+    url VARCHAR(500) UNIQUE,
+    published_at TIMESTAMP,
+    category VARCHAR(50),
+    tags JSONB DEFAULT '[]',
+    sentiment_score TEXT,
+    sentiment_label VARCHAR(20),
+    relevance_score TEXT,
+    symbols JSONB DEFAULT '[]',
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_published ON market_news(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_category_time ON market_news(category, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_sentiment ON market_news(sentiment_label);

@@ -18,6 +18,7 @@ import SentimentAnalysis from './components/SentimentAnalysis';
 import RiskAnalysis from './components/RiskAnalysis';
 import AutoTradingInterface from './components/AutoTradingInterface';
 import StrategyAutomation from './components/StrategyAutomation';
+import NewsPage from './pages/NewsPage';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -322,6 +323,12 @@ const AppContent: React.FC = () => {
               icon: <PieChartOutlined />,
               label: '情绪分析',
               onClick: () => navigate('/sentiment-analysis')
+            },
+            {
+              key: 'news',
+              icon: <PieChartOutlined />,
+              label: '新闻情绪',
+              onClick: () => navigate('/news')
             },
             {
               key: 'risk-analysis',
@@ -701,6 +708,11 @@ const AppContent: React.FC = () => {
             <Route path="/sentiment-analysis" element={
               <ProtectedRoute>
                 <SentimentAnalysis />
+              </ProtectedRoute>
+            } />
+            <Route path="/news" element={
+              <ProtectedRoute>
+                <NewsPage />
               </ProtectedRoute>
             } />
             <Route path="/risk-analysis" element={

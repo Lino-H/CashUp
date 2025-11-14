@@ -11,7 +11,7 @@ CashUp量化交易系统 - 核心服务
 """
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -25,7 +25,7 @@ from database.connection import get_database, Base
 from utils.logger import setup_logger
 
 # 导入API路由
-from api.routes import auth, users, config
+from api.routes import auth, users, config, news
 
 # 设置日志
 logger = setup_logger(__name__)
@@ -85,6 +85,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/users", tags=["用户管理"])
 app.include_router(config.router, prefix="/api/config", tags=["配置管理"])
+app.include_router(news.router, prefix="/api", tags=["新闻"])
 
 @app.get("/")
 async def root():
@@ -99,7 +100,7 @@ async def root():
             "users": "/api/users", 
             "config": "/api/config",
             "docs": "/docs",
-            "health": "/health"
+        "health": "/health"
         }
     }
 
@@ -134,3 +135,36 @@ if __name__ == "__main__":
         reload=settings.DEBUG,
         log_level="info"
     )
+
+class NewsWSManager:
+    """新闻WebSocket连接管理器"""
+    def __init__(self):
+        self.active = set()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active.add(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active:
+            self.active.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for ws in list(self.active):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(ws)
+
+
+news_ws_manager = NewsWSManager()
+
+
+@app.websocket("/ws/news")
+async def news_ws(websocket: WebSocket):
+    await news_ws_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        news_ws_manager.disconnect(websocket)
