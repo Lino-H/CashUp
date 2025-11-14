@@ -25,7 +25,7 @@ from database.connection import get_database, Base
 from utils.logger import setup_logger
 
 # 导入API路由
-from api.routes import auth, users, config, news
+from api.routes import config, news, market, trading, strategies, reporting
 
 # 设置日志
 logger = setup_logger(__name__)
@@ -82,10 +82,12 @@ app.add_middleware(
 )
 
 # 注册路由
-app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
-app.include_router(users.router, prefix="/api/users", tags=["用户管理"])
 app.include_router(config.router, prefix="/api/config", tags=["配置管理"])
 app.include_router(news.router, prefix="/api", tags=["新闻"])
+app.include_router(market.router, tags=["行情"])
+app.include_router(trading.router, tags=["交易"])
+app.include_router(strategies.router, tags=["策略"])
+app.include_router(reporting.router, tags=["报表"])
 
 @app.get("/")
 async def root():

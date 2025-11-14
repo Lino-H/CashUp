@@ -19,6 +19,7 @@ import RiskAnalysis from './components/RiskAnalysis';
 import AutoTradingInterface from './components/AutoTradingInterface';
 import StrategyAutomation from './components/StrategyAutomation';
 import NewsPage from './pages/NewsPage';
+import AccountOverview from './pages/AccountOverview';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -109,6 +110,7 @@ const AppContent: React.FC = () => {
         if (normalizedPath.includes('fundamental-analysis')) return 'fundamental-analysis';
         if (normalizedPath.includes('sentiment-analysis')) return 'sentiment-analysis';
         if (normalizedPath.includes('trading')) return 'trading';
+        if (normalizedPath.includes('account')) return 'account';
         if (normalizedPath.includes('strategies')) return 'strategies';
         if (normalizedPath.includes('settings')) return 'settings';
         return 'dashboard';
@@ -359,6 +361,12 @@ const AppContent: React.FC = () => {
               icon: <BarChartOutlined />,
               label: '策略管理',
               onClick: () => navigate('/strategies')
+            },
+            {
+              key: 'account',
+              icon: <FundOutlined />,
+              label: '账户总览',
+              onClick: () => navigate('/account')
             },
             {
               key: 'settings',
@@ -718,6 +726,11 @@ const AppContent: React.FC = () => {
             <Route path="/risk-analysis" element={
               <ProtectedRoute>
                 <RiskAnalysis />
+              </ProtectedRoute>
+            } />
+            <Route path="/account" element={
+              <ProtectedRoute>
+                <AccountOverview />
               </ProtectedRoute>
             } />
             <Route path="/auto-trading" element={

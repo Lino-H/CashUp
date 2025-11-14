@@ -198,6 +198,35 @@ export const configAPI = {
     cookieApi.get('/config/my'),
 };
 
+export const coreStrategyAPI = {
+  listInstances: (status: string = 'running', page: number = 1, page_size: number = 20) =>
+    api.get(`/v1/strategies/instances?status=${status}&page=${page}&page_size=${page_size}`),
+  createInstance: (payload: any) =>
+    api.post('/v1/strategies/instances', payload),
+  startInstance: (id: number) =>
+    api.post(`/v1/strategies/instances/${id}/start`),
+  stopInstance: (id: number) =>
+    api.post(`/v1/strategies/instances/${id}/stop`),
+  performance: (id: number) =>
+    api.get(`/v1/strategies/${id}/performance`),
+  backtest: (payload: any) =>
+    api.post('/v1/backtest', payload),
+  statistics: (id: number) =>
+    api.get(`/v1/strategies/${id}/statistics`),
+  equity: (id: number) =>
+    api.get(`/v1/strategies/${id}/equity`),
+  winrateSeries: (id: number) =>
+    api.get(`/v1/strategies/${id}/winrate_series`),
+};
+
+export const coreReportingAPI = {
+  accountOverview: () => api.get('/v1/account/overview'),
+};
+
+export const coreTradingAPI = {
+  positions: (exchange?: string) => api.get(`/v1/trading/positions${exchange ? `?exchange=${exchange}` : ''}`),
+};
+
   // 策略平台API (端口8003)
 const strategyApi = axios.create({
   baseURL: (window.ENV?.REACT_APP_STRATEGY_URL) || 'http://localhost:8003/api',

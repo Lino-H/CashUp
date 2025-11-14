@@ -5,7 +5,7 @@ CashUp通知服务主应用
 """
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -77,3 +77,14 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+from api import router as notify_router
+app.include_router(notify_router, tags=["通知"])
+
+import asyncio
+from consumer import consume
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(consume())
+    yield
+    task.cancel()

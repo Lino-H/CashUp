@@ -30,5 +30,13 @@ celery_app.conf.update(
             "task": "tasks.rss.analyze_sentiment",
             "schedule": 600.0,
         },
+        "rss-correlation": {
+            "task": "tasks.rss.compute_correlation",
+            "schedule": 900.0,
+        },
+        "trading-sync": {
+            "task": "tasks.trading.sync",
+            "schedule": 60.0,
+        },
     },
 )

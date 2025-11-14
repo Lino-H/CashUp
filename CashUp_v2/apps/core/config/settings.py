@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     
     # Redis配置
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    RABBITMQ_URL: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
     
     # CORS配置 - 生产环境只允许特定域名
     ALLOWED_ORIGINS: List[str] = ["http://localhost", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:80", "https://cashup.com", "https://www.cashup.com"]

@@ -87,6 +87,13 @@ async def _fetch_feeds_async():
                             )
                             session.add(item)
                         await session.commit()
+                        saved = (await session.execute(select(MarketNews).where(MarketNews.url == url))).scalar_one_or_none()
+                        if saved:
+                            try:
+                                from events.notifications import publish
+                                await publish("news.published", {"news_id": str(saved.id), "title": saved.title, "symbols": saved.symbols or []})
+                            except Exception:
+                                pass
                     feed.last_fetch = datetime.utcnow()
                     await session.commit()
                 except Exception:

@@ -1,3 +1,5 @@
+
+
 ## 目标
 - 把你提供的配置（数据库、Redis、RabbitMQ、Telegram）完整接入项目，并统一以 `.env` 驱动所有容器与服务。
 - 保持 Mac 环境与 Docker Desktop 使用 `host.docker.internal` 的访问方式。
