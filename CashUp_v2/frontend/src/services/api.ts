@@ -227,6 +227,35 @@ export const coreTradingAPI = {
   positions: (exchange?: string) => api.get(`/v1/trading/positions${exchange ? `?exchange=${exchange}` : ''}`),
 };
 
+export const coreAdminAPI = {
+  listConfigs: () => api.get('/v1/configs'),
+  getConfig: (key: string) => api.get(`/v1/configs/${key}`),
+  setConfig: (key: string, value: any, is_system: boolean = false) => api.put(`/v1/configs/${key}`, { value, is_system }),
+};
+
+export const coreKeysAPI = {
+  list: (exchange?: string) => api.get(`/v1/keys${exchange ? `?exchange=${exchange}` : ''}`),
+  upsert: (payload: any) => api.post('/v1/keys', payload),
+  update: (id: number, payload: any) => api.put(`/v1/keys/${id}`, payload),
+  reloadExchanges: () => api.post('/v1/exchanges/reload'),
+  seedFromConfigs: () => api.post('/v1/seed/configs'),
+};
+
+export const coreExchangesAPI = {
+  list: () => api.get('/v1/exchanges'),
+};
+
+export const coreSchedulerAPI = {
+  status: (config?: any) => api.get('/v1/scheduler/status', config),
+  setInterval: (key: string, value: number) => api.put(`/v1/configs/${key}`, { value }),
+  trigger: (task: string) => api.post('/v1/scheduler/trigger', { task }),
+  setFallback: (urls: string[]) => api.put('/v1/configs/rss.fallback.feeds', { value: urls }),
+};
+
+export const coreRSSAPI = {
+  listFeeds: () => api.get('/v1/rss/feeds'),
+};
+
   // 策略平台API (端口8003)
 const strategyApi = axios.create({
   baseURL: (window.ENV?.REACT_APP_STRATEGY_URL) || 'http://localhost:8003/api',

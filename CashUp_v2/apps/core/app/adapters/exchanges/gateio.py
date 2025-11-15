@@ -58,7 +58,7 @@ class GateIOExchange(ExchangeBase):
                 if not self.api_secret:
                     self.api_secret = os.getenv('GATE_IO_SECRET_KEY', '')
 
-        self.session = None
+        self.session = aiohttp.ClientSession()
         self.ws_manager = None
         self.rate_limiter = asyncio.Semaphore(self.rate_limit)
 
@@ -84,13 +84,18 @@ class GateIOExchange(ExchangeBase):
 
     async def _request(self, method: str, endpoint: str, params: Dict[str, Any] = None,
                       signed: bool = False, use_futures: bool = False) -> Dict[str, Any]:
-        """HTTP请求"""
+        """HTTP请求（带UA/超时/重试）"""
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
         async with self.rate_limiter:
-            # 选择API基础URL
             base_url = self.futures_base_url if use_futures else self.spot_base_url
             url = f"{base_url}{endpoint}"
 
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'CashUp-Client/2.0 (+https://cashup.example)'
+            }
 
             if signed:
                 timestamp, signature = self._generate_signature(method, endpoint, params)
@@ -98,17 +103,36 @@ class GateIOExchange(ExchangeBase):
                 headers['Timestamp'] = timestamp
                 headers['SIGN'] = signature
 
-            if method == 'GET':
-                if params:
-                    url += '?' + '&'.join([f"{key}={value}" for key, value in params.items()])
-                async with self.session.get(url, headers=headers) as response:
-                    return await response.json()
-            elif method == 'POST':
-                async with self.session.post(url, json=params, headers=headers) as response:
-                    return await response.json()
-            elif method == 'DELETE':
-                async with self.session.delete(url, json=params, headers=headers) as response:
-                    return await response.json()
+            tries = 0
+            last_exc: Exception | None = None
+            while tries < 3:
+                try:
+                    timeout = aiohttp.ClientTimeout(total=30)
+                    if method == 'GET':
+                        async with self.session.get(url, params=params or {}, headers=headers, timeout=timeout) as response:
+                            ct = response.headers.get('Content-Type', '')
+                            if 'application/json' in ct:
+                                return await response.json()
+                            text = await response.text()
+                            try:
+                                import json as _json
+                                return _json.loads(text)
+                            except Exception:
+                                raise ValueError(f"Unexpected content-type: {ct}")
+                    elif method == 'POST':
+                        async with self.session.post(url, json=params or {}, headers=headers, timeout=timeout) as response:
+                            return await response.json()
+                    elif method == 'DELETE':
+                        async with self.session.delete(url, json=params or {}, headers=headers, timeout=timeout) as response:
+                            return await response.json()
+                    else:
+                        async with self.session.request(method, url, json=params or {}, headers=headers, timeout=timeout) as response:
+                            return await response.json()
+                except Exception as e:
+                    last_exc = e
+                    tries += 1
+                    await asyncio.sleep(2 ** tries)
+            raise last_exc if last_exc else RuntimeError("request failed")
 
     # 现货交易方法
     async def get_ticker(self, symbol: str) -> Ticker:
@@ -167,18 +191,20 @@ class GateIOExchange(ExchangeBase):
 
         data = await self._request('GET', endpoint, params)
 
-        klines = []
-        for item in reversed(data):
+        klines: List[Kline] = []
+        for item in data:
+            # Gate.io candlesticks: [t, volume, close, high, low, open, quote_volume]
+            ts = int(item[0])
             kline = Kline(
                 symbol=symbol,
                 interval=interval,
-                open_time=datetime.fromtimestamp(int(item[0])),
-                close_time=datetime.fromtimestamp(int(item[0]) + self.get_interval_minutes(interval) * 60),
-                open_price=float(item[1]),
-                high_price=float(item[2]),
-                low_price=float(item[3]),
-                close_price=float(item[4]),
-                volume=float(item[5]),
+                open_time=datetime.fromtimestamp(ts),
+                close_time=datetime.fromtimestamp(ts + self.get_interval_minutes(interval) * 60),
+                open_price=float(item[5]),
+                high_price=float(item[3]),
+                low_price=float(item[4]),
+                close_price=float(item[2]),
+                volume=float(item[1]),
                 quote_volume=float(item[6]),
                 trades_count=0,
                 taker_buy_volume=0.0,

@@ -14,7 +14,7 @@ from schemas.config import ConfigCreate, ConfigUpdate, ConfigResponse, ConfigLis
 from services.config import ConfigService
 from database.connection import get_db
 from utils.logger import get_logger
-from auth.dependencies import get_current_user, get_current_active_user
+from typing import Any
 
 router = APIRouter()
 security = HTTPBearer()
@@ -26,7 +26,7 @@ async def get_configs(
     limit: int = 100,
     category: Optional[str] = None,
     search: Optional[str] = None,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """获取配置列表"""
@@ -56,7 +56,7 @@ async def get_configs(
 @router.get("/{config_id}", response_model=ConfigResponse)
 async def get_config(
     config_id: int,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """获取配置详情"""
@@ -71,7 +71,9 @@ async def get_config(
             )
         
         # 检查权限：用户配置只能被创建者查看，系统配置管理员可查看
-        if config.user_id and config.user_id != current_user.id and current_user.role != "admin":
+        # 简化权限：个人系统不校验用户角色
+        # if config.user_id and current_user is not None and config.user_id != getattr(current_user, 'id', None):
+        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权查看此配置")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="无权查看此配置"
@@ -91,7 +93,7 @@ async def get_config(
 @router.post("/", response_model=ConfigResponse)
 async def create_config(
     config_data: ConfigCreate,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """创建配置"""
@@ -107,14 +109,10 @@ async def create_config(
             )
         
         # 如果是系统配置，只有管理员可以创建
-        if config_data.is_system and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权创建系统配置"
-            )
+        # 个人系统忽略管理员限制
         
         # 创建配置
-        config = await config_service.create_config(config_data, current_user.id)
+        config = await config_service.create_config(config_data, None)
         
         logger.info(f"配置创建成功: {config.key}")
         return ConfigResponse.from_orm(config)
@@ -132,7 +130,7 @@ async def create_config(
 async def update_config(
     config_id: int,
     config_data: ConfigUpdate,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """更新配置"""
@@ -147,18 +145,10 @@ async def update_config(
             )
         
         # 检查权限
-        if config.user_id and config.user_id != current_user.id and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权更新此配置"
-            )
+        # 个人系统忽略用户校验
         
         # 系统配置只有管理员可以更新
-        if config.is_system and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权更新系统配置"
-            )
+        # 个人系统忽略管理员限制
         
         # 更新配置
         updated_config = await config_service.update_config(config_id, config_data)
@@ -178,7 +168,7 @@ async def update_config(
 @router.delete("/{config_id}")
 async def delete_config(
     config_id: int,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """删除配置"""
@@ -193,18 +183,10 @@ async def delete_config(
             )
         
         # 检查权限
-        if config.user_id and config.user_id != current_user.id and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权删除此配置"
-            )
+        # 个人系统忽略用户校验
         
         # 系统配置只有管理员可以删除
-        if config.is_system and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权删除系统配置"
-            )
+        # 个人系统忽略管理员限制
         
         # 删除配置
         await config_service.delete_config(config_id)
@@ -224,7 +206,7 @@ async def delete_config(
 @router.get("/by-key/{key}", response_model=ConfigResponse)
 async def get_config_by_key(
     key: str,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """根据键获取配置"""
@@ -239,11 +221,7 @@ async def get_config_by_key(
             )
         
         # 检查权限
-        if config.user_id and config.user_id != current_user.id and current_user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权查看此配置"
-            )
+        # 个人系统忽略校验
         
         return ConfigResponse.from_orm(config)
         
@@ -261,7 +239,7 @@ async def get_configs_by_category(
     category: str,
     skip: int = 0,
     limit: int = 100,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """根据分类获取配置"""
@@ -274,8 +252,7 @@ async def get_configs_by_category(
         # 过滤用户有权限查看的配置
         accessible_configs = []
         for config in configs:
-            if config.user_id is None or config.user_id == current_user.id or current_user.role == "admin":
-                accessible_configs.append(config)
+            accessible_configs.append(config)
         
         return ConfigListResponse(
             configs=[ConfigResponse.from_orm(config) for config in accessible_configs],
@@ -294,7 +271,7 @@ async def get_configs_by_category(
 @router.post("/batch")
 async def batch_update_configs(
     configs: List[Dict[str, Any]],
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """批量更新配置"""
@@ -343,7 +320,7 @@ async def get_my_configs(
     skip: int = 0,
     limit: int = 100,
     category: Optional[str] = None,
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     """获取当前用户的配置"""
@@ -371,7 +348,7 @@ async def get_my_configs(
 
 @router.get("/analysis/technical")
 async def get_technical_analysis(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取技术分析数据"""
     try:
@@ -411,7 +388,7 @@ async def get_technical_analysis(
 
 @router.get("/analysis/fundamental")
 async def get_fundamental_analysis(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取基本面分析数据"""
     try:
@@ -448,7 +425,7 @@ async def get_fundamental_analysis(
 
 @router.get("/analysis/sentiment")
 async def get_sentiment_analysis(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取情绪分析数据"""
     try:
@@ -522,7 +499,7 @@ async def get_sentiment_analysis(
 
 @router.get("/analysis/risk")
 async def get_risk_analysis(
-    current_user = Depends(get_current_active_user),
+    current_user: Any | None = None,
     range: str = "1M"
 ):
     """获取风险分析数据"""
@@ -628,7 +605,7 @@ async def get_risk_analysis(
 
 @router.get("/trading/strategies/count")
 async def get_strategies_count(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取策略数量"""
     try:
@@ -644,7 +621,7 @@ async def get_strategies_count(
 
 @router.get("/automation/tasks/count")
 async def get_automation_tasks_count(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取自动化任务数量"""
     try:
@@ -660,7 +637,7 @@ async def get_automation_tasks_count(
 
 @router.get("/scheduler/tasks/count")
 async def get_scheduler_tasks_count(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取计划任务数量"""
     try:
@@ -676,7 +653,7 @@ async def get_scheduler_tasks_count(
 
 @router.get("/reports/count")
 async def get_reports_count(
-    current_user = Depends(get_current_active_user)
+    current_user: Any | None = None
 ):
     """获取报告数量"""
     try:

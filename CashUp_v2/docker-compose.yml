@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: cashup
       POSTGRES_USER: cashup
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-cashup}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:
@@ -40,6 +41,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cashup_redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     ports:
       - "6379:6379"
     volumes:
@@ -66,29 +68,6 @@ services:
           cpus: '0.1'
           memory: 128M
 
-  # RabbitMQ 队列
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: cashup_rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-cashup}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-cashup123}
-    networks:
-      - cashup_network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
 
   # 核心服务 - 生产环境
   core-service:
@@ -99,9 +78,9 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - DEBUG=True
       - TRADING_ENGINE_URL=http://trading-engine:8002
@@ -143,17 +122,15 @@ services:
       context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_celery_worker
-    command: ["celery", "-A", "celery_app.celery_app", "worker", "-l", "info", "-Q", "rss,notification"]
+    command: ["celery", "-A", "celery_app.celery_app", "worker", "-l", "info", "-Q", "rss,notification,market", "-c", "2", "--prefetch-multiplier", "1", "-O", "fair"]
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     volumes:
       - ./apps/core:/app
@@ -175,15 +152,13 @@ services:
     container_name: cashup_celery_beat
     command: ["celery", "-A", "celery_app.celery_app", "beat", "-l", "info"]
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     volumes:
       - ./apps/core:/app
@@ -200,7 +175,7 @@ services:
   # 交易引擎 - 生产环境
   trading-engine:
     build:
-      context: ./frontend/backend-backup/trading-engine
+      context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_trading
     ports:
@@ -219,7 +194,7 @@ services:
       core-service:
         condition: service_healthy
     volumes:
-      - ./frontend/backend-backup/trading-engine:/app
+      - ./apps/core:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
@@ -229,6 +204,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
@@ -246,7 +222,7 @@ services:
   # 策略平台 - 生产环境
   strategy-platform:
     build:
-      context: ./frontend/backend-backup/strategy-platform
+      context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_strategy
     ports:
@@ -268,7 +244,7 @@ services:
       trading-engine:
         condition: service_healthy
     volumes:
-      - ./frontend/backend-backup/strategy-platform:/app
+      - ./apps/core:/app
       - ./strategies:/app/strategies
       - ./configs:/app/configs
     restart: unless-stopped
@@ -305,7 +281,7 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      - ENABLE_RABBITMQ_CONSUMER=false
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - CORE_SERVICE_URL=http://core-service:8001

@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from enum import Enum
-import pandas as pd
 
 class OrderSide(Enum):
     """订单方向"""
@@ -428,6 +427,9 @@ class ExchangeAdapter:
         elif exchange_type == 'bybit':
             from .bybit import BybitExchange
             return BybitExchange(self.config)
+        elif exchange_type == 'kraken':
+            from .kraken import KrakenExchange
+            return KrakenExchange(self.config)
         else:
             raise ValueError(f"不支持的交易所类型: {exchange_type}")
     

@@ -1,29 +1,33 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-CashUp通知服务主应用
-"""
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
+import os
+import asyncio
+from api import router as notify_router
 
-# 设置日志
+"""
+通知服务入口
+函数集注释：
+- lifespan: 可选启动 RabbitMQ 消费任务，默认禁用以适配 Redis-only
+"""
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    logger.info("🚀 启动CashUp通知服务...")
-    logger.info("✅ 通知服务启动成功")
+    enable_consumer = os.getenv("ENABLE_RABBITMQ_CONSUMER", "false").lower() == "true"
+    task = None
+    if enable_consumer:
+        from consumer import consume
+        task = asyncio.create_task(consume())
     yield
-    logger.info("👋 通知服务已关闭")
+    if task:
+        task.cancel()
 
-# 创建FastAPI应用实例
 app = FastAPI(
     title="CashUp 通知服务",
     description="CashUp量化交易系统 - 消息通知服务",
@@ -33,8 +37,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# 配置CORS - 生产环境只允许特定域名
-import os
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:80,https://cashup.com,https://www.cashup.com").split(",")
 
 app.add_middleware(
@@ -47,7 +49,6 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """根路径接口"""
     return {
         "service": "CashUp 通知服务",
         "version": "2.0.0",
@@ -61,13 +62,14 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查接口"""
     return {
         "status": "healthy",
         "service": "notification-service",
         "version": "2.0.0",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+app.include_router(notify_router, tags=["通知"])
 
 if __name__ == "__main__":
     uvicorn.run(
@@ -77,14 +79,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-from api import router as notify_router
-app.include_router(notify_router, tags=["通知"])
-
-import asyncio
-from consumer import consume
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    task = asyncio.create_task(consume())
-    yield
-    task.cancel()

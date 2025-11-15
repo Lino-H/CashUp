@@ -22,8 +22,9 @@
   "scripts": {
     "start": "webpack serve --config webpack.config.js --env development",
     "build": "webpack --config webpack.config.js --env production",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --config jest.config.js --watch",
+    "test:coverage": "jest --config jest.config.js --coverage",
     "test:e2e": "cypress run",
     "test:e2e:headed": "cypress run --headed",
     "test:component": "cypress run --component",
@@ -66,7 +67,7 @@
     "@babel/plugin-transform-runtime": "^7.28.3",
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
-    "@babel/preset-typescript": "^7.23.3",
+    "@babel/preset-typescript": "^7.28.5",
     "@cypress/webpack-preprocessor": "^5.11.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
@@ -106,5 +107,14 @@
     "webpack-bundle-analyzer": "^4.9.1",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
-  }
+  },
+  "description": "1. 复制环境变量文件（如果需要）： ```bash cp .env.example .env ```",
+  "main": "babel.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }

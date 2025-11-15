@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from config.settings import settings
 from celery_app import celery_app
+from database.redis import get_redis
 from api.deps import get_exchange_manager
 
 engine = create_async_engine(settings.DATABASE_URL)
@@ -16,6 +17,32 @@ def sync_trading():
 async def _sync_async():
     mgr = get_exchange_manager()
     async with SessionLocal() as session:
+        # 读取动态间隔
+        interval_sec = 60
+        try:
+            res = await session.execute(text("SELECT config_value FROM system_configs WHERE config_key='trading.sync.interval'"))
+            row = res.first()
+            if row and row.config_value:
+                try:
+                    interval_sec = int(str(row.config_value).strip('"'))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # 软重载节流：在 Redis 记录上次执行时间戳
+        try:
+            r = await get_redis()
+            import time
+            last = await r.get("trading_sync:last_run")
+            now = int(time.time())
+            if last is not None:
+                last_i = int(last)
+                if now - last_i < interval_sec:
+                    return
+            await r.set("trading_sync:last_run", str(now))
+            await r.set("sched:last:trading.sync", str(now))
+        except Exception:
+            pass
         for name in mgr.get_exchange_names():
             adapter = mgr.get_exchange(name)
             if not adapter:

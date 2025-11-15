@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Body
-from .manager import NotificationManager, NotificationMessage
+from manager import NotificationManager, NotificationMessage
 
 router = APIRouter()
 manager = NotificationManager()

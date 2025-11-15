@@ -2,8 +2,8 @@ import os
 import json
 import asyncio
 import aio_pika
-from .manager import NotificationManager, NotificationMessage
-from .templates import render
+from manager import NotificationManager, NotificationMessage
+from templates import render
 
 async def consume():
     url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")

@@ -1,5 +1,9 @@
 """
 工具函数模块
+函数集注释：
+- setup_logger: 控制台+文件日志，支持滚动；读取 Settings 配置
+- get_logger: 获取日志记录器
+- 其他：通用工具集合
 """
 
 import logging
@@ -8,6 +12,8 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 import json
+from logging.handlers import RotatingFileHandler
+from config.settings import settings
 
 def setup_logger(name: str) -> logging.Logger:
     """设置日志记录器"""
@@ -16,7 +22,8 @@ def setup_logger(name: str) -> logging.Logger:
     if not logger.handlers:
         # 创建控制台处理器
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.DEBUG)
+        level = getattr(logging, (settings.LOG_LEVEL or "INFO").upper(), logging.INFO)
+        console_handler.setLevel(level)
         
         # 创建格式化器
         formatter = logging.Formatter(
@@ -27,7 +34,17 @@ def setup_logger(name: str) -> logging.Logger:
         
         # 添加处理器
         logger.addHandler(console_handler)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(level)
+        # 文件轮转
+        try:
+            log_dir = Path(settings.LOG_DIR)
+            log_dir.mkdir(parents=True, exist_ok=True)
+            fh = RotatingFileHandler(log_dir / "core-service.log", maxBytes=settings.LOG_ROTATE_MB * 1024 * 1024, backupCount=settings.LOG_BACKUP_COUNT, encoding="utf-8")
+            fh.setLevel(level)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+        except Exception:
+            pass
     
     return logger
 

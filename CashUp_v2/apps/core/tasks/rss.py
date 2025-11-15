@@ -1,5 +1,8 @@
 """
 RSS新闻抓取与情绪分析任务
+函数集注释：
+- fetch_feeds: 抓取 RSS 源并入库，失败自动重试与限速
+- analyze_sentiment: 对未标注新闻进行情绪分析，失败自动重试与限速
 """
 
 import asyncio
@@ -18,6 +21,7 @@ from sqlalchemy import select
 from config.settings import settings
 from models.news import MarketNews, RSSFeed
 from celery_app import celery_app
+from database.redis import get_redis
 
 
 analyzer = SentimentIntensityAnalyzer()
@@ -44,31 +48,102 @@ engine = create_async_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@celery_app.task(name="tasks.rss.fetch_feeds")
+@celery_app.task(name="tasks.rss.fetch_feeds", autoretry_for=(Exception,), retry_kwargs={"max_retries": 5}, retry_backoff=True, retry_jitter=True, rate_limit="30/m", acks_late=True, time_limit=600)
 def fetch_feeds():
     asyncio.run(_fetch_feeds_async())
 
 
 async def _fetch_feeds_async():
     async with SessionLocal() as session:
+        try:
+            r = await get_redis()
+            import time
+            await r.set("sched:last:rss.fetch", str(int(time.time())))
+        except Exception:
+            pass
         feeds = (await session.execute(select(RSSFeed).where(RSSFeed.is_active == True))).scalars().all()
+        fallback_urls = []
+        try:
+            from sqlalchemy import text
+            res = await session.execute(text("SELECT config_value FROM system_configs WHERE config_key='rss.fallback.feeds'"))
+            row = res.first()
+            if row and row.config_value:
+                fv = row.config_value
+                if isinstance(fv, list):
+                    fallback_urls = [str(u) for u in fv if isinstance(u, str)]
+        except Exception:
+            fallback_urls = []
         if not feeds:
-            return
+            if not fallback_urls:
+                return
         async with aiohttp.ClientSession() as client:
             for feed in feeds:
                 try:
-                    async with client.get(feed.url, timeout=30) as resp:
-                        content = await resp.text()
+                    content = None
+                    attempts = 0
+                    while attempts < 3 and content is None:
+                        try:
+                            async with client.get(feed.url, timeout=30) as resp:
+                                if resp.status == 200:
+                                    content = await resp.text()
+                                else:
+                                    content = None
+                        except Exception:
+                            content = None
+                        if content is None:
+                            attempts += 1
+                            await asyncio.sleep(2 ** attempts)
+                    if content is None:
+                        try:
+                            import httpx
+                            async with httpx.AsyncClient(timeout=30) as hc:
+                                r2 = await hc.get(feed.url)
+                                if r2.status_code == 200:
+                                    content = r2.text
+                        except Exception:
+                            content = None
+                    if content is None:
+                        if fallback_urls:
+                            for u in fallback_urls:
+                                try:
+                                    async with client.get(u, timeout=30) as resp2:
+                                        if resp2.status == 200:
+                                            content = await resp2.text()
+                                            feed = RSSFeed(id=0, name="fallback", url=u, category="general")
+                                            break
+                                except Exception:
+                                    continue
+                        if content is None:
+                            try:
+                                import httpx
+                                async with httpx.AsyncClient(timeout=30) as hc:
+                                    r2 = await hc.get(feed.url)
+                                    if r2.status_code == 200:
+                                        content = r2.text
+                            except Exception:
+                                content = None
+                        if content is None:
+                            try:
+                                rr = await get_redis()
+                                await rr.incr("rss:error_total")
+                                fid = str(getattr(feed, 'id', 'fallback'))
+                                await rr.hincrby("rss:error:feed", fid, 1)
+                                import time
+                                ts = int(time.time())
+                                await rr.set("rss:error:last", str(ts))
+                                await rr.lpush("rss:error:history", f"feed:{fid}:{ts}")
+                                await rr.ltrim("rss:error:history", 0, 499)
+                            except Exception:
+                                pass
+                            continue
                         parsed = await asyncio.to_thread(feedparser.parse, content)
                         for entry in parsed.entries:
                             url = entry.get("link")
                             if not url:
                                 continue
-                            # 去重
                             exists = (await session.execute(select(MarketNews).where(MarketNews.url == url))).scalar_one_or_none()
                             if exists:
                                 continue
-                            # 摘要与发布时间
                             summary = entry.get("summary", "")
                             published_at = None
                             if entry.get("published_parsed"):
@@ -87,20 +162,35 @@ async def _fetch_feeds_async():
                             )
                             session.add(item)
                         await session.commit()
-                        saved = (await session.execute(select(MarketNews).where(MarketNews.url == url))).scalar_one_or_none()
-                        if saved:
-                            try:
-                                from events.notifications import publish
-                                await publish("news.published", {"news_id": str(saved.id), "title": saved.title, "symbols": saved.symbols or []})
-                            except Exception:
-                                pass
-                    feed.last_fetch = datetime.utcnow()
-                    await session.commit()
+                        try:
+                            saved_items = (await session.execute(select(MarketNews).where(MarketNews.source == feed.name).order_by(MarketNews.created_at.desc()))).scalars().all()
+                            for si in saved_items[:5]:
+                                try:
+                                    from events.notifications import publish
+                                    await publish("news.published", {"news_id": str(si.id), "title": si.title, "symbols": si.symbols or []})
+                                except Exception:
+                                    continue
+                        except Exception:
+                            pass
+                        feed.last_fetch = datetime.utcnow()
+                        await session.commit()
                 except Exception:
+                    try:
+                        rr = await get_redis()
+                        await rr.incr("rss:error_total")
+                        fid = str(getattr(feed, 'id', 'fallback'))
+                        await rr.hincrby("rss:error:feed", fid, 1)
+                        import time
+                        ts = int(time.time())
+                        await rr.set("rss:error:last", str(ts))
+                        await rr.lpush("rss:error:history", f"feed:{fid}:{ts}")
+                        await rr.ltrim("rss:error:history", 0, 499)
+                    except Exception:
+                        pass
                     continue
 
 
-@celery_app.task(name="tasks.rss.analyze_sentiment")
+@celery_app.task(name="tasks.rss.analyze_sentiment", autoretry_for=(Exception,), retry_kwargs={"max_retries": 5}, retry_backoff=True, retry_jitter=True, rate_limit="100/m", acks_late=True, time_limit=600)
 def analyze_sentiment():
     asyncio.run(_analyze_sentiment_async())
 

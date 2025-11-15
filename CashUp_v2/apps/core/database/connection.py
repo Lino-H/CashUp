@@ -41,7 +41,7 @@ class Database:
         """连接数据库"""
         try:
             async with self._engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+                pass
             print("数据库连接成功")
         except Exception as e:
             print(f"数据库连接失败: {e}")

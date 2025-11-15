@@ -123,9 +123,14 @@ const RealTimeTradingWebSocket: React.FC = () => {
   // 初始化WebSocket连接
   const initializeWebSocket = useCallback(() => {
     try {
+      // 动态生成WebSocket URL，根据当前协议和环境
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws/trading`;
+      
       const client = createTradingWebSocketClient(
         {
-          url: 'ws://localhost/ws/trading',
+          url: wsUrl,
           enableReconnect: autoReconnect,
           reconnectInterval: 5000,
           maxReconnectAttempts: 10,

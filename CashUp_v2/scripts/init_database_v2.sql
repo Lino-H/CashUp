@@ -642,3 +642,14 @@ ON CONFLICT (name) DO NOTHING;
 
 SELECT CURRENT_TIMESTAMP as initialized_at, 
        'CashUp v2 database schema initialized successfully' as message;
+-- Ensure system_configs table alignment with runtime
+CREATE TABLE IF NOT EXISTS system_configs (
+    config_key VARCHAR(255) PRIMARY KEY,
+    config_value JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ensure api_keys unique constraint on (exchange, name)
+ALTER TABLE IF EXISTS public.api_keys
+    ADD CONSTRAINT api_keys_exchange_name_unique UNIQUE (exchange, name);
