@@ -43,7 +43,7 @@ const KeysManagement: React.FC = () => {
       const v = await form.validateFields()
       const resp = await coreKeysAPI.upsert({ exchange: v.exchange, name: v.name || 'default', api_key: v.api_key, api_secret: v.api_secret, passphrase: v.passphrase, enabled: v.enabled })
       message.success('保存成功')
-      setApplyAdvice(resp?.apply || null)
+      setApplyAdvice((resp as any)?.apply || null)
       setVisible(false)
       form.resetFields()
       await coreKeysAPI.reloadExchanges()

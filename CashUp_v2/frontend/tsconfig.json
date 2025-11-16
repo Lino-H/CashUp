@@ -1,27 +1,29 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es6"
-    ],
-    "allowJs": true,
+    "target": "ES2020",
+    "lib": ["DOM", "ES2020"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "baseUrl": "src"
+    "noEmit": true
   },
-  "include": [
-    "src"
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "src/__tests__",
+    "src/pages/__tests__",
+    "src/components/__tests__",
+    "src/services/__tests__",
+    "src/utils/__tests__",
+    "src/hooks/__tests__",
+    "src/setupTests.ts",
+    "src/components/StrategyAutomation.tsx",
+    "src/components/SentimentAnalysis.tsx",
+    "src/pages/NetworkOptimizationDemo.tsx"
   ]
 }

@@ -1,12 +1,15 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any
 import os
 import yaml
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.adapters.exchanges.base import ExchangeManager
 from utils.crypto import decrypt_str
 from database.connection import get_db, get_database
+from config.settings import settings
 
 _exchange_manager: ExchangeManager | None = None
 
@@ -84,3 +87,27 @@ async def get_exchanges() -> AsyncGenerator[ExchangeManager, None]:
                 mgr.add_exchange(ex_name, base_conf)
         _exchange_manager = mgr
     yield _exchange_manager
+
+#
+# 认证相关依赖
+#
+security = HTTPBearer(auto_error=False)
+
+class SimpleUser:
+    """简易用户模型，兼容前端所需的最小字段"""
+    def __init__(self, id: str = "dev", username: str = "developer", role: str = "admin"):
+        self.id = id
+        self.username = username
+        self.role = role
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> Any:
+    """获取当前用户（支持禁用认证时返回默认用户）"""
+    if not settings.ENABLE_AUTH:
+        return SimpleUser()
+    # TODO: 这里可以接入真实的JWT/Cookie校验逻辑
+    # 暂时在未实现完整认证时返回默认用户，避免阻塞原型开发
+    if credentials is None or not (credentials.scheme and credentials.credentials):
+        return SimpleUser()
+    token = credentials.credentials
+    # 仅占位解析逻辑：实际应验证签名并提取用户ID/角色
+    return SimpleUser(id="token_user", username="token_user", role="admin")

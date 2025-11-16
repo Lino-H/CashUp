@@ -15,6 +15,7 @@ from services.config import ConfigService
 from database.connection import get_db
 from utils.logger import get_logger
 from typing import Any
+from api.deps import get_current_user
 
 router = APIRouter()
 security = HTTPBearer()
@@ -26,7 +27,7 @@ async def get_configs(
     limit: int = 100,
     category: Optional[str] = None,
     search: Optional[str] = None,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """获取配置列表"""
@@ -56,7 +57,7 @@ async def get_configs(
 @router.get("/{config_id}", response_model=ConfigResponse)
 async def get_config(
     config_id: int,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """获取配置详情"""
@@ -70,14 +71,7 @@ async def get_config(
                 detail="配置不存在"
             )
         
-        # 检查权限：用户配置只能被创建者查看，系统配置管理员可查看
-        # 简化权限：个人系统不校验用户角色
-        # if config.user_id and current_user is not None and config.user_id != getattr(current_user, 'id', None):
-        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权查看此配置")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="无权查看此配置"
-            )
+        # 权限校验在个人原型阶段暂不启用
         
         return ConfigResponse.from_orm(config)
         
@@ -93,7 +87,7 @@ async def get_config(
 @router.post("/", response_model=ConfigResponse)
 async def create_config(
     config_data: ConfigCreate,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """创建配置"""
@@ -130,7 +124,7 @@ async def create_config(
 async def update_config(
     config_id: int,
     config_data: ConfigUpdate,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """更新配置"""
@@ -168,7 +162,7 @@ async def update_config(
 @router.delete("/{config_id}")
 async def delete_config(
     config_id: int,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """删除配置"""
@@ -206,7 +200,7 @@ async def delete_config(
 @router.get("/by-key/{key}", response_model=ConfigResponse)
 async def get_config_by_key(
     key: str,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """根据键获取配置"""
@@ -239,7 +233,7 @@ async def get_configs_by_category(
     category: str,
     skip: int = 0,
     limit: int = 100,
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """根据分类获取配置"""
@@ -271,7 +265,7 @@ async def get_configs_by_category(
 @router.post("/batch")
 async def batch_update_configs(
     configs: List[Dict[str, Any]],
-    current_user: Any | None = None,
+    current_user: Any = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """批量更新配置"""
@@ -348,7 +342,7 @@ async def get_my_configs(
 
 @router.get("/analysis/technical")
 async def get_technical_analysis(
-    current_user: Any | None = None
+    current_user: Any = Depends(get_current_user)
 ):
     """获取技术分析数据"""
     try:
@@ -388,7 +382,7 @@ async def get_technical_analysis(
 
 @router.get("/analysis/fundamental")
 async def get_fundamental_analysis(
-    current_user: Any | None = None
+    current_user: Any = Depends(get_current_user)
 ):
     """获取基本面分析数据"""
     try:
@@ -425,7 +419,7 @@ async def get_fundamental_analysis(
 
 @router.get("/analysis/sentiment")
 async def get_sentiment_analysis(
-    current_user: Any | None = None
+    current_user: Any = Depends(get_current_user)
 ):
     """获取情绪分析数据"""
     try:
@@ -605,7 +599,7 @@ async def get_risk_analysis(
 
 @router.get("/trading/strategies/count")
 async def get_strategies_count(
-    current_user: Any | None = None
+    current_user: Any = Depends(get_current_user)
 ):
     """获取策略数量"""
     try:
@@ -621,7 +615,7 @@ async def get_strategies_count(
 
 @router.get("/automation/tasks/count")
 async def get_automation_tasks_count(
-    current_user: Any | None = None
+    current_user: Any = Depends(get_current_user)
 ):
     """获取自动化任务数量"""
     try:

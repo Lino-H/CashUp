@@ -84,16 +84,16 @@ export interface TechnicalAnalysisData extends PriceData {
 }
 
 interface TechnicalAnalysisChartProps {
-  symbol: string;
-  data: TechnicalAnalysisData[];
+  symbol?: string;
+  data?: TechnicalAnalysisData[];
   loading?: boolean;
   onIndicatorChange?: (indicators: string[]) => void;
   onTimeframeChange?: (timeframe: string) => void;
 }
 
 const TechnicalAnalysisChart: React.FC<TechnicalAnalysisChartProps> = ({
-  symbol,
-  data,
+  symbol = 'BTCUSDT',
+  data = [],
   loading = false,
   onIndicatorChange,
   onTimeframeChange,
@@ -104,7 +104,7 @@ const TechnicalAnalysisChart: React.FC<TechnicalAnalysisChartProps> = ({
   const [showVolume, setShowVolume] = useState<boolean>(true);
 
   // 技术指标配置
-  const indicatorConfig = {
+  const indicatorConfig: Record<string, { color: string; name: string; type: string }> = {
     ma5: { color: '#ff6b6b', name: 'MA5', type: 'trend' },
     ma10: { color: '#4ecdc4', name: 'MA10', type: 'trend' },
     ma20: { color: '#45b7d1', name: 'MA20', type: 'trend' },

@@ -127,7 +127,7 @@ export class ImageOptimizer {
       style,
       loading: 'lazy',
       decoding: 'async',
-      fetchpriority: 'low',
+      fetchPriority: 'low',
       // 添加占位符
       ...(placeholder && { placeholder: 'blur' }),
     };
@@ -287,6 +287,7 @@ export class ImageOptimizer {
     return (
       <img
         {...imgProps}
+        alt={alt}
         width={width}
         height={height}
         sizes={sizes}
@@ -346,4 +347,4 @@ export class ImageOptimizer {
   }
 }
 
-export default ImageOptimizer;
+export default ImageOptimizer

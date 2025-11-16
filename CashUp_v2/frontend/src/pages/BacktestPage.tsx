@@ -900,7 +900,7 @@ const BacktestPage: React.FC = () => {
                         min={5}
                         max={300}
                         value={refreshInterval}
-                        onChange={setRefreshInterval}
+                        onChange={(v) => setRefreshInterval(v ?? refreshInterval)}
                         addonAfter="秒"
                         style={{ width: 100 }}
                       />
@@ -1083,6 +1083,8 @@ const BacktestPage: React.FC = () => {
           )}
         </Tabs>
       </Card>
+      </Col>
+      </Row>
 
       {/* 回测结果详情弹窗 */}
       <Modal

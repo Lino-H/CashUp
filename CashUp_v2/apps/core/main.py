@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 # 导入配置和数据库
 from config.settings import settings
+from fastapi import Request
 from database.connection import get_database, Base
 from utils.logger import setup_logger
 
@@ -79,6 +80,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# 禁用认证时提供默认用户上下文
+@app.middleware("http")
+async def default_user_middleware(request: Request, call_next):
+    if not settings.ENABLE_AUTH:
+        try:
+            request.state.user = {"id": "dev", "username": "developer", "role": "admin"}
+        except Exception:
+            request.state.user = None
+    response = await call_next(request)
+    return response
+
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,
@@ -123,14 +135,20 @@ async def root():
 async def health_check():
     """健康检查接口"""
     try:
-        # 检查数据库连接
         db = get_database()
-        # 简单的健康检查
         return {
             "status": "healthy",
             "service": "core-service",
             "version": "2.0.0",
             "database": "ok",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"健康检查失败: {e}")
+        return {
+            "status": "unhealthy",
+            "service": "core-service",
+            "error": str(e),
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 

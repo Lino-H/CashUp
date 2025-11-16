@@ -88,14 +88,16 @@ export class TradingWebSocketClient {
   private isInitialized = false;
 
   constructor(config: TradingWebSocketConfig, eventHandlers: TradingEventHandlers = {}) {
+    const cfg: Partial<TradingWebSocketConfig> = { ...(config || {}) };
     this.config = {
-      enableReconnect: true,
-      reconnectInterval: 5000,
-      maxReconnectAttempts: 10,
-      enableHeartbeat: true,
-      heartbeatInterval: 30000,
-      enableLogging: false,
-      ...config,
+      url: cfg.url ?? '',
+      enableReconnect: cfg.enableReconnect ?? true,
+      reconnectInterval: cfg.reconnectInterval ?? 5000,
+      maxReconnectAttempts: cfg.maxReconnectAttempts ?? 10,
+      enableHeartbeat: cfg.enableHeartbeat ?? true,
+      heartbeatInterval: cfg.heartbeatInterval ?? 30000,
+      enableLogging: cfg.enableLogging ?? false,
+      symbols: cfg.symbols ?? [],
     };
 
     this.eventHandlers = eventHandlers;

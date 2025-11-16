@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     
     # 会话配置
     SESSION_EXPIRE_HOURS: int = 24
+    # 认证开关
+    ENABLE_AUTH: bool = os.getenv("ENABLE_AUTH", "false").lower() == "true"
     
     # 邮件配置
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")

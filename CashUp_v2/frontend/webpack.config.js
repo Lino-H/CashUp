@@ -296,6 +296,7 @@ module.exports = (env) => {
         'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
         'process.env.VERSION': JSON.stringify(require('./package.json').version),
         'window.ENV': {
+          REACT_APP_ENABLE_AUTH: JSON.stringify(process.env.REACT_APP_ENABLE_AUTH || (isProduction ? 'true' : 'false')),
           REACT_APP_API_URL: JSON.stringify('/api'),
           REACT_APP_TRADING_URL: JSON.stringify('/api/trading'),
           REACT_APP_STRATEGY_URL: JSON.stringify('/api/strategy'),

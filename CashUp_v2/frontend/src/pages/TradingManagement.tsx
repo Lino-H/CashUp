@@ -39,6 +39,11 @@ import {
 } from 'antd';
 import {
   LineChartOutlined,
+  FundOutlined,
+  PlusOutlined,
+  ExportOutlined,
+  MoreOutlined,
+  FileTextOutlined,
   BarChartOutlined,
   AreaChartOutlined,
   PieChartOutlined,
@@ -59,7 +64,12 @@ import {
   CheckCircleOutlined,
   CloudDownloadOutlined,
   LineChartOutlined as LineChartOutlined2,
-  AreaChartOutlined as AreaChartOutlined2
+  AreaChartOutlined as AreaChartOutlined2,
+  BankOutlined,
+  WalletOutlined,
+  SecurityScanOutlined,
+  CalculatorOutlined
+  , ArrowUpOutlined, ArrowDownOutlined
 } from '@ant-design/icons';
 import { 
   LineChart, 
@@ -77,7 +87,8 @@ import {
   Pie,
   Cell,
   ComposedChart,
-  Scatter
+  Scatter,
+  Legend
 } from 'recharts';
 
 import { 
@@ -91,14 +102,26 @@ import {
 } from '../services/api';
 import { useDataCache } from '../hooks/useDataCache';
 import moment from 'moment';
+import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
 const TradingManagement: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(5000);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [accountInfo, setAccountInfo] = useState<any | null>(null);
+  const [tradingStats, setTradingStats] = useState<any | null>(null);
+  const [recentTrades, setRecentTrades] = useState<any[]>([]);
   const [orderFilters, setOrderFilters] = useState({
     symbol: '',
+    status: '',
     side: '',
     type: '',
     strategyId: '',
@@ -149,7 +172,10 @@ const TradingManagement: React.FC = () => {
       };
       
       const data = await fetchOrders(
-        () => apiCallWithRetry(() => tradingAPI.getOrders(params)),
+        async () => {
+          const resp: any = await apiCallWithRetry(() => tradingAPI.getOrders(params));
+          return Array.isArray(resp) ? resp : ((resp as any)?.orders || []);
+        },
         true
       );
       
@@ -169,7 +195,10 @@ const TradingManagement: React.FC = () => {
     try {
       setLoading(true);
       const data = await fetchPositions(
-        () => apiCallWithRetry(() => tradingAPI.getPositions(positionFilters)),
+        async () => {
+          const resp: any = await apiCallWithRetry(() => tradingAPI.getPositions(positionFilters));
+          return Array.isArray(resp) ? resp : ((resp as any)?.positions || []);
+        },
         true
       );
       
@@ -468,7 +497,7 @@ const TradingManagement: React.FC = () => {
   }, [autoRefresh, refreshInterval, loadOrders, loadPositions, loadAccountInfo, loadRecentTrades]);
   
   // 订单表格列
-  const orderColumns = [
+  const orderColumns: any = [
     {
       title: '订单ID',
       dataIndex: 'id',
@@ -639,7 +668,7 @@ const TradingManagement: React.FC = () => {
   ];
   
   // 持仓表格列
-  const positionColumns = [
+  const positionColumns: any = [
     {
       title: '持仓ID',
       dataIndex: 'id',
@@ -1019,8 +1048,8 @@ const TradingManagement: React.FC = () => {
                   <Col xs={24} sm={12} md={6}>
                     <DatePicker.RangePicker
                       style={{ width: '100%' }}
-                      value={orderFilters.dateRange}
-                      onChange={(dates) => setOrderFilters({ ...orderFilters, dateRange: dates })}
+                      value={orderFilters.dateRange as any}
+                      onChange={(dates) => setOrderFilters({ ...orderFilters, dateRange: (dates as any) })}
                       placeholder={['开始日期', '结束日期']}
                     />
                   </Col>
@@ -1035,27 +1064,20 @@ const TradingManagement: React.FC = () => {
                   </Col>
                 </Row>
                 
-                <SmartLoading
+                <Table
                   loading={loading}
-                  error={null}
-                  data={orders}
-                  skeletonVariant="table"
-                  skeletonLines={8}
-                >
-                  <Table
-                    columns={orderColumns}
-                    dataSource={orders}
-                    rowKey="id"
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-                    }}
-                    scroll={{ x: 1600 }}
-                    size="middle"
-                  />
-                </SmartLoading>
+                  columns={orderColumns}
+                  dataSource={orders}
+                  rowKey="id"
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+                  }}
+                  scroll={{ x: 1600 }}
+                  size="middle"
+                />
               </Card>
             ),
           },
@@ -1107,27 +1129,20 @@ const TradingManagement: React.FC = () => {
                   </Col>
                 </Row>
                 
-                <SmartLoading
+                <Table
                   loading={loading}
-                  error={null}
-                  data={positions}
-                  skeletonVariant="table"
-                  skeletonLines={6}
-                >
-                  <Table
-                    columns={positionColumns}
-                    dataSource={positions}
-                    rowKey="id"
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-                    }}
-                    scroll={{ x: 1400 }}
-                    size="middle"
-                  />
-                </SmartLoading>
+                  columns={positionColumns}
+                  dataSource={positions}
+                  rowKey="id"
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+                  }}
+                  scroll={{ x: 1400 }}
+                  size="middle"
+                />
               </Card>
             ),
           },
@@ -1175,7 +1190,7 @@ const TradingManagement: React.FC = () => {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="value"
@@ -1546,7 +1561,7 @@ const TradingManagement: React.FC = () => {
                   {moment(selectedOrder.timestamp).format('YYYY-MM-DD HH:mm:ss')}
                 </Descriptions.Item>
                 <Descriptions.Item label="更新时间">
-                  {moment(selectedOrder.updatedAt).format('YYYY-MM-DD HH:mm:ss')}
+                  {selectedOrder && moment((selectedOrder as any).timestamp || (selectedOrder as any).updatedAt).format('YYYY-MM-DD HH:mm:ss')}
                 </Descriptions.Item>
               </Descriptions>
             </Card>

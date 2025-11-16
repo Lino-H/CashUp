@@ -168,7 +168,7 @@ const AppContent: React.FC = () => {
         
         // 策略数据
         strategyAPI.getStrategies()
-          .then(data => data.count || 0)
+          .then(data => Array.isArray(data) ? data.length : (data as any)?.count || 0)
           .catch(() => { console.warn('获取自动化交易策略数失败'); return 0; }),
         
         // 策略自动化任务数（复用基本面数据）
@@ -721,7 +721,7 @@ const AppContent: React.FC = () => {
               } />
               <Route path="/fundamental-analysis" element={
                 <ProtectedRoute>
-                  <FundamentalAnalysis />
+                  <FundamentalAnalysis symbol="BTCUSDT" />
                 </ProtectedRoute>
               } />
               <Route path="/sentiment-analysis" element={

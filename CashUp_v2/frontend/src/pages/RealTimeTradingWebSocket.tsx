@@ -56,7 +56,7 @@ import {
   WifiOutlined,
   DisconnectOutlined,
   SyncOutlined,
-  HeartbeatOutlined,
+  HeartOutlined,
   BulbOutlined,
   ThunderboltOutlined,
   RocketOutlined,
@@ -312,7 +312,8 @@ const RealTimeTradingWebSocket: React.FC = () => {
       setIsTradeModalVisible(false);
       tradeForm.resetFields();
     } catch (error) {
-      message.error(`订单创建失败: ${error.message}`);
+      const msg = (error as any)?.message || '订单创建失败';
+      message.error(`订单创建失败: ${msg}`);
     }
   };
 
@@ -327,7 +328,8 @@ const RealTimeTradingWebSocket: React.FC = () => {
       await wsClient.cancelOrder(orderId);
       message.success('订单取消成功');
     } catch (error) {
-      message.error(`订单取消失败: ${error.message}`);
+      const msg2 = (error as any)?.message || '订单取消失败';
+      message.error(`订单取消失败: ${msg2}`);
     }
   };
 
@@ -519,7 +521,7 @@ const RealTimeTradingWebSocket: React.FC = () => {
   // 连接状态指示器
   const renderConnectionStatus = () => {
     let status = connectionStatus;
-    let color = 'default';
+    let color: 'success' | 'error' | 'warning' | 'processing' | 'default' = 'default';
     let icon = <DisconnectOutlined />;
     
     if (status === 'connected') {

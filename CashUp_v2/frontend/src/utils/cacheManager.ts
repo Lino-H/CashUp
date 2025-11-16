@@ -48,7 +48,7 @@ export class CacheManager {
   private cache: Map<string, CacheEntry>;
   private config: CacheConfig;
   private metrics: CacheMetrics;
-  private cleanupInterval: number | null;
+  private cleanupInterval: number;
   private cleanupTimer: NodeJS.Timeout | null;
 
   constructor(config: Partial<CacheConfig> = {}) {

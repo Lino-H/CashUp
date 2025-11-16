@@ -181,11 +181,11 @@ services:
     ports:
       - "8002:8002"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - DEBUG=false
-      - ALLOWED_ORIGINS=http://localhost,http://127.0.0.1,https://cashup.com,https://www.cashup.com
+      # ALLOWED_ORIGINS not set to use defaults in settings
     depends_on:
       postgres:
         condition: service_healthy
@@ -228,8 +228,8 @@ services:
     ports:
       - "8003:8003"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - TRADING_ENGINE_URL=http://trading-engine:8002
       - DEBUG=false

@@ -72,7 +72,7 @@ import {
   ZAxis
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
-import { coreStrategyAPI, handleApiError, Strategy } from '../services/api';
+import { coreStrategyAPI, strategyAPI, handleApiError, Strategy } from '../services/api';
 import { useDataCache } from '../hooks/useDataCache';
 import { SmartLoading } from '../components/SmartLoading';
 
@@ -103,7 +103,7 @@ const StrategyManagement: React.FC = () => {
   const [chartType, setChartType] = useState('line');
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [refreshInterval, setRefreshInterval] = useState<number>(30);
   const [form] = Form.useForm();
 
   // 使用数据缓存
@@ -426,6 +426,9 @@ const StrategyManagement: React.FC = () => {
         return null;
     }
   };
+
+  // 胜率趋势数据
+  const winrateData = performanceData.map((d: any) => ({ date: d.date, winRate: d.winRate }));
 
   // 编辑策略
   const handleEdit = (strategy: Strategy) => {
@@ -817,7 +820,7 @@ const StrategyManagement: React.FC = () => {
                 min={5}
                 max={300}
                 value={refreshInterval}
-                onChange={setRefreshInterval}
+                onChange={(v) => setRefreshInterval(v ?? refreshInterval)}
                 addonAfter="秒"
                 style={{ width: 100 }}
               />
@@ -887,7 +890,7 @@ const StrategyManagement: React.FC = () => {
                         <Col span={12}>
                           <Statistic
                             title="夏普比率"
-                            value={selectedStrategy.performance?.sharpe || 0}
+                            value={selectedStrategy.performance?.sharpeRatio || 0}
                             precision={2}
                             valueStyle={{ color: '#3f8600' }}
                           />
@@ -895,7 +898,7 @@ const StrategyManagement: React.FC = () => {
                         <Col span={12}>
                           <Statistic
                             title="平均交易量"
-                            value={selectedStrategy.performance?.avgVolume || 0}
+                            value={realTimeData.length > 0 ? Number((realTimeData.reduce((sum, d) => sum + (d.volume || 0), 0) / realTimeData.length).toFixed(0)) : 0}
                             precision={0}
                             valueStyle={{ color: '#3f8600' }}
                           />

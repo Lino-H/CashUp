@@ -1,6 +1,11 @@
 /**
  * API服务层 - 连接后端接口
  * API Service Layer - Connect to Backend Endpoints
+ * 函数集注释：
+ * - authAPI/authAPIWithCookies: 登录、登出、当前用户、刷新Token
+ * - userAPI/configAPI/core*API/tradingAPI/strategyAPI: 业务接口封装
+ * - handleApiResponse/handleApiError: 统一响应与错误处理
+ * - cachedApiCall/deduplicatedApiCall/apiCallWithRetry: 缓存、去重与重试
  */
 
 import axios from 'axios';
@@ -9,6 +14,7 @@ import axios from 'axios';
 declare global {
   interface Window {
     ENV: {
+      REACT_APP_ENABLE_AUTH?: string;
       REACT_APP_API_URL?: string;
       REACT_APP_TRADING_URL?: string;
       REACT_APP_STRATEGY_URL?: string;
@@ -17,8 +23,11 @@ declare global {
   }
 }
 
-// API基础配置 - 开发环境使用相对路径，生产环境使用绝对路径
-const API_BASE_URL = process.env.NODE_ENV === 'development' ? '/api' : (window.ENV?.REACT_APP_API_URL || 'http://localhost:8001/api');
+// 认证开关（由构建时注入）
+const AUTH_ENABLED = (window.ENV?.REACT_APP_ENABLE_AUTH ?? 'true') === 'true';
+
+// API基础配置 - 开发环境使用相对路径，生产环境优先使用环境变量，回退到同源代理路径
+const API_BASE_URL = process.env.NODE_ENV === 'development' ? '/api' : (window.ENV?.REACT_APP_API_URL || '/api');
 
 // 创建axios实例
 const api = axios.create({
@@ -58,7 +67,7 @@ cookieApi.interceptors.response.use(
   (response) => response.data,
   (error) => {
     // 统一错误处理
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && AUTH_ENABLED) {
       // 未授权，清除token并跳转到登录页
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
@@ -89,7 +98,7 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     // 统一错误处理
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && AUTH_ENABLED) {
       // 未授权，清除token并跳转到登录页
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
@@ -258,7 +267,9 @@ export const coreRSSAPI = {
 
   // 策略平台API (端口8003)
 const strategyApi = axios.create({
-  baseURL: (window.ENV?.REACT_APP_STRATEGY_URL) || 'http://localhost:8003/api',
+  baseURL: process.env.NODE_ENV === 'development'
+    ? '/api/strategy'
+    : (window.ENV?.REACT_APP_STRATEGY_URL || '/api/strategy'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -271,7 +282,7 @@ strategyApi.interceptors.response.use(
   (response) => response.data,
   (error) => {
     // 统一错误处理
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && AUTH_ENABLED) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -430,7 +441,9 @@ export interface Position {
 
 // 交易服务API (端口8002)
 const tradingApi = axios.create({
-  baseURL: (window.ENV?.REACT_APP_TRADING_URL) || 'http://localhost:8002/api',
+  baseURL: process.env.NODE_ENV === 'development'
+    ? '/api/trading'
+    : (window.ENV?.REACT_APP_TRADING_URL || '/api/trading'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -443,7 +456,7 @@ tradingApi.interceptors.response.use(
   (response) => response.data,
   (error) => {
     // 统一错误处理
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && AUTH_ENABLED) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -466,8 +479,10 @@ tradingApi.interceptors.response.use(
 export const tradingAPI = {
   // 临时API，因为交易引擎还没有这些具体端点
   // 订单管理
-  getOrders: (params?: any) =>
-    tradingApi.get('/v1/orders', { params }),
+  getOrders: async (params?: any) => {
+    const resp: any = await tradingApi.get('/v1/orders', { params });
+    return Array.isArray(resp) ? resp : (resp?.orders || []);
+  },
   
   getOrderById: (orderId: string) =>
     tradingApi.get(`/orders/${orderId}`),
@@ -491,8 +506,10 @@ export const tradingAPI = {
     tradingApi.get(`/orders/by-strategy/${strategyId}`),
   
   // 持仓管理
-  getPositions: (params?: any) =>
-    tradingApi.get('/v1/positions', { params }),
+  getPositions: async (params?: any) => {
+    const resp: any = await tradingApi.get('/v1/positions', { params });
+    return Array.isArray(resp) ? resp : (resp?.positions || []);
+  },
   
   getPositionById: (positionId: string) =>
     tradingApi.get(`/positions/${positionId}`),
@@ -516,8 +533,10 @@ export const tradingAPI = {
     tradingApi.get(`/positions/by-strategy/${strategyId}`),
   
   // 交易记录
-  getTrades: (params?: any) =>
-    tradingApi.get('/v1/trades', { params }),
+  getTrades: async (params?: any) => {
+    const resp: any = await tradingApi.get('/v1/trades', { params });
+    return Array.isArray(resp) ? resp : (resp?.trades || []);
+  },
   
   getTradeById: (tradeId: string) =>
     tradingApi.get(`/v1/trades/${tradeId}`),
@@ -618,6 +637,15 @@ class APICache {
       }
     }
   }
+
+  // 公开统计方法
+  getSize(): number {
+    return this.cache.size;
+  }
+
+  getKeys(): string[] {
+    return Array.from(this.cache.keys());
+  }
 }
 
 // 创建全局API缓存实例
@@ -636,7 +664,8 @@ class RequestDeduplication {
   // 添加或获取待处理的请求
   addOrGet<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
     if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key);
+      const existing = this.pendingRequests.get(key);
+      if (existing) return existing as Promise<T>;
     }
     
     const promise = requestFn()
@@ -651,6 +680,10 @@ class RequestDeduplication {
   // 清除所有待处理的请求
   clear(): void {
     this.pendingRequests.clear();
+  }
+
+  getPendingKeys(): string[] {
+    return Array.from(this.pendingRequests.keys());
   }
 }
 
@@ -752,15 +785,15 @@ export const cacheManager = {
   clear: () => apiCache.clear(),
   clearByUrl: (url: string) => apiCache.clearByUrl(url),
   getStats: () => ({
-    size: apiCache.cache.size,
-    keys: Array.from(apiCache.cache.keys())
+    size: apiCache.getSize(),
+    keys: apiCache.getKeys()
   })
 };
 
 // 请求去重管理工具
 export const dedupeManager = {
   clear: () => requestDeduplication.clear(),
-  getPendingRequests: () => Array.from(requestDeduplication.pendingRequests.keys())
+  getPendingRequests: () => requestDeduplication.getPendingKeys()
 };
 
 // 请求重试函数

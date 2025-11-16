@@ -34,7 +34,7 @@ const ConfigCenter: React.FC = () => {
       const values = await form.validateFields()
       const resp = await coreAdminAPI.setConfig(values.key, values.value, values.is_system)
       message.success('保存成功')
-      setApplyAdvice(resp?.apply || null)
+      setApplyAdvice((resp as any)?.apply || null)
       setVisible(false)
       form.resetFields()
       load()

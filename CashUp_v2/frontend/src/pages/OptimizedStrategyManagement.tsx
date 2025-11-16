@@ -37,9 +37,9 @@ import {
 } from '@ant-design/icons';
 import { 
   strategyAPI, 
-  Strategy, 
-  StrategyPerformance 
+  Strategy 
 } from '../services/api';
+import { Typography } from 'antd';
 import { dataCache } from '../utils/cache';
 
 const { Title, Text } = Typography;
@@ -47,9 +47,9 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 // 策略性能卡片组件
-const StrategyPerformanceCard: React.FC<{ performance: StrategyPerformance }> = React.memo(({ performance }) => {
-  const winRate = performance.winRate.toFixed(1);
-  const maxDrawdown = Math.abs(performance.maxDrawdown).toFixed(2);
+const StrategyPerformanceCard: React.FC<{ performance: Strategy['performance'] | undefined }> = React.memo(({ performance }) => {
+  const winRate = ((performance?.winRate ?? 0)).toFixed(1);
+  const maxDrawdown = Math.abs((performance?.maxDrawdown ?? 0)).toFixed(2);
 
   return (
     <Row gutter={16}>
@@ -61,7 +61,7 @@ const StrategyPerformanceCard: React.FC<{ performance: StrategyPerformance }> = 
       </Col>
       <Col span={6}>
         <div style={{ fontSize: 12, color: '#666' }}>交易次数</div>
-        <div>{performance.tradesCount}</div>
+        <div>{performance?.tradesCount ?? 0}</div>
       </Col>
       <Col span={6}>
         <div style={{ fontSize: 12, color: '#666' }}>最大回撤</div>
@@ -71,7 +71,7 @@ const StrategyPerformanceCard: React.FC<{ performance: StrategyPerformance }> = 
       </Col>
       <Col span={6}>
         <div style={{ fontSize: 12, color: '#666' }}>夏普比率</div>
-        <div>{performance.sharpeRatio.toFixed(2)}</div>
+        <div>{((performance?.sharpeRatio ?? 0)).toFixed(2)}</div>
       </Col>
     </Row>
   );
@@ -282,7 +282,7 @@ const OptimizedStrategyManagement: React.FC = () => {
       title: '盈亏',
       dataIndex: 'performance',
       key: 'performance',
-      render: (performance: StrategyPerformance) => (
+      render: (performance: Strategy['performance']) => (
         <div>
           <div style={{ 
             color: performance?.totalPnl >= 0 ? '#3f8600' : '#cf1322',
@@ -295,12 +295,12 @@ const OptimizedStrategyManagement: React.FC = () => {
           </div>
         </div>
       ),
-      sorter: (a, b) => (a.performance?.totalPnl || 0) - (b.performance?.totalPnl || 0),
+      sorter: (a: Strategy, b: Strategy) => (a.performance?.totalPnl || 0) - (b.performance?.totalPnl || 0),
     },
     {
       title: '操作',
       key: 'actions',
-      render: (_, record: Strategy) => (
+      render: (_: any, record: Strategy) => (
         <StrategyActionButtons
           strategy={record}
           onEdit={handleEditStrategy}
@@ -320,8 +320,8 @@ const OptimizedStrategyManagement: React.FC = () => {
       const response = await dataCache.fetchWithCache(
         'strategies',
         async () => {
-          const apiResponse = await strategyAPI.getStrategies();
-          return apiResponse.strategies || [];
+          const apiResponse: any = await strategyAPI.getStrategies();
+          return Array.isArray(apiResponse) ? apiResponse : (apiResponse?.strategies || []);
         },
         { ttl: 2 * 60 * 1000 } // 2分钟缓存
       );

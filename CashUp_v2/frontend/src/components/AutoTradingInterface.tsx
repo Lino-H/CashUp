@@ -60,8 +60,8 @@ import {
   SyncOutlined,
   RobotOutlined,
   DollarOutlined,
-  TrendingUpOutlined,
-  TrendingDownOutlined,
+  RiseOutlined,
+  FallOutlined,
   StockOutlined,
   GlobalOutlined,
   BankOutlined,
@@ -70,7 +70,7 @@ import {
   BarChartOutlined,
   LineChartOutlined,
   PieChartOutlined,
-  ExclamationTriangleOutlined,
+  ExclamationCircleOutlined,
   CrownOutlined,
   HeartOutlined,
   ShareAltOutlined,
@@ -78,9 +78,9 @@ import {
   UserOutlined,
   TeamOutlined,
   FireOutlined,
-  RocketLaunchOutlined,
+  RocketOutlined as RocketLaunchOutlined,
   AntDesignOutlined,
-  BanknoteOutlined,
+  DollarOutlined as BanknoteOutlined,
   SafetyCertificateOutlined,
   RocketOutlined as RocketOutlined2,
   DashboardOutlined,
@@ -95,8 +95,8 @@ import {
   SyncOutlined as SyncOutlined2,
   RobotOutlined as RobotOutlined2,
   DollarOutlined as DollarOutlined2,
-  TrendingUpOutlined as TrendingUpOutlined2,
-  TrendingDownOutlined as TrendingDownOutlined2,
+  RiseOutlined as TrendingUpOutlined2,
+  FallOutlined as TrendingDownOutlined2,
   StockOutlined as StockOutlined2,
   GlobalOutlined as GlobalOutlined2,
   BankOutlined as BankOutlined2,
@@ -105,7 +105,7 @@ import {
   BarChartOutlined as BarChartOutlined2,
   LineChartOutlined as LineChartOutlined2,
   PieChartOutlined as PieChartOutlined2,
-  ExclamationTriangleOutlined as ExclamationTriangleOutlined2,
+  ExclamationCircleOutlined as ExclamationTriangleOutlined2,
   CrownOutlined as CrownOutlined2,
   HeartOutlined as HeartOutlined2,
   ShareAltOutlined as ShareAltOutlined2,
@@ -113,9 +113,9 @@ import {
   UserOutlined as UserOutlined2,
   TeamOutlined as TeamOutlined2,
   FireOutlined as FireOutlined2,
-  RocketLaunchOutlined as RocketLaunchOutlined2,
+  RocketOutlined as RocketLaunchOutlined2,
   AntDesignOutlined as AntDesignOutlined2,
-  BanknoteOutlined as BanknoteOutlined2,
+  DollarOutlined as BanknoteOutlined2,
   SafetyCertificateOutlined as SafetyCertificateOutlined2,
   RocketOutlined as RocketOutlined3,
   DashboardOutlined as DashboardOutlined2,
@@ -130,8 +130,8 @@ import {
   SyncOutlined as SyncOutlined3,
   RobotOutlined as RobotOutlined3,
   DollarOutlined as DollarOutlined3,
-  TrendingUpOutlined as TrendingUpOutlined3,
-  TrendingDownOutlined as TrendingDownOutlined3,
+  RiseOutlined as TrendingUpOutlined3,
+  FallOutlined as TrendingDownOutlined3,
   StockOutlined as StockOutlined3,
   GlobalOutlined as GlobalOutlined3,
   BankOutlined as BankOutlined3,
@@ -140,7 +140,7 @@ import {
   BarChartOutlined as BarChartOutlined3,
   LineChartOutlined as LineChartOutlined3,
   PieChartOutlined as PieChartOutlined3,
-  ExclamationTriangleOutlined as ExclamationTriangleOutlined3,
+  ExclamationCircleOutlined as ExclamationTriangleOutlined3,
   CrownOutlined as CrownOutlined3,
   HeartOutlined as HeartOutlined3,
   ShareAltOutlined as ShareAltOutlined3,
@@ -148,9 +148,9 @@ import {
   UserOutlined as UserOutlined3,
   TeamOutlined as TeamOutlined3,
   FireOutlined as FireOutlined3,
-  RocketLaunchOutlined as RocketLaunchOutlined3,
+  RocketOutlined as RocketLaunchOutlined3,
   AntDesignOutlined as AntDesignOutlined3,
-  BanknoteOutlined as BanknoteOutlined3,
+  DollarOutlined as BanknoteOutlined3,
   SafetyCertificateOutlined as SafetyCertificateOutlined3,
   RocketOutlined as RocketOutlined4,
   DashboardOutlined as DashboardOutlined3,
@@ -165,8 +165,8 @@ import {
   SyncOutlined as SyncOutlined4,
   RobotOutlined as RobotOutlined4,
   DollarOutlined as DollarOutlined4,
-  TrendingUpOutlined as TrendingUpOutlined4,
-  TrendingDownOutlined as TrendingDownOutlined4,
+  RiseOutlined as TrendingUpOutlined4,
+  FallOutlined as TrendingDownOutlined4,
   StockOutlined as StockOutlined4,
   GlobalOutlined as GlobalOutlined4,
   BankOutlined as BankOutlined4,
@@ -175,7 +175,7 @@ import {
   BarChartOutlined as BarChartOutlined4,
   LineChartOutlined as LineChartOutlined4,
   PieChartOutlined as PieChartOutlined4,
-  ExclamationTriangleOutlined as ExclamationTriangleOutlined4,
+  ExclamationCircleOutlined as ExclamationTriangleOutlined4,
   CrownOutlined as CrownOutlined4,
   HeartOutlined as HeartOutlined4,
   ShareAltOutlined as ShareAltOutlined4,
@@ -183,15 +183,15 @@ import {
   UserOutlined as UserOutlined4,
   TeamOutlined as TeamOutlined4,
   FireOutlined as FireOutlined4,
-  RocketLaunchOutlined as RocketLaunchOutlined4,
+  RocketOutlined as RocketLaunchOutlined4,
   AntDesignOutlined as AntDesignOutlined4,
-  BanknoteOutlined as BanknoteOutlined4,
+  DollarOutlined as BanknoteOutlined4,
   SafetyCertificateOutlined as SafetyCertificateOutlined4,
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RadioGroup } = Radio;
+const RadioGroup = Radio.Group;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 
@@ -550,7 +550,7 @@ const AutoTradingInterface: React.FC<AutoTradingInterfaceProps> = ({
     {
       title: '操作',
       key: 'action',
-      render: (_, record: TradingStrategy) => (
+      render: (_: any, record: TradingStrategy) => (
         <Space>
           <Button 
             type="link" 

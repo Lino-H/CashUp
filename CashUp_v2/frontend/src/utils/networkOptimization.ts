@@ -244,6 +244,7 @@ export class NetworkOptimizationManager {
     options: NetworkRequestOptions = {}
   ): Promise<T> {
     const requestKey = this.generateCacheKey(method, url, params);
+    const cacheOptions = options.cacheOptions || {};
 
     // 缓存优先策略
     if (this.config.cache.enabled && this.config.cacheFirst) {
