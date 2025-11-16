@@ -152,7 +152,7 @@ const SentimentAnalysis: React.FC = () => {
                   value={data.score}
                   suffix="/100"
                   valueStyle={{ color: '#1890ff' }}
-                  prefix={<BullishOutlined />}
+                  prefix={<ArrowUpOutlined />}
                 />
                 <Progress percent={data.score} strokeColor="#1890ff" />
               </Card>
@@ -164,7 +164,7 @@ const SentimentAnalysis: React.FC = () => {
                   value={data.sentiment.fear_greed_index}
                   suffix="/100"
                   valueStyle={{ color: getFearGreedColor(data.sentiment.fear_greed_index) }}
-                  prefix={<TrendingUpOutlined />}
+                  prefix={<LineChartOutlined />}
                 />
                 <Progress 
                   percent={data.sentiment.fear_greed_index} 
@@ -222,7 +222,7 @@ const SentimentAnalysis: React.FC = () => {
                 </Row>
                 <div style={{ marginTop: '12px' }}>
                   <Progress 
-                    percent={(data.sentiment.social_media_metrics.sentiment_score * 100).toFixed(0)} 
+                    percent={Math.round(data.sentiment.social_media_metrics.sentiment_score * 100)} 
                     strokeColor={getSentimentColor(data.sentiment.social_sentiment)}
                     format={() => `情绪指数: ${(data.sentiment.social_media_metrics.sentiment_score * 100).toFixed(1)}%`}
                   />
@@ -255,7 +255,7 @@ const SentimentAnalysis: React.FC = () => {
                 </Row>
                 <div style={{ marginTop: '12px' }}>
                   <Progress 
-                    percent={(data.sentiment.news_metrics.sentiment_score * 100).toFixed(0)} 
+                    percent={Math.round(data.sentiment.news_metrics.sentiment_score * 100)} 
                     strokeColor={getSentimentColor(data.sentiment.news_sentiment)}
                     format={() => `新闻情绪: ${(data.sentiment.news_metrics.sentiment_score * 100).toFixed(1)}%`}
                   />
@@ -346,7 +346,7 @@ const SentimentAnalysis: React.FC = () => {
                         title="上涨潜力"
                         value={`${data.sentiment.analyst_ratings.upside_potential.toFixed(1)}%`}
                         valueStyle={data.sentiment.analyst_ratings.upside_potential > 0 ? { color: '#52c41a' } : { color: '#f5222d' }}
-                        prefix={data.sentiment.analyst_ratings.upside_potential > 0 ? <BullishOutlined /> : <BearishOutlined />}
+                        prefix={data.sentiment.analyst_ratings.upside_potential > 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                       />
                     </div>
                   </Col>

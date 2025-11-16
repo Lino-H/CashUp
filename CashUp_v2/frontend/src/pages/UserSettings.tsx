@@ -69,7 +69,7 @@ import {
   AreaChartOutlined,
   TrophyOutlined,
   RocketOutlined,
-  ShieldOutlined,
+  IeOutlined as ShieldOutlined,
   CloudSyncOutlined,
   FileTextOutlined,
   DashboardOutlined,
@@ -1010,8 +1010,8 @@ const UserSettings: React.FC = () => {
               <Title level={5}>API密钥列表</Title>
               <List
                 dataSource={[
-                  { key: '1', name: '交易API', key: 'sk_live_xxxxxxxxxxxx', permissions: ['读取', '交易'] },
-                  { key: '2', name: '数据API', key: 'sk_live_yyyyyyyyyyyy', permissions: ['读取'] },
+                  { key: '1', name: '交易API', apiKey: 'sk_live_xxxxxxxxxxxx', permissions: ['读取', '交易'] },
+                  { key: '2', name: '数据API', apiKey: 'sk_live_yyyyyyyyyyyy', permissions: ['读取'] },
                 ]}
                 renderItem={(item) => (
                   <List.Item>

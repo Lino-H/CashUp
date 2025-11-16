@@ -122,7 +122,7 @@ describe('App Integration Tests', () => {
 
   test('should handle protected routes', () => {
     render(
-      <MemoryRouter initialEntries(['/dashboard']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AuthProvider>
           <App />
         </AuthProvider>

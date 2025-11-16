@@ -1,23 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Card, Row, Col, Statistic, Typography, Space, Alert, Avatar, Dropdown } from 'antd';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Layout, Menu, Button, Card, Row, Col, Statistic, Typography, Space, Alert, Avatar, Dropdown, Spin } from 'antd';
 import { DashboardOutlined, LineChartOutlined, SettingOutlined, LoginOutlined, UserAddOutlined, LogoutOutlined, UserOutlined, BarChartOutlined, FundOutlined, ThunderboltOutlined, PieChartOutlined } from '@ant-design/icons';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import LoginPage from './pages/LoginPage';
-import RealTimeTrading from './pages/RealTimeTrading';
-import RealTimeTradingWebSocket from './pages/RealTimeTradingWebSocket';
-import StrategyManagement from './pages/StrategyManagement';
-import TradingManagement from './pages/TradingManagement';
-import UserSettings from './pages/UserSettings';
-import NetworkOptimizationDemo from './pages/NetworkOptimizationDemo';
-import TechnicalAnalysisChart from './components/TechnicalAnalysisChart';
-import FundamentalAnalysis from './components/FundamentalAnalysis';
-import SentimentAnalysis from './components/SentimentAnalysis';
-import RiskAnalysis from './components/RiskAnalysis';
-import AutoTradingInterface from './components/AutoTradingInterface';
-import StrategyAutomation from './components/StrategyAutomation';
+import { strategyAPI } from './services/api';
+
+// 懒加载页面组件
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RealTimeTrading = lazy(() => import('./pages/RealTimeTrading'));
+const RealTimeTradingWebSocket = lazy(() => import('./pages/RealTimeTradingWebSocket'));
+const StrategyManagement = lazy(() => import('./pages/StrategyManagement'));
+const TradingManagement = lazy(() => import('./pages/TradingManagement'));
+const UserSettings = lazy(() => import('./pages/UserSettings'));
+const NetworkOptimizationDemo = lazy(() => import('./pages/NetworkOptimizationDemo'));
+const TechnicalAnalysisChart = lazy(() => import('./components/TechnicalAnalysisChart'));
+const FundamentalAnalysis = lazy(() => import('./components/FundamentalAnalysis'));
+const SentimentAnalysis = lazy(() => import('./components/SentimentAnalysis'));
+const RiskAnalysis = lazy(() => import('./components/RiskAnalysis'));
+const AutoTradingInterface = lazy(() => import('./components/AutoTradingInterface'));
+const StrategyAutomation = lazy(() => import('./components/StrategyAutomation'));
+const NewsPage = lazy(() => import('./pages/NewsPage'));
+const AccountOverview = lazy(() => import('./pages/AccountOverview'));
+const ConfigCenter = lazy(() => import('./pages/ConfigCenter'));
+const KeysManagement = lazy(() => import('./pages/KeysManagement'));
+const SchedulerMonitor = lazy(() => import('./pages/SchedulerMonitor'));
 
 const { Header, Sider, Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -108,6 +116,7 @@ const AppContent: React.FC = () => {
         if (normalizedPath.includes('fundamental-analysis')) return 'fundamental-analysis';
         if (normalizedPath.includes('sentiment-analysis')) return 'sentiment-analysis';
         if (normalizedPath.includes('trading')) return 'trading';
+        if (normalizedPath.includes('account')) return 'account';
         if (normalizedPath.includes('strategies')) return 'strategies';
         if (normalizedPath.includes('settings')) return 'settings';
         return 'dashboard';
@@ -125,124 +134,95 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) return;
 
     try {
-      // 获取技术分析分数
+      // 设置所有加载状态为true
       setLoadingTechnical(true);
-      try {
-        const technicalResponse = await fetch('/api/config/analysis/technical', {
-          credentials: 'include'
-        });
-        if (technicalResponse.ok) {
-          const technicalData = await technicalResponse.json();
-          setAnalysisScores(prev => ({ ...prev, technical: technicalData.score || 0 }));
-        }
-      } catch (error) {
-        console.warn('获取技术分析分数失败:', error);
-      }
-      setLoadingTechnical(false);
-
-      // 获取基本面分析分数
       setLoadingFundamental(true);
-      try {
-        const fundamentalResponse = await fetch('/api/config/analysis/fundamental', {
-          credentials: 'include'
-        });
-        if (fundamentalResponse.ok) {
-          const fundamentalData = await fundamentalResponse.json();
-          setAnalysisScores(prev => ({ ...prev, fundamental: fundamentalData.score || 0 }));
-        }
-      } catch (error) {
-        console.warn('获取基本面分析分数失败:', error);
-      }
-      setLoadingFundamental(false);
-
-      // 获取情绪分析分数
       setLoadingSentiment(true);
-      try {
-        const sentimentResponse = await fetch('/api/config/analysis/sentiment', {
-          credentials: 'include'
-        });
-        if (sentimentResponse.ok) {
-          const sentimentData = await sentimentResponse.json();
-          setAnalysisScores(prev => ({ ...prev, sentiment: sentimentData.score || 0 }));
-        }
-      } catch (error) {
-        console.warn('获取情绪分析分数失败:', error);
-      }
-      setLoadingSentiment(false);
-
-      // 获取风险分析分数
       setLoadingRisk(true);
-      try {
-        const riskResponse = await fetch('/api/config/analysis/risk', {
-          credentials: 'include'
-        });
-        if (riskResponse.ok) {
-          const riskData = await riskResponse.json();
-          setAnalysisScores(prev => ({ ...prev, risk: riskData.score || 0 }));
-        }
-      } catch (error) {
-        console.warn('获取风险分析分数失败:', error);
-      }
-      setLoadingRisk(false);
-
-      // 获取自动化交易数据
       setLoadingAutoTrading(true);
-      try {
-        const autoTradingResponse = await fetch('http://localhost:8003/api/strategies', {
-          credentials: 'include'
-        });
-        if (autoTradingResponse.ok) {
-          const autoTradingData = await autoTradingResponse.json();
-          setAutoTradingStrategies(autoTradingData.count || 0);
-        }
-      } catch (error) {
-        console.warn('获取自动化交易策略数失败:', error);
-      }
-      setLoadingAutoTrading(false);
-
       setLoadingStrategyAutomation(true);
-      try {
-        const strategyAutoResponse = await fetch('/api/config/analysis/fundamental', {
-          credentials: 'include'
-        });
-        if (strategyAutoResponse.ok) {
-          const strategyAutoData = await strategyAutoResponse.json();
-          setStrategyAutomationTasks(strategyAutoData.score || 0);
-        }
-      } catch (error) {
-        console.warn('获取策略自动化任务数失败:', error);
-      }
-      setLoadingStrategyAutomation(false);
-
       setLoadingScheduledTasks(true);
-      try {
-        const scheduledResponse = await fetch('/api/config/analysis/sentiment', {
-          credentials: 'include'
-        });
-        if (scheduledResponse.ok) {
-          const scheduledData = await scheduledResponse.json();
-          setScheduledTasks(scheduledData.score || 0);
-        }
-      } catch (error) {
-        console.warn('获取定时任务数失败:', error);
-      }
-      setLoadingScheduledTasks(false);
-
       setLoadingAutoReports(true);
-      try {
-        const reportsResponse = await fetch('/api/config/analysis/risk', {
-          credentials: 'include'
-        });
-        if (reportsResponse.ok) {
-          const reportsData = await reportsResponse.json();
-          setAutoReports(reportsData.score || 0);
-        }
-      } catch (error) {
-        console.warn('获取自动报告数失败:', error);
-      }
-      setLoadingAutoReports(false);
+
+      // 并发执行所有API请求
+      const results = await Promise.allSettled([
+        // 技术分析分数
+        fetch('/api/config/analysis/technical', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取技术分析分数失败'); return 0; }),
+        
+        // 基本面分析分数
+        fetch('/api/config/analysis/fundamental', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取基本面分析分数失败'); return 0; }),
+        
+        // 情绪分析分数
+        fetch('/api/config/analysis/sentiment', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取情绪分析分数失败'); return 0; }),
+        
+        // 风险分析分数
+        fetch('/api/config/analysis/risk', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取风险分析分数失败'); return 0; }),
+        
+        // 策略数据
+        strategyAPI.getStrategies()
+          .then(data => Array.isArray(data) ? data.length : (data as any)?.count || 0)
+          .catch(() => { console.warn('获取自动化交易策略数失败'); return 0; }),
+        
+        // 策略自动化任务数（复用基本面数据）
+        fetch('/api/config/analysis/fundamental', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取策略自动化任务数失败'); return 0; }),
+        
+        // 定时任务数（复用情绪数据）
+        fetch('/api/config/analysis/sentiment', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取定时任务数失败'); return 0; }),
+        
+        // 自动报告数（复用风险数据）
+        fetch('/api/config/analysis/risk', { credentials: 'include' })
+          .then(async (res) => res.ok ? (await res.json()).score || 0 : 0)
+          .catch(() => { console.warn('获取自动报告数失败'); return 0; })
+      ]);
+
+      // 处理结果
+      const [
+        technicalScore,
+        fundamentalScore,
+        sentimentScore,
+        riskScore,
+        strategyCount,
+        strategyAutomationCount,
+        scheduledTaskCount,
+        autoReportCount
+      ] = results.map(result => result.status === 'fulfilled' ? result.value : 0);
+
+      // 更新状态
+      setAnalysisScores(prev => ({
+        technical: technicalScore,
+        fundamental: fundamentalScore,
+        sentiment: sentimentScore,
+        risk: riskScore
+      }));
+      setAutoTradingStrategies(strategyCount);
+      setStrategyAutomationTasks(strategyAutomationCount);
+      setScheduledTasks(scheduledTaskCount);
+      setAutoReports(autoReportCount);
+
     } catch (error) {
       console.error('获取分析分数失败:', error);
+    } finally {
+      // 重置所有加载状态
+      setLoadingTechnical(false);
+      setLoadingFundamental(false);
+      setLoadingSentiment(false);
+      setLoadingRisk(false);
+      setLoadingAutoTrading(false);
+      setLoadingStrategyAutomation(false);
+      setLoadingScheduledTasks(false);
+      setLoadingAutoReports(false);
     }
   };
 
@@ -324,6 +304,12 @@ const AppContent: React.FC = () => {
               onClick: () => navigate('/sentiment-analysis')
             },
             {
+              key: 'news',
+              icon: <PieChartOutlined />,
+              label: '新闻情绪',
+              onClick: () => navigate('/news')
+            },
+            {
               key: 'risk-analysis',
               icon: <FundOutlined />,
               label: '风险分析',
@@ -354,10 +340,28 @@ const AppContent: React.FC = () => {
               onClick: () => navigate('/strategies')
             },
             {
-              key: 'settings',
+              key: 'account',
+              icon: <FundOutlined />,
+              label: '账户总览',
+              onClick: () => navigate('/account')
+            },
+            {
+              key: 'config-center',
               icon: <SettingOutlined />,
-              label: '系统设置',
-              onClick: () => navigate('/settings')
+              label: '配置中心',
+              onClick: () => navigate('/config-center')
+            },
+            {
+              key: 'keys-management',
+              icon: <SettingOutlined />,
+              label: '密钥管理',
+              onClick: () => navigate('/keys-management')
+            },
+            {
+              key: 'scheduler',
+              icon: <SettingOutlined />,
+              label: '调度监控',
+              onClick: () => navigate('/scheduler')
             },
             {
               key: 'network-optimization',
@@ -431,296 +435,329 @@ const AppContent: React.FC = () => {
         </Header>
         
         <Content style={{ margin: '24px 16px', padding: 24, background: '#fff' }}>
-          <Routes>
-            <Route path="/" element={
-              <ProtectedRoute>
-                <div>
-                  <Row gutter={[16, 16]}>
-                    <Col span={24}>
-                      <Card>
-                        <Title level={4}>系统概览</Title>
-                        <Row gutter={16}>
-                          <Col span={6}>
-                            <Statistic 
-                              title="运行中服务" 
-                              value={healthyServices} 
-                              suffix={`/ ${totalServices}`}
-                              valueStyle={{ color: healthyServices === totalServices ? '#3f8600' : '#cf1322' }}
-                            />
-                          </Col>
-                          <Col span={6}>
-                            <Statistic 
-                              title="系统状态" 
-                              value={healthyServices === totalServices ? '正常' : '异常'} 
-                              valueStyle={{ color: healthyServices === totalServices ? '#3f8600' : '#cf1322' }}
-                            />
-                          </Col>
-                          <Col span={6}>
-                            <Statistic 
-                              title="策略数量" 
-                              value={24}
-                              valueStyle={{ color: '#1890ff' }}
-                            />
-                          </Col>
-                          <Col span={6}>
-                            <Statistic 
-                              title="今日交易" 
-                              value={156}
-                              valueStyle={{ color: '#722ed1' }}
-                            />
-                          </Col>
-                        </Row>
-                      </Card>
-                    </Col>
-
-                    <Col span={24}>
-                      <Card>
-                        <Title level={4}>高级分析模块</Title>
-                        <Row gutter={[16, 16]}>
-                          <Col span={6}>
-                            <Card 
-                              hoverable 
-                              style={{ marginBottom: 16 }}
-                              onClick={() => navigate('/technical-analysis')}
-                            >
-                              <Statistic
-                                title="技术分析"
-                                value={technicalAnalysisScore}
-                                suffix="%"
-                                valueStyle={{ color: '#1890ff' }}
-                                loading={loadingTechnical}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                MA、MACD、RSI、KDJ、布林带等专业技术指标
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card 
-                              hoverable 
-                              style={{ marginBottom: 16 }}
-                              onClick={() => navigate('/fundamental-analysis')}
-                            >
-                              <Statistic
-                                title="基本面分析"
-                                value={fundamentalAnalysisScore}
-                                suffix="%"
-                                valueStyle={{ color: '#52c41a' }}
-                                loading={loadingFundamental}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                PE、PB、ROE、负债率等基本面指标分析
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card 
-                              hoverable 
-                              style={{ marginBottom: 16 }}
-                              onClick={() => navigate('/sentiment-analysis')}
-                            >
-                              <Statistic
-                                title="情绪分析"
-                                value={sentimentAnalysisScore}
-                                suffix="%"
-                                valueStyle={{ color: '#faad14' }}
-                                loading={loadingSentiment}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                市场情绪、新闻情感、社交媒体分析
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card 
-                              hoverable 
-                              style={{ marginBottom: 16 }}
-                              onClick={() => navigate('/risk-analysis')}
-                            >
-                              <Statistic
-                                title="风险分析"
-                                value={riskAnalysisScore}
-                                suffix="%"
-                                valueStyle={{ color: '#f5222d' }}
-                                loading={loadingRisk}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                VaR、夏普比率、最大回撤等风险管理
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                        </Row>
-                      </Card>
-                    </Col>
-
-                    {services.map((service) => (
-                      <Col span={6} key={service.name}>
+          <Suspense fallback={
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              height: '400px',
+              flexDirection: 'column'
+            }}>
+              <Spin size="large" />
+              <div style={{ marginTop: 16, color: '#666' }}>页面加载中...</div>
+            </div>
+          }>
+            <Routes>
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <div>
+                    <Row gutter={[16, 16]}>
+                      <Col span={24}>
                         <Card>
-                          <Statistic
-                            title={service.name}
-                            value={service.status === 'healthy' ? '正常' : service.status === 'unhealthy' ? '异常' : '未知'}
-                            valueStyle={{ 
-                              color: service.status === 'healthy' ? '#3f8600' : 
-                                     service.status === 'unhealthy' ? '#cf1322' : '#d9d9d9' 
-                            }}
+                          <Title level={4}>系统概览</Title>
+                          <Row gutter={16}>
+                            <Col span={6}>
+                              <Statistic 
+                                title="运行中服务" 
+                                value={healthyServices} 
+                                suffix={`/ ${totalServices}`}
+                                valueStyle={{ color: healthyServices === totalServices ? '#3f8600' : '#cf1322' }}
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <Statistic 
+                                title="系统状态" 
+                                value={healthyServices === totalServices ? '正常' : '异常'} 
+                                valueStyle={{ color: healthyServices === totalServices ? '#3f8600' : '#cf1322' }}
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <Statistic 
+                                title="策略数量" 
+                                value={24}
+                                valueStyle={{ color: '#1890ff' }}
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <Statistic 
+                                title="今日交易" 
+                                value={156}
+                                valueStyle={{ color: '#722ed1' }}
+                              />
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
+
+                      <Col span={24}>
+                        <Card>
+                          <Title level={4}>高级分析模块</Title>
+                          <Row gutter={[16, 16]}>
+                            <Col span={6}>
+                              <Card 
+                                hoverable 
+                                style={{ marginBottom: 16 }}
+                                onClick={() => navigate('/technical-analysis')}
+                              >
+                                <Statistic
+                                  title="技术分析"
+                                  value={technicalAnalysisScore}
+                                  suffix="%"
+                                  valueStyle={{ color: '#1890ff' }}
+                                  loading={loadingTechnical}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  MA、MACD、RSI、KDJ、布林带等专业技术指标
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card 
+                                hoverable 
+                                style={{ marginBottom: 16 }}
+                                onClick={() => navigate('/fundamental-analysis')}
+                              >
+                                <Statistic
+                                  title="基本面分析"
+                                  value={fundamentalAnalysisScore}
+                                  suffix="%"
+                                  valueStyle={{ color: '#52c41a' }}
+                                  loading={loadingFundamental}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  PE、PB、ROE、负债率等基本面指标分析
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card 
+                                hoverable 
+                                style={{ marginBottom: 16 }}
+                                onClick={() => navigate('/sentiment-analysis')}
+                              >
+                                <Statistic
+                                  title="情绪分析"
+                                  value={sentimentAnalysisScore}
+                                  suffix="%"
+                                  valueStyle={{ color: '#faad14' }}
+                                  loading={loadingSentiment}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  市场情绪、新闻情感、社交媒体分析
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card 
+                                hoverable 
+                                style={{ marginBottom: 16 }}
+                                onClick={() => navigate('/risk-analysis')}
+                              >
+                                <Statistic
+                                  title="风险分析"
+                                  value={riskAnalysisScore}
+                                  suffix="%"
+                                  valueStyle={{ color: '#f5222d' }}
+                                  loading={loadingRisk}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  VaR、夏普比率、最大回撤等风险管理
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
+
+                      {services.map((service) => (
+                        <Col span={6} key={service.name}>
+                          <Card>
+                            <Statistic
+                              title={service.name}
+                              value={service.status === 'healthy' ? '正常' : service.status === 'unhealthy' ? '异常' : '未知'}
+                              valueStyle={{ 
+                                color: service.status === 'healthy' ? '#3f8600' : 
+                                       service.status === 'unhealthy' ? '#cf1322' : '#d9d9d9' 
+                              }}
+                            />
+                          </Card>
+                        </Col>
+                      ))}
+
+                      <Col span={24}>
+                        <Card>
+                          <Title level={4}>自动化交易模块</Title>
+                          <Row gutter={[16, 16]}>
+                            <Col span={6}>
+                              <Card hoverable>
+                                <Statistic
+                                  title="自动交易"
+                                  value={autoTradingStrategies}
+                                  suffix="个策略"
+                                  valueStyle={{ color: '#722ed1' }}
+                                  loading={loadingAutoTrading}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  24/7 自动化执行
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card hoverable>
+                                <Statistic
+                                  title="策略自动化"
+                                value={strategyAutomationTasks}
+                                  suffix="个任务"
+                                  valueStyle={{ color: '#13c2c2' }}
+                                  loading={loadingStrategyAutomation}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  智能调优和优化
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card hoverable>
+                                <Statistic
+                                  title="定时任务"
+                                  value={scheduledTasks}
+                                  suffix="个任务"
+                                  valueStyle={{ color: '#fa8c16' }}
+                                  loading={loadingScheduledTasks}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  定时执行和监控
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                            
+                            <Col span={6}>
+                              <Card hoverable>
+                                <Statistic
+                                  title="自动报告"
+                                  value={autoReports}
+                                  suffix="份报告"
+                                  valueStyle={{ color: '#52c41a' }}
+                                  loading={loadingAutoReports}
+                                />
+                                <Paragraph type="secondary" style={{ marginTop: 8 }}>
+                                  定期生成分析报告
+                                </Paragraph>
+                              </Card>
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
+
+                      <Col span={24}>
+                        <Card>
+                          <Title level={4}>欢迎使用 CashUp v2 量化交易平台</Title>
+                          <Paragraph>
+                            CashUp 是一个专业的量化交易平台，集成了策略开发、回测分析、实时交易、风险管理等全方位功能。
+                            采用先进的微服务架构，支持多交易所对接，提供专业级的技术分析工具和自动化交易系统。
+                          </Paragraph>
+                          <Alert
+                            message="系统信息"
+                            description={`当前系统正在运行中，所有核心服务状态正常。欢迎回来，${user?.username || user?.full_name || '用户'}！
+                            系统已全面升级至v2版本，包含高级分析模块、自动化交易系统和智能风险管理功能。`}
+                            type="success"
+                            showIcon
                           />
                         </Card>
                       </Col>
-                    ))}
-
-                    <Col span={24}>
-                      <Card>
-                        <Title level={4}>自动化交易模块</Title>
-                        <Row gutter={[16, 16]}>
-                          <Col span={6}>
-                            <Card hoverable>
-                              <Statistic
-                                title="自动交易"
-                                value={autoTradingStrategies}
-                                suffix="个策略"
-                                valueStyle={{ color: '#722ed1' }}
-                                loading={loadingAutoTrading}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                24/7 自动化执行
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card hoverable>
-                              <Statistic
-                                title="策略自动化"
-                                value={strategyAutomationTasks}
-                                suffix="个任务"
-                                valueStyle={{ color: '#13c2c2' }}
-                                loading={loadingStrategyAutomation}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                智能调优和优化
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card hoverable>
-                              <Statistic
-                                title="定时任务"
-                                value={scheduledTasks}
-                                suffix="个任务"
-                                valueStyle={{ color: '#fa8c16' }}
-                                loading={loadingScheduledTasks}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                定时执行和监控
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                          
-                          <Col span={6}>
-                            <Card hoverable>
-                              <Statistic
-                                title="自动报告"
-                                value={autoReports}
-                                suffix="份报告"
-                                valueStyle={{ color: '#52c41a' }}
-                                loading={loadingAutoReports}
-                              />
-                              <Paragraph type="secondary" style={{ marginTop: 8 }}>
-                                定期生成分析报告
-                              </Paragraph>
-                            </Card>
-                          </Col>
-                        </Row>
-                      </Card>
-                    </Col>
-
-                    <Col span={24}>
-                      <Card>
-                        <Title level={4}>欢迎使用 CashUp v2 量化交易平台</Title>
-                        <Paragraph>
-                          CashUp 是一个专业的量化交易平台，集成了策略开发、回测分析、实时交易、风险管理等全方位功能。
-                          采用先进的微服务架构，支持多交易所对接，提供专业级的技术分析工具和自动化交易系统。
-                        </Paragraph>
-                        <Alert
-                          message="系统信息"
-                          description={`当前系统正在运行中，所有核心服务状态正常。欢迎回来，${user?.username || user?.full_name || '用户'}！
-                          系统已全面升级至v2版本，包含高级分析模块、自动化交易系统和智能风险管理功能。`}
-                          type="success"
-                          showIcon
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-                </div>
-              </ProtectedRoute>
-            } />
-            <Route path="/trading" element={
-              <ProtectedRoute>
-                <RealTimeTrading />
-              </ProtectedRoute>
-            } />
-            <Route path="/trading-management" element={
-              <ProtectedRoute>
-                <TradingManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/websocket-trading" element={
-              <ProtectedRoute>
-                <RealTimeTradingWebSocket />
-              </ProtectedRoute>
-            } />
-            <Route path="/strategies" element={
-              <ProtectedRoute>
-                <StrategyManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <UserSettings />
-              </ProtectedRoute>
-            } />
-            <Route path="/network-optimization" element={
-              <ProtectedRoute>
-                <NetworkOptimizationDemo />
-              </ProtectedRoute>
-            } />
-            <Route path="/technical-analysis" element={
-              <ProtectedRoute>
-                <TechnicalAnalysisChart />
-              </ProtectedRoute>
-            } />
-            <Route path="/fundamental-analysis" element={
-              <ProtectedRoute>
-                <FundamentalAnalysis />
-              </ProtectedRoute>
-            } />
-            <Route path="/sentiment-analysis" element={
-              <ProtectedRoute>
-                <SentimentAnalysis />
-              </ProtectedRoute>
-            } />
-            <Route path="/risk-analysis" element={
-              <ProtectedRoute>
-                <RiskAnalysis />
-              </ProtectedRoute>
-            } />
-            <Route path="/auto-trading" element={
-              <ProtectedRoute>
-                <AutoTradingInterface />
-              </ProtectedRoute>
-            } />
-            <Route path="/strategy-automation" element={
-              <ProtectedRoute>
-                <StrategyAutomation />
-              </ProtectedRoute>
-            } />
-              <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<LoginPage />} />
-          </Routes>
+                    </Row>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/trading" element={
+                <ProtectedRoute>
+                  <RealTimeTrading />
+                </ProtectedRoute>
+              } />
+              <Route path="/trading-management" element={
+                <ProtectedRoute>
+                  <TradingManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/websocket-trading" element={
+                <ProtectedRoute>
+                  <RealTimeTradingWebSocket />
+                </ProtectedRoute>
+              } />
+              <Route path="/strategies" element={
+                <ProtectedRoute>
+                  <StrategyManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/config-center" element={
+                <ProtectedRoute>
+                  <ConfigCenter />
+                </ProtectedRoute>
+              } />
+              <Route path="/keys-management" element={
+                <ProtectedRoute>
+                  <KeysManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/scheduler" element={
+                <ProtectedRoute>
+                  <SchedulerMonitor />
+                </ProtectedRoute>
+              } />
+              <Route path="/network-optimization" element={
+                <ProtectedRoute>
+                  <NetworkOptimizationDemo />
+                </ProtectedRoute>
+              } />
+              <Route path="/technical-analysis" element={
+                <ProtectedRoute>
+                  <TechnicalAnalysisChart />
+                </ProtectedRoute>
+              } />
+              <Route path="/fundamental-analysis" element={
+                <ProtectedRoute>
+                  <FundamentalAnalysis symbol="BTCUSDT" />
+                </ProtectedRoute>
+              } />
+              <Route path="/sentiment-analysis" element={
+                <ProtectedRoute>
+                  <SentimentAnalysis />
+                </ProtectedRoute>
+              } />
+              <Route path="/news" element={
+                <ProtectedRoute>
+                  <NewsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/risk-analysis" element={
+                <ProtectedRoute>
+                  <RiskAnalysis />
+                </ProtectedRoute>
+              } />
+              <Route path="/account" element={
+                <ProtectedRoute>
+                  <AccountOverview />
+                </ProtectedRoute>
+              } />
+              <Route path="/auto-trading" element={
+                <ProtectedRoute>
+                  <AutoTradingInterface />
+                </ProtectedRoute>
+              } />
+              <Route path="/strategy-automation" element={
+                <ProtectedRoute>
+                  <StrategyAutomation />
+                </ProtectedRoute>
+              } />
+                <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<LoginPage />} />
+            </Routes>
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

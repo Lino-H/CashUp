@@ -304,7 +304,7 @@ export class RequestDeduplicationManager {
   public isRequestActive(method: string, url: string, params?: any): boolean {
     const requestKey = this.generateRequestKey(method, url, params);
     const entry = this.activeRequests.get(requestKey);
-    return entry && !this.isExpired(entry);
+    return !!entry && !this.isExpired(entry);
   }
 
   /**

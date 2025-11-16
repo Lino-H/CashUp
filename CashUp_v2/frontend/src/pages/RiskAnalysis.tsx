@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Alert, Spin, Progress, List, Tag, Typography, Divider, Table, Radio, DatePicker } from 'antd';
-import { SafetyOutlined, WarningOutlined, ExclamationCircleOutlined, LineChartOutlined, ThunderboltOutlined, ShieldOutlined } from '@ant-design/icons';
+import { SafetyOutlined, WarningOutlined, ExclamationCircleOutlined, LineChartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
@@ -121,7 +121,7 @@ const RiskAnalysis: React.FC = () => {
 
   const getRiskIcon = (score: number) => {
     if (score <= 3) return <SafetyOutlined />;
-    if (score <= 6) return <ShieldOutlined />;
+    if (score <= 6) return <SafetyOutlined />;
     if (score <= 8) return <WarningOutlined />;
     return <ExclamationCircleOutlined />;
   };

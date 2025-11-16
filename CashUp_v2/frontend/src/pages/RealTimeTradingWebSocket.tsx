@@ -56,7 +56,7 @@ import {
   WifiOutlined,
   DisconnectOutlined,
   SyncOutlined,
-  HeartbeatOutlined,
+  HeartOutlined,
   BulbOutlined,
   ThunderboltOutlined,
   RocketOutlined,
@@ -123,9 +123,14 @@ const RealTimeTradingWebSocket: React.FC = () => {
   // 初始化WebSocket连接
   const initializeWebSocket = useCallback(() => {
     try {
+      // 动态生成WebSocket URL，根据当前协议和环境
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws/trading`;
+      
       const client = createTradingWebSocketClient(
         {
-          url: 'ws://localhost/ws/trading',
+          url: wsUrl,
           enableReconnect: autoReconnect,
           reconnectInterval: 5000,
           maxReconnectAttempts: 10,
@@ -307,7 +312,8 @@ const RealTimeTradingWebSocket: React.FC = () => {
       setIsTradeModalVisible(false);
       tradeForm.resetFields();
     } catch (error) {
-      message.error(`订单创建失败: ${error.message}`);
+      const msg = (error as any)?.message || '订单创建失败';
+      message.error(`订单创建失败: ${msg}`);
     }
   };
 
@@ -322,7 +328,8 @@ const RealTimeTradingWebSocket: React.FC = () => {
       await wsClient.cancelOrder(orderId);
       message.success('订单取消成功');
     } catch (error) {
-      message.error(`订单取消失败: ${error.message}`);
+      const msg2 = (error as any)?.message || '订单取消失败';
+      message.error(`订单取消失败: ${msg2}`);
     }
   };
 
@@ -514,7 +521,7 @@ const RealTimeTradingWebSocket: React.FC = () => {
   // 连接状态指示器
   const renderConnectionStatus = () => {
     let status = connectionStatus;
-    let color = 'default';
+    let color: 'success' | 'error' | 'warning' | 'processing' | 'default' = 'default';
     let icon = <DisconnectOutlined />;
     
     if (status === 'connected') {

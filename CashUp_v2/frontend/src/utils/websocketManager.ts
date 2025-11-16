@@ -8,6 +8,8 @@ export interface WebSocketMessage {
   data: any;
   timestamp: number;
   source?: string;
+  correlationId?: string;
+  expectResponse?: string;
 }
 
 export interface WebSocketConfig {
@@ -51,14 +53,15 @@ export class WebSocketManager {
   };
 
   constructor(config: WebSocketConfig, eventHandlers: WebSocketEventHandlers = {}) {
+    const cfg: Partial<WebSocketConfig> = { ...(config || {}) };
     this.config = {
-      url: '',
-      reconnectInterval: 5000,
-      maxReconnectAttempts: 10,
-      enableHeartbeat: true,
-      heartbeatInterval: 30000,
-      enableLogging: false,
-      ...config,
+      url: cfg.url ?? '',
+      reconnectInterval: cfg.reconnectInterval ?? 5000,
+      maxReconnectAttempts: cfg.maxReconnectAttempts ?? 10,
+      enableHeartbeat: cfg.enableHeartbeat ?? true,
+      heartbeatInterval: cfg.heartbeatInterval ?? 30000,
+      enableLogging: cfg.enableLogging ?? false,
+      protocols: cfg.protocols,
     };
 
     this.eventHandlers = eventHandlers;

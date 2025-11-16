@@ -22,7 +22,7 @@ interface OptimizedImageProps {
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
   decoding?: 'sync' | 'async' | 'auto';
-  fetchpriority?: 'high' | 'low' | 'auto';
+  fetchPriority?: 'high' | 'low' | 'auto';
   ariaLabel?: string;
   role?: string;
 }
@@ -48,7 +48,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(({
   objectFit = 'cover',
   objectPosition = 'center',
   decoding = 'async',
-  fetchpriority = 'auto',
+  fetchPriority = 'auto',
   ariaLabel,
   role = 'img',
   ...props
@@ -57,7 +57,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
   const [optimized, setOptimized] = useState<boolean>(false);
-  const imageRef = useRef<HTMLImageElement>(null);
+  // 使用转发的 ref，无需本地副本
   
   // 合并ref
   const combinedRef = (node: HTMLImageElement) => {
@@ -66,7 +66,6 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(({
     } else if (ref) {
       ref.current = node;
     }
-    imageRef.current = node;
   };
 
   useEffect(() => {
@@ -91,9 +90,10 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(({
         // 本地图片优化
         const response = await fetch(src);
         const blob = await response.blob();
+        const file = new File([blob], 'image', { type: blob.type, lastModified: Date.now() });
         
         // 优化图片
-        const optimizedBlob = await ImageOptimizer.optimizeImage(blob, {
+        const optimizedBlob = await ImageOptimizer.optimizeImage(file, {
           quality,
           maxWidth,
           maxHeight,
@@ -163,12 +163,12 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(({
       opacity: loading ? 0 : 1,
       transition: 'opacity 0.3s ease',
     },
-    placeholder: placeholder || 'blur',
+    // placeholder 属性非标准 img 属性，保留在容器层
     sizes: generateResponsiveSizes(),
     srcSet: generateResponsiveSrcSet(),
     loading: lazy ? 'lazy' : 'eager',
     decoding,
-    fetchpriority,
+    fetchPriority,
     'aria-label': ariaLabel || alt,
     role,
     onLoad: handleLoad,
@@ -263,8 +263,9 @@ export const OptimizedImagePreloader: React.FC<OptimizedImagePreloaderProps> = (
       try {
         const response = await fetch(src);
         const blob = await response.blob();
+        const file = new File([blob], 'image', { type: blob.type, lastModified: Date.now() });
         
-        const optimizedBlob = await ImageOptimizer.optimizeImage(blob, {
+        const optimizedBlob = await ImageOptimizer.optimizeImage(file, {
           quality,
           maxWidth,
           maxHeight,

@@ -287,8 +287,8 @@ const ResourceOptimizationMonitor: React.FC<ResourceOptimizationMonitorProps> = 
                   data={[
                     { name: '图片', value: metrics.performanceMetrics.images.length || 0 },
                     { name: 'CSS', value: metrics.performanceMetrics.css.length || 0 },
-                    { name: 'JS', value: metrics.performanceMetrics.resources.filter(r => r.type === 'js').length || 0 },
-                    { name: '字体', value: metrics.performanceMetrics.resources.filter(r => r.type === 'font').length || 0 },
+                    { name: 'JS', value: metrics.performanceMetrics.resources.filter((r: any) => r.type === 'js').length || 0 },
+                    { name: '字体', value: metrics.performanceMetrics.resources.filter((r: any) => r.type === 'font').length || 0 },
                   ]}
                   dataKey="value"
                   nameKey="name"

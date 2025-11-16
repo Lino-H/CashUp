@@ -75,14 +75,14 @@ expect.extend({
     const element = received;
     return {
       pass: element && element.offsetParent !== null,
-      message: () `Expected ${received} to be visible`,
+      message: () => `Expected ${received} to be visible`,
     };
   },
   toBeDisabled(received) {
     const element = received;
     return {
       pass: element && (element.disabled || element.getAttribute('disabled') !== null),
-      message: () `Expected ${received} to be disabled`,
+      message: () => `Expected ${received} to be disabled`,
     };
   },
 });

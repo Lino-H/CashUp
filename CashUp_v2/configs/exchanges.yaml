@@ -19,7 +19,7 @@ binance:
     - "BNBUSDT"
     - "ADAUSDT"
     - "SOLUSDT"
-  enabled: true
+  enabled: false
 
 # Gate.io 配置
 gateio:
@@ -58,6 +58,36 @@ okx:
     - "ETH-USDT"
     - "ADA-USDT"
     - "SOL-USDT"
+  enabled: false
+
+# Bybit 配置 (示例，可选)
+bybit:
+  type: "bybit"
+  name: "Bybit"
+  sandbox: false
+  rate_limit: 10
+  api_key: "${BYBIT_API_KEY}"
+  api_secret: "${BYBIT_API_SECRET}"
+  base_url: "https://api.bybit.com"
+  stream_url: "wss://stream.bybit.com"
+  symbols:
+    - "BTCUSDT"
+    - "ETHUSDT"
+  enabled: false
+
+# Kraken 配置 (示例，可选)
+kraken:
+  type: "kraken"
+  name: "Kraken"
+  sandbox: false
+  rate_limit: 10
+  api_key: "${KRAKEN_API_KEY}"
+  api_secret: "${KRAKEN_API_SECRET}"
+  base_url: "https://api.kraken.com"
+  stream_url: "wss://ws.kraken.com"
+  symbols:
+    - "XBTUSDT"
+    - "ETHUSDT"
   enabled: false
 
 # 通用配置

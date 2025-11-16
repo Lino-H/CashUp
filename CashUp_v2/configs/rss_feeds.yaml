@@ -1,0 +1,17 @@
+feeds:
+  - name: "CoinDesk"
+    url: "https://www.coindesk.com/arc/outboundfeeds/rss/"
+    category: "general"
+    fetch_interval: 300
+  - name: "Cointelegraph"
+    url: "https://cointelegraph.com/rss"
+    category: "general"
+    fetch_interval: 300
+  - name: "Decrypt"
+    url: "https://decrypt.co/feed"
+    category: "news"
+    fetch_interval: 600
+  - name: "SEC News"
+    url: "https://www.sec.gov/news/rss/PressRelease.xml"
+    category: "regulation"
+    fetch_interval: 1800

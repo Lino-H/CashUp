@@ -8,12 +8,13 @@ services:
     environment:
       POSTGRES_DB: cashup
       POSTGRES_USER: cashup
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cashup}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-cashup}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init_database_v2.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     networks:
       - cashup_network
@@ -40,6 +41,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cashup_redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     ports:
       - "6379:6379"
     volumes:
@@ -66,10 +68,11 @@ services:
           cpus: '0.1'
           memory: 128M
 
+
   # 核心服务 - 生产环境
   core-service:
     build:
-      context: ./core-service
+      context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_core
     ports:
@@ -77,6 +80,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
       - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - DEBUG=True
       - TRADING_ENGINE_URL=http://trading-engine:8002
@@ -88,7 +92,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./core-service:/app
+      - ./apps/core:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
@@ -112,10 +116,66 @@ services:
           cpus: '0.2'
           memory: 256M
 
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./apps/core
+      dockerfile: Dockerfile
+    container_name: cashup_celery_worker
+    command: ["celery", "-A", "celery_app.celery_app", "worker", "-l", "info", "-Q", "rss,notification,market", "-c", "2", "--prefetch-multiplier", "1", "-O", "fair"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/core:/app
+      - ./configs:/app/configs
+    restart: unless-stopped
+    networks:
+      - cashup_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Celery Beat
+  celery-beat:
+    build:
+      context: ./apps/core
+      dockerfile: Dockerfile
+    container_name: cashup_celery_beat
+    command: ["celery", "-A", "celery_app.celery_app", "beat", "-l", "info"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+      - REDIS_URL=redis://redis:6379/0
+      - SINGLE_NODE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/core:/app
+      - ./configs:/app/configs
+    restart: unless-stopped
+    networks:
+      - cashup_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+
   # 交易引擎 - 生产环境
   trading-engine:
     build:
-      context: ./trading-engine
+      context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_trading
     ports:
@@ -125,7 +185,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CORE_SERVICE_URL=http://core-service:8001
       - DEBUG=false
-      - ALLOWED_ORIGINS=http://localhost,http://127.0.0.1,https://cashup.com,https://www.cashup.com
+      # ALLOWED_ORIGINS not set to use defaults in settings
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,7 +194,7 @@ services:
       core-service:
         condition: service_healthy
     volumes:
-      - ./trading-engine:/app
+      - ./apps/core:/app
       - ./configs:/app/configs
     restart: unless-stopped
     networks:
@@ -144,6 +204,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
@@ -161,7 +222,7 @@ services:
   # 策略平台 - 生产环境
   strategy-platform:
     build:
-      context: ./strategy-platform
+      context: ./apps/core
       dockerfile: Dockerfile
     container_name: cashup_strategy
     ports:
@@ -183,7 +244,7 @@ services:
       trading-engine:
         condition: service_healthy
     volumes:
-      - ./strategy-platform:/app
+      - ./apps/core:/app
       - ./strategies:/app/strategies
       - ./configs:/app/configs
     restart: unless-stopped
@@ -218,8 +279,11 @@ services:
     ports:
       - "8004:8004"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENABLE_RABBITMQ_CONSUMER=false
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - CORE_SERVICE_URL=http://core-service:8001
       - DEBUG=false
       - ALLOWED_ORIGINS=http://localhost,http://127.0.0.1,https://cashup.com,https://www.cashup.com

@@ -564,7 +564,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       {
         title: '操作',
         key: 'action',
-        render: (_, record: PositionRisk) => (
+        render: (_: any, record: PositionRisk) => (
           <Button type="link" size="small" onClick={() => handleAlertClick({
             id: `position_${record.symbol}`,
             type: 'warning',
@@ -653,7 +653,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       {
         title: '操作',
         key: 'action',
-        render: (_, record: RiskAlert) => (
+        render: (_: any, record: RiskAlert) => (
           <Button 
             type="link" 
             size="small" 

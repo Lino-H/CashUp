@@ -277,7 +277,7 @@ export class ResourceOptimizationManager {
     ) / this.performanceMetrics.images.length || 0;
 
     const totalCSSCompression = this.performanceMetrics.css.reduce(
-      (sum, css) => sum + css.compressionRate, 0
+      (sum, css) => sum + ((css.savings / css.originalSize) * 100), 0
     ) / this.performanceMetrics.css.length || 0;
 
     const totalResourceSavings = this.performanceMetrics.images.reduce(
@@ -336,13 +336,13 @@ export class ResourceOptimizationManager {
   private collectPerformanceMetrics(): void {
     if (this.config.monitoring.enableResourceTracking) {
       // 收集资源加载指标
-      const resources = performance.getEntriesByType('resource');
+      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
       
       resources.forEach(resource => {
         if (resource.transferSize > 0) {
           this.performanceMetrics.resources.push({
             url: resource.name,
-            type: resource.initiatorType,
+            type: resource.initiatorType as any,
             size: resource.transferSize,
             loadTime: resource.duration,
             cached: resource.transferSize < resource.decodedBodySize,
@@ -404,12 +404,12 @@ export class ResourceOptimizationManager {
     };
 
     if (images && images.length > 0) {
-      const { optimizedFiles, imageReport } = await this.optimizeImages(images);
+      const { optimizedFiles, report: imageReport } = await this.optimizeImages(images);
       report.images = imageReport;
     }
 
     if (css) {
-      const { optimizedCSS, cssReport } = this.optimizeCSS(css);
+      const { optimizedCSS, report: cssReport } = this.optimizeCSS(css);
       report.css = cssReport;
     }
 

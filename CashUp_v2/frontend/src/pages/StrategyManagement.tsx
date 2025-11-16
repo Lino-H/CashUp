@@ -72,7 +72,7 @@ import {
   ZAxis
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
-import { strategyAPI, handleApiError, Strategy } from '../services/api';
+import { coreStrategyAPI, strategyAPI, handleApiError, Strategy } from '../services/api';
 import { useDataCache } from '../hooks/useDataCache';
 import { SmartLoading } from '../components/SmartLoading';
 
@@ -103,7 +103,7 @@ const StrategyManagement: React.FC = () => {
   const [chartType, setChartType] = useState('line');
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [refreshInterval, setRefreshInterval] = useState<number>(30);
   const [form] = Form.useForm();
 
   // 使用数据缓存
@@ -142,13 +142,22 @@ const StrategyManagement: React.FC = () => {
   const loadStrategies = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchStrategies(
-        () => apiCallWithRetry(() => strategyAPI.getStrategies()) as unknown as Promise<Strategy[]>,
-        true
-      );
-      if (data) {
-        setStrategies(Array.isArray(data) ? data : (data as any).strategies || []);
-      }
+      const resp = await coreStrategyAPI.listInstances('running', 1, 50);
+      const items = (resp?.data?.items) || [];
+      const mapped = items.map((it: any) => ({
+        id: String(it.id),
+        name: it.name,
+        description: '',
+        type: 'composite',
+        symbol: it.symbol,
+        timeframe: it.timeframe,
+        status: it.status,
+        config: it.config || {},
+        performance: { totalPnl: 0, winRate: 0, tradesCount: 0, maxDrawdown: 0, sharpeRatio: 0 },
+        createdAt: it.created_at || '',
+        updatedAt: it.created_at || ''
+      }));
+      setStrategies(mapped);
     } catch (error) {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
@@ -160,7 +169,7 @@ const StrategyManagement: React.FC = () => {
   // 获取策略性能数据
   const loadPerformanceData = useCallback(async (strategyId: string) => {
     try {
-      const data = await apiCallWithRetry(() => strategyAPI.getStrategyPerformance(strategyId));
+      const data = await apiCallWithRetry(() => coreStrategyAPI.performance(Number(strategyId)));
       if (data) {
         // 生成模拟性能数据
         const mockData = Array.from({ length: 30 }, (_, i) => ({
@@ -247,12 +256,26 @@ const StrategyManagement: React.FC = () => {
   // 创建策略
   const handleCreate = async (values: StrategyFormData) => {
     try {
-      const strategyData = {
-        ...values,
-        config: JSON.stringify(values.config || {})
+      const factors = Object.entries(factorConfig)
+        .filter(([, cfg]: any) => cfg.enabled)
+        .map(([name, cfg]: any) => ({ name, params: cfg.params }));
+      const weights: any = {};
+      Object.entries(factorConfig).forEach(([name, cfg]: any) => { if (cfg.enabled) weights[name] = cfg.weight; });
+      const payload = {
+        name: values.name,
+        description: values.description,
+        template_id: null,
+        exchange: 'gateio',
+        symbol: values.symbol.replace('/', '_'),
+        timeframe: values.timeframe,
+        config: {
+          factors,
+          combination: { mode: combinationMode, weights },
+          risk_management: { max_position_size: 1, stop_loss: 0.02, take_profit: 0.03 }
+        }
       };
-      
-      await apiCallWithRetry(() => strategyAPI.createStrategy(strategyData));
+
+      await apiCallWithRetry(() => coreStrategyAPI.createInstance(payload));
       message.success('策略创建成功');
       setModalVisible(false);
       form.resetFields();
@@ -300,7 +323,7 @@ const StrategyManagement: React.FC = () => {
   // 启动策略
   const handleStart = async (strategyId: string) => {
     try {
-      await apiCallWithRetry(() => strategyAPI.startStrategy(strategyId));
+      await apiCallWithRetry(() => coreStrategyAPI.startInstance(Number(strategyId)));
       message.success('策略启动成功');
       loadStrategies();
     } catch (error) {
@@ -312,7 +335,7 @@ const StrategyManagement: React.FC = () => {
   // 停止策略
   const handleStop = async (strategyId: string) => {
     try {
-      await apiCallWithRetry(() => strategyAPI.stopStrategy(strategyId));
+      await apiCallWithRetry(() => coreStrategyAPI.stopInstance(Number(strategyId)));
       message.success('策略停止成功');
       loadStrategies();
     } catch (error) {
@@ -403,6 +426,9 @@ const StrategyManagement: React.FC = () => {
         return null;
     }
   };
+
+  // 胜率趋势数据
+  const winrateData = performanceData.map((d: any) => ({ date: d.date, winRate: d.winRate }));
 
   // 编辑策略
   const handleEdit = (strategy: Strategy) => {
@@ -669,11 +695,11 @@ const StrategyManagement: React.FC = () => {
         footer={null}
         width={800}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={editingStrategy ? handleUpdate : handleCreate}
-        >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={editingStrategy ? handleUpdate : handleCreate}
+      >
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -794,7 +820,7 @@ const StrategyManagement: React.FC = () => {
                 min={5}
                 max={300}
                 value={refreshInterval}
-                onChange={setRefreshInterval}
+                onChange={(v) => setRefreshInterval(v ?? refreshInterval)}
                 addonAfter="秒"
                 style={{ width: 100 }}
               />
@@ -864,7 +890,7 @@ const StrategyManagement: React.FC = () => {
                         <Col span={12}>
                           <Statistic
                             title="夏普比率"
-                            value={selectedStrategy.performance?.sharpe || 0}
+                            value={selectedStrategy.performance?.sharpeRatio || 0}
                             precision={2}
                             valueStyle={{ color: '#3f8600' }}
                           />
@@ -872,7 +898,7 @@ const StrategyManagement: React.FC = () => {
                         <Col span={12}>
                           <Statistic
                             title="平均交易量"
-                            value={selectedStrategy.performance?.avgVolume || 0}
+                            value={realTimeData.length > 0 ? Number((realTimeData.reduce((sum, d) => sum + (d.volume || 0), 0) / realTimeData.length).toFixed(0)) : 0}
                             precision={0}
                             valueStyle={{ color: '#3f8600' }}
                           />
@@ -911,24 +937,27 @@ const StrategyManagement: React.FC = () => {
                               柱状图
                             </Button>
                             <Button 
-                              type={chartType === 'pie' ? 'primary' : 'default'}
-                              icon={<PieChartOutlined />}
-                              onClick={() => setChartType('pie')}
-                            >
-                              饼图
-                            </Button>
-                            <Button 
                               type={chartType === 'composed' ? 'primary' : 'default'}
                               icon={<BarChartOutlined />}
                               onClick={() => setChartType('composed')}
                             >
-                              组合图
+                              胜率趋势
                             </Button>
                           </Space>
                         </Col>
                       </Row>
                       <div style={{ height: 400, marginBottom: '24px' }}>
-                        {renderChart(chartType)}
+                        {chartType === 'composed' ? (
+                          <ResponsiveContainer width="100%" height={300}>
+                            <ComposedChart data={winrateData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis />
+                              <RechartsTooltip />
+                              <Line type="monotone" dataKey="winRate" stroke="#ff7300" />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        ) : renderChart(chartType)}
                       </div>
                     </div>
                   )
@@ -1014,3 +1043,51 @@ const StrategyManagement: React.FC = () => {
 };
 
 export default StrategyManagement;
+  const [factorConfig, setFactorConfig] = useState({
+    rsi: { enabled: true, weight: 1.0, params: { period: 14, overbought: 70, oversold: 30 } },
+    ma: { enabled: true, weight: 1.0, params: { period: 20 } },
+    macd: { enabled: false, weight: 1.0, params: { fast: 12, slow: 26, signal: 9 } },
+    ema: { enabled: false, weight: 1.0, params: { period: 20 } },
+    boll: { enabled: false, weight: 1.0, params: { period: 20, mult: 2.0 } },
+  });
+  const [combinationMode, setCombinationMode] = useState<'weighted' | 'vote'>('weighted');
+          <Row gutter={16}>
+            <Col span={24}>
+              <Card title="因子与组合配置" size="small">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space>
+                    <Switch checked={factorConfig.rsi.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, rsi: { ...factorConfig.rsi, enabled: v } })} />
+                    <Text>RSI 权重</Text>
+                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.rsi.weight} onChange={(v) => setFactorConfig({ ...factorConfig, rsi: { ...factorConfig.rsi, weight: Number(v) } })} />
+                  </Space>
+                  <Space>
+                    <Switch checked={factorConfig.ma.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, ma: { ...factorConfig.ma, enabled: v } })} />
+                    <Text>MA 权重</Text>
+                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.ma.weight} onChange={(v) => setFactorConfig({ ...factorConfig, ma: { ...factorConfig.ma, weight: Number(v) } })} />
+                  </Space>
+                  <Space>
+                    <Switch checked={factorConfig.macd.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, macd: { ...factorConfig.macd, enabled: v } })} />
+                    <Text>MACD 权重</Text>
+                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.macd.weight} onChange={(v) => setFactorConfig({ ...factorConfig, macd: { ...factorConfig.macd, weight: Number(v) } })} />
+                  </Space>
+                  <Space>
+                    <Switch checked={factorConfig.ema.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, ema: { ...factorConfig.ema, enabled: v } })} />
+                    <Text>EMA 权重</Text>
+                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.ema.weight} onChange={(v) => setFactorConfig({ ...factorConfig, ema: { ...factorConfig.ema, weight: Number(v) } })} />
+                  </Space>
+                  <Space>
+                    <Switch checked={factorConfig.boll.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, boll: { ...factorConfig.boll, enabled: v } })} />
+                    <Text>BOLL 权重</Text>
+                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.boll.weight} onChange={(v) => setFactorConfig({ ...factorConfig, boll: { ...factorConfig.boll, weight: Number(v) } })} />
+                  </Space>
+                  <Space>
+                    <Text>组合模式</Text>
+                    <Select value={combinationMode} onChange={(v) => setCombinationMode(v)} style={{ width: 200 }}>
+                      <Option value="weighted">加权</Option>
+                      <Option value="vote">投票</Option>
+                    </Select>
+                  </Space>
+                </Space>
+              </Card>
+            </Col>
+          </Row>

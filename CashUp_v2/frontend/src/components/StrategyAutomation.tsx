@@ -41,7 +41,7 @@ import {
   Popconfirm,
   Tree,
   Switch as SwitchAntd,
-  InputGroup,
+  
   Card as CardAntd,
   Timeline,
   Steps,
@@ -68,8 +68,8 @@ import {
   SyncOutlined,
   RocketOutlined,
   DollarOutlined,
-  TrendingUpOutlined,
-  TrendingDownOutlined,
+  RiseOutlined,
+  FallOutlined,
   StockOutlined,
   GlobalOutlined,
   BankOutlined,
@@ -78,7 +78,7 @@ import {
   BarChartOutlined,
   LineChartOutlined,
   PieChartOutlined,
-  ExclamationTriangleOutlined,
+  ExclamationCircleOutlined,
   CrownOutlined,
   HeartOutlined,
   ShareAltOutlined,
@@ -86,9 +86,8 @@ import {
   UserOutlined,
   TeamOutlined,
   FireOutlined,
-  RocketLaunchOutlined,
   AntDesignOutlined,
-  BanknoteOutlined,
+  DollarOutlined as BanknoteOutlined,
   SafetyCertificateOutlined,
   DashboardOutlined,
   AlertOutlined,
@@ -122,7 +121,7 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RadioGroup } = Radio;
+const RadioGroup = Radio.Group;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 const { Step } = Steps;
@@ -505,6 +504,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
       riskManagement: values.riskManagement,
       createdAt: Date.now(),
       lastRun: Date.now(),
+      running: false,
     };
     
     setInstances(prev => [...prev, newInstance]);
@@ -622,7 +622,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
     {
       title: '操作',
       key: 'action',
-      render: (_, record: StrategyTemplate) => (
+      render: (_: any, record: StrategyTemplate) => (
         <Space>
           <Button 
             type="link" 
@@ -696,7 +696,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
     {
       title: '操作',
       key: 'action',
-      render: (_, record: StrategyInstance) => (
+      render: (_: any, record: StrategyInstance) => (
         <Space>
           <Button 
             type="link" 
@@ -785,7 +785,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
     {
       title: '操作',
       key: 'action',
-      render: (_, record: AutomationRule) => (
+      render: (_: any, record: AutomationRule) => (
         <Space>
           <Button 
             type="link" 
@@ -829,7 +829,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
       title: '时间范围',
       dataIndex: 'startDate',
       key: 'dateRange',
-      render: (_, record: BacktestJob) => (
+      render: (_: any, record: BacktestJob) => (
         <Text>{record.startDate} - {record.endDate}</Text>
       ),
     },
@@ -856,7 +856,7 @@ const StrategyAutomation: React.FC<StrategyAutomationProps> = ({
     {
       title: '操作',
       key: 'action',
-      render: (_, record: BacktestJob) => (
+      render: (_: any, record: BacktestJob) => (
         <Space>
           {record.status === 'pending' && (
             <Button 

@@ -3,6 +3,12 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+/**
+ * 函数集注释：
+ * - AuthContext: 提供 user/isAuthenticated/loading 与 login/logout
+ * - useAuth/useIsAuthenticated: 读取认证状态
+ * - initializeAuth/clearAuthState/fetchUserInfo: 初始化与状态维护
+ */
 import { message } from 'antd';
 import { authAPI, authAPIWithCookies, handleApiError } from '../services/api';
 
@@ -60,6 +66,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       setLoading(true);
+      if (!AUTH_ENABLED) {
+        const defaultUser: User = {
+          id: 'dev',
+          username: 'developer',
+          email: 'dev@local',
+          full_name: '开发模式',
+          role: 'admin',
+        };
+        setUser(defaultUser);
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      }
       const token = localStorage.getItem('access_token');
       const refreshToken = localStorage.getItem('refresh_token');
       
@@ -107,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 自动刷新用户信息
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && AUTH_ENABLED) {
       const interval = setInterval(async () => {
         try {
           // 首先尝试直接获取用户信息
@@ -128,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 会话超时检查
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && AUTH_ENABLED) {
       const timeoutCheck = setInterval(() => {
         const now = Date.now();
         const timeSinceLastActivity = now - lastActivity;
@@ -359,3 +378,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+const AUTH_ENABLED = (window.ENV?.REACT_APP_ENABLE_AUTH ?? 'true') === 'true';

@@ -28,8 +28,6 @@ import {
 import {
   ThunderboltOutlined,
   FireOutlined,
-  BullOutlined,
-  BearOutlined,
   RiseOutlined,
   FallOutlined,
   WarningOutlined,
@@ -37,7 +35,6 @@ import {
   SendOutlined,
   TwitterOutlined,
   FacebookOutlined,
-  TelegramOutlined,
   WechatOutlined,
   GithubOutlined,
   ApiOutlined,
@@ -52,6 +49,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   GlobalOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
 } from '@ant-design/icons';
 
 import {
@@ -79,7 +78,7 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RadioGroup } = Radio;
+const RadioGroup = Radio.Group;
 
 // 情绪数据类型定义
 export interface SentimentData {
@@ -192,6 +191,7 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
 }) => {
   const [sentimentData, setSentimentData] = useState<SentimentData[]>([]);
   const [marketSentiment, setMarketSentiment] = useState<MarketSentiment | null>(null);
+  const [sentimentSources, setSentimentSources] = useState<SentimentSource[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState(timeframe);
   const [selectedSources, setSelectedSources] = useState<string[]>(['all']);
   const [loading, setLoading] = useState(false);
@@ -454,9 +454,9 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
   const renderSentimentSources = () => {
     return (
       <Card title="情绪来源" style={{ marginBottom: 16 }}>
-        <List
+        <List<SentimentSource>
           dataSource={sentimentSources}
-          renderItem={(source) => (
+          renderItem={(source: SentimentSource) => (
             <List.Item>
               <List.Item.Meta
                 avatar={
@@ -479,26 +479,26 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
                     <Badge 
                       status={source.trend === 'up' ? 'success' : source.trend === 'down' ? 'error' : 'default'}
                       text={source.trend === 'up' ? '上升' : source.trend === 'down' ? '下降' : '稳定'}
-                    />
-                  </Space>
-                }
-                description={
-                  <Space>
-                    <span>情绪分数: {source.score.toFixed(2)}</span>
-                    <span>更新时间: {new Date(source.lastUpdate).toLocaleTimeString()}</span>
-                  </Space>
-                }
-              />
-              <div style={{ textAlign: 'right' }}>
-                <Progress
-                  percent={Math.abs(source.score) * 100}
-                  strokeColor={getSentimentColor(source.score)}
-                  trailColor="#f0f0f0"
-                  width={80}
-                  format={() => source.score.toFixed(2)}
                 />
-              </div>
-            </List.Item>
+              </Space>
+            }
+            description={
+              <Space>
+                <span>情绪分数: {source.score.toFixed(2)}</span>
+                <span>更新时间: {new Date(source.lastUpdate).toLocaleTimeString()}</span>
+              </Space>
+            }
+          />
+          <div style={{ textAlign: 'right' }}>
+            <Progress
+              percent={Math.abs(source.score) * 100}
+              strokeColor={getSentimentColor(source.score)}
+              trailColor="#f0f0f0"
+              width={80}
+              format={() => source.score.toFixed(2)}
+            />
+          </div>
+        </List.Item>
           )}
         />
       </Card>
@@ -639,8 +639,8 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
           <Alert
             message="情绪总结"
             description={
-              marketSentiment?.overall > 0.3 ? '当前市场情绪偏向乐观，投资者信心较强，但需注意过热风险。' :
-              marketSentiment?.overall < -0.3 ? '当前市场情绪偏向悲观，投资者较为谨慎，但可能存在机会。' :
+              ((marketSentiment?.overall ?? 0) > 0.3) ? '当前市场情绪偏向乐观，投资者信心较强，但需注意过热风险。' :
+              ((marketSentiment?.overall ?? 0) < -0.3) ? '当前市场情绪偏向悲观，投资者较为谨慎，但可能存在机会。' :
               '当前市场情绪相对平衡，建议关注关键数据和市场动向。'
             }
             type="info"
@@ -650,8 +650,8 @@ const SentimentAnalysis: React.FC<SentimentAnalysisProps> = ({
           <Alert
             message="操作建议"
             description={
-              marketSentiment?.fearGreedIndex > 75 ? '市场极度贪婪，建议谨慎操作，考虑适当减仓。' :
-              marketSentiment?.fearGreedIndex < 25 ? '市场极度恐惧，可能存在机会，建议关注。' :
+              ((marketSentiment?.fearGreedIndex ?? 0) > 75) ? '市场极度贪婪，建议谨慎操作，考虑适当减仓。' :
+              ((marketSentiment?.fearGreedIndex ?? 0) < 25) ? '市场极度恐惧，可能存在机会，建议关注。' :
               '市场情绪相对正常，建议按照既定策略操作。'
             }
             type="warning"

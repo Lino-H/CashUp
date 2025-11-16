@@ -121,7 +121,7 @@ const NetworkOptimizationDemo: React.FC = () => {
         type: 'Single Request',
         url: testUrl,
         params: JSON.stringify(testParams),
-        result: error.message,
+        result: (error as any).message,
         responseTime: 0,
         status: 'error',
       }]);
@@ -189,7 +189,7 @@ const NetworkOptimizationDemo: React.FC = () => {
         type: 'Preload',
         url: 'Multiple URLs',
         params: 'preload items',
-        result: error.message,
+        result: (error as any).message,
         responseTime: 0,
         status: 'error',
       }]);
@@ -217,7 +217,7 @@ const NetworkOptimizationDemo: React.FC = () => {
         type: 'Clear Cache',
         url: 'N/A',
         params: 'N/A',
-        result: error.message,
+        result: (error as any).message,
         responseTime: 0,
         status: 'error',
       }]);
