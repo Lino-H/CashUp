@@ -33,6 +33,10 @@ jobs:
         working-directory: frontend
         run: npm run type-check
 
+      - name: Frontend Unit Tests
+        working-directory: frontend
+        run: npm test -- --ci
+
       - name: Frontend Build
         working-directory: frontend
         run: npm run build
@@ -62,6 +66,8 @@ jobs:
           SECRET_KEY: test-secret-key
           TELEGRAM_BOT_TOKEN: test-bot-token
           TELEGRAM_CHAT_ID: test-chat-id
+          DATABASE_URL: postgresql+asyncpg://cashup:cashup@postgres:5432/cashup
+          REDIS_URL: redis://redis:6379/0
         run: |
           docker compose up -d postgres redis core-service trading-engine strategy-platform notification-service frontend
 

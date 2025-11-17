@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Alert, Spin, Progress, List, Tag, Typography, Divider, Table } from 'antd';
-import { DollarOutlined, BarChartOutlined, TrophyOutlined, WarningOutlined } from '@ant-design/icons';
+import { BarChartOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;

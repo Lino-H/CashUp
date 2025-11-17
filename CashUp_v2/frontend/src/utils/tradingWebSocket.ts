@@ -1,6 +1,9 @@
 /**
  * 实时交易WebSocket客户端
  * Real-time Trading WebSocket Client
+ * 函数集注释：
+ * - TradingWebSocketClient: 封装交易WS连接、订阅与事件回调
+ * - createTradingWebSocketClient/getGlobalTradingWebSocketClient/destroyGlobalTradingWebSocketClient: 全局实例管理
  */
 
 import { WebSocketManager, WebSocketMessage, createWebSocketManager } from './websocketManager';

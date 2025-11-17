@@ -9,9 +9,12 @@ router = APIRouter()
 
 @router.get("/api/v1/scheduler/status")
 async def scheduler_status(granularity: str = Query(default="hour"), task: str = Query(default=None), feed_id: str = Query(default=None), db: AsyncSession = Depends(get_db)):
-    res = await db.execute(text("SELECT config_key, config_value FROM system_configs WHERE config_key LIKE '%%.interval'"))
-    rows = res.fetchall()
-    intervals = {r.config_key: r.config_value for r in rows}
+    try:
+        res = await db.execute(text("SELECT config_key, config_value FROM system_configs WHERE config_key LIKE '%%.interval'"))
+        rows = res.fetchall()
+        intervals = {r.config_key: r.config_value for r in rows}
+    except Exception:
+        intervals = {}
     last = {}
     history = []
     task_trend = {}

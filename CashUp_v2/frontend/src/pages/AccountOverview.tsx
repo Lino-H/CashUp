@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Card, Row, Col, Statistic, Table, Tag, Divider, Select, Space, Switch, InputNumber, Button } from 'antd'
 import { DollarCircleOutlined, ReloadOutlined, DownloadOutlined, PictureOutlined } from '@ant-design/icons'
 import { coreReportingAPI, coreTradingAPI, handleApiError } from '../services/api'
@@ -35,7 +35,7 @@ const AccountOverview: React.FC = () => {
     setWinrateData(wr)
   }
 
-  const refreshData = async (exchange?: string) => {
+  const refreshData = useCallback(async (exchange?: string) => {
     try {
       const ov = await coreReportingAPI.accountOverview()
       const data = ov?.data || []
@@ -75,9 +75,9 @@ const AccountOverview: React.FC = () => {
     } catch (e) {
       console.error(handleApiError(e))
     }
-  }
+  }, [selectedExchange])
 
-  useEffect(() => { refreshData() }, [])
+  useEffect(() => { refreshData() }, [refreshData])
 
   useEffect(() => {
     let interval: any
@@ -85,7 +85,7 @@ const AccountOverview: React.FC = () => {
       interval = setInterval(() => { refreshData(selectedExchange) }, refreshInterval * 1000)
     }
     return () => { if (interval) clearInterval(interval) }
-  }, [autoRefresh, refreshInterval, selectedExchange])
+  }, [autoRefresh, refreshInterval, selectedExchange, refreshData])
 
   const columns = [
     { title: '交易所', dataIndex: 'exchange', key: 'exchange' },

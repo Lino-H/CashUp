@@ -136,7 +136,7 @@ export class CacheManager {
   private checkSizeLimit(): void {
     let totalSize = 0;
     
-    for (const [key, entry] of this.cache.entries()) {
+    for (const entry of this.cache.values()) {
       totalSize += entry.size;
       
       if (totalSize > this.config.maxSize) {
@@ -212,7 +212,6 @@ export class CacheManager {
    * 清理过期缓存
    */
   private cleanupExpired(): void {
-    const now = Date.now();
     const keysToDelete: string[] = [];
 
     for (const [key, entry] of this.cache.entries()) {
@@ -459,7 +458,6 @@ export class CacheManager {
     }
 
     const items = [];
-    const now = Date.now();
 
     for (const [key, entry] of relevantCache.entries()) {
       items.push({

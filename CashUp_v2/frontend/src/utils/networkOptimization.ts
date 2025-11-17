@@ -211,8 +211,6 @@ export class NetworkOptimizationManager {
     params?: any,
     options: NetworkRequestOptions = {}
   ): Promise<T> {
-    const requestKey = this.generateCacheKey(method, url, params);
-    const cacheOptions = options.cacheOptions || {};
     const deduplicationOptions = options.deduplicationOptions || {};
 
     // 更新指标

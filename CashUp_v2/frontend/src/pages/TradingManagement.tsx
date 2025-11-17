@@ -14,66 +14,46 @@ import {
   Select,
   Space,
   Tag,
-  Alert,
-  Divider,
   Typography,
-  Spin,
   message,
   Modal,
   Switch,
   InputNumber,
   Form,
-  Badge,
   Popconfirm,
   Tabs,
   Tooltip,
   Drawer,
-  Input,
   DatePicker,
   Dropdown,
-  Menu,
   Descriptions,
-  Timeline,
   Progress,
   List,
 } from 'antd';
 import {
-  LineChartOutlined,
   FundOutlined,
   PlusOutlined,
   ExportOutlined,
   MoreOutlined,
   FileTextOutlined,
   BarChartOutlined,
-  AreaChartOutlined,
-  PieChartOutlined,
   RiseOutlined,
   FallOutlined,
   DollarCircleOutlined,
-  PercentageOutlined,
   ClockCircleOutlined,
-  PlayCircleOutlined,
-  DownloadOutlined,
   FilterOutlined,
-  TableOutlined,
-  SettingOutlined,
   ReloadOutlined,
   EyeOutlined,
   StopOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
-  CloudDownloadOutlined,
-  LineChartOutlined as LineChartOutlined2,
-  AreaChartOutlined as AreaChartOutlined2,
   BankOutlined,
   WalletOutlined,
   SecurityScanOutlined,
-  CalculatorOutlined
-  , ArrowUpOutlined, ArrowDownOutlined
+  CalculatorOutlined,
+  ArrowUpOutlined, ArrowDownOutlined
 } from '@ant-design/icons';
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -86,8 +66,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  ComposedChart,
-  Scatter,
   Legend
 } from 'recharts';
 
@@ -106,7 +84,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
+// 函数集注释：
+// 1) loadOrders：获取订单列表并应用筛选
+// 2) loadPositions：获取持仓列表并应用筛选
+// 3) generateChartData：基于当前持仓生成分析图表数据
+// 4) loadAllData：并行加载页面所需的全部数据
 
 const TradingManagement: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -135,7 +117,6 @@ const TradingManagement: React.FC = () => {
   });
   
   // 详情显示
-  const [detailVisible, setDetailVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
   const [orderDrawerVisible, setOrderDrawerVisible] = useState(false);
@@ -151,12 +132,12 @@ const TradingManagement: React.FC = () => {
   const [orderFlowData, setOrderFlowData] = useState<any[]>([]);
   
   // 使用数据缓存
-  const { data: cachedOrders, getData: fetchOrders } = useDataCache<Order[]>(
+  const { getData: fetchOrders } = useDataCache<Order[]>(
     'orders',
     { ttl: 1 * 60 * 1000 } // 1分钟缓存
   );
   
-  const { data: cachedPositions, getData: fetchPositions } = useDataCache<Position[]>(
+  const { getData: fetchPositions } = useDataCache<Position[]>(
     'positions',
     { ttl: 30 * 1000 } // 30秒缓存
   );
@@ -188,7 +169,7 @@ const TradingManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchOrders, apiCallWithRetry, orderFilters]);
+  }, [fetchOrders, orderFilters]);
   
   // 获取持仓数据
   const loadPositions = useCallback(async () => {
@@ -211,7 +192,7 @@ const TradingManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchPositions, apiCallWithRetry, positionFilters]);
+  }, [fetchPositions, positionFilters]);
   
   // 导出数据
   const handleExportData = (type: 'orders' | 'positions' | 'trades') => {
@@ -251,72 +232,9 @@ const TradingManagement: React.FC = () => {
     }
   };
   
-  // 图表渲染函数
-  const renderChart = (type: string) => {
-    switch (type) {
-      case 'line':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Line type="monotone" dataKey="pnl" stroke="#8884d8" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        );
-      case 'area':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Area type="monotone" dataKey="pnl" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-      case 'bar':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Bar dataKey="trades" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      case 'pie':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={performanceData.slice(0, 5)}
-                dataKey="trades"
-                nameKey="date"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                label
-              />
-              <RechartsTooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        );
-      default:
-        return null;
-    }
-  };
+  
 
-  // 初始化图表数据
-  useEffect(() => {
-    generateChartData();
-  }, []);
+  
   
   // 获取策略列表
   const loadStrategies = useCallback(async () => {
@@ -329,7 +247,7 @@ const TradingManagement: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
+  }, []);
   
   // 获取账户信息
   const loadAccountInfo = useCallback(async () => {
@@ -340,7 +258,7 @@ const TradingManagement: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
+  }, []);
   
   // 获取交易统计
   const loadTradingStats = useCallback(async () => {
@@ -351,7 +269,7 @@ const TradingManagement: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
+  }, []);
   
   // 获取最近交易
   const loadRecentTrades = useCallback(async () => {
@@ -362,11 +280,10 @@ const TradingManagement: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
-  
+  }, []);
+
   // 生成图表数据
   const generateChartData = useCallback(() => {
-    // 性能数据
     const perfData = Array.from({ length: 30 }, (_, i) => ({
       date: `Day ${i + 1}`,
       pnl: Math.random() * 2000 - 1000,
@@ -374,16 +291,12 @@ const TradingManagement: React.FC = () => {
       winRate: Math.random() * 100,
     }));
     setPerformanceData(perfData);
-    
-    // 持仓分布
     const posDist = positions.map(pos => ({
       name: pos.symbol,
       value: Math.abs(pos.pnl),
       color: pos.pnl >= 0 ? '#52c41a' : '#ff4d4f',
     }));
     setPositionDistribution(posDist);
-    
-    // 订单流
     const orderFlow = Array.from({ length: 24 }, (_, i) => ({
       hour: `${i}:00`,
       buy: Math.floor(Math.random() * 50) + 10,
@@ -391,6 +304,11 @@ const TradingManagement: React.FC = () => {
     }));
     setOrderFlowData(orderFlow);
   }, [positions]);
+  
+  // 初始化图表数据
+  useEffect(() => {
+    generateChartData();
+  }, [generateChartData]);
   
   // 加载所有数据
   const loadAllData = useCallback(async () => {

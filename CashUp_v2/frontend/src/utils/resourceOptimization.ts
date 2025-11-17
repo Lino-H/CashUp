@@ -404,12 +404,12 @@ export class ResourceOptimizationManager {
     };
 
     if (images && images.length > 0) {
-      const { optimizedFiles, report: imageReport } = await this.optimizeImages(images);
+      const { report: imageReport } = await this.optimizeImages(images);
       report.images = imageReport;
     }
 
     if (css) {
-      const { optimizedCSS, report: cssReport } = this.optimizeCSS(css);
+      const { report: cssReport } = this.optimizeCSS(css);
       report.css = cssReport;
     }
 

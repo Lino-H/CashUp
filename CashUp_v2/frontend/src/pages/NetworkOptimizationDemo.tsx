@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Input, Space, Alert, Statistic, Progress, Table, Typography, Switch, InputNumber, Tag } from 'antd';
-import { NetworkOptimizationManager } from '../utils/networkOptimization';
+import { Card, Row, Col, Button, Input, Space, Statistic, Progress, Table, Typography, Switch, InputNumber, Tag } from 'antd';
 import { networkOptimizationManager } from '../utils/networkOptimization';
 import {
   ReloadOutlined,
   DownloadOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   SyncOutlined,
-  ClockCircleOutlined,
-  BarChartOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
@@ -24,20 +20,6 @@ const mockApiRequest = (delay: number = 1000): Promise<string> => {
   });
 };
 
-// 模拟数据获取函数
-const mockDataFetch = async (endpoint: string, params?: any): Promise<any> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return {
-    endpoint,
-    params,
-    data: Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      name: `Item ${i + 1}`,
-      value: Math.floor(Math.random() * 100),
-      timestamp: new Date().toISOString(),
-    })),
-  };
-};
 
 const NetworkOptimizationDemo: React.FC = () => {
   const [config, setConfig] = useState({

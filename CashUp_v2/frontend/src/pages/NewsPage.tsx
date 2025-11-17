@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, List, Tag, Typography, Space } from 'antd';
-import { createWebSocketManager } from '../utils/websocketManager';
+import { createWebSocketManager, getWebSocketUrl } from '../utils/websocketManager';
 
 const { Title } = Typography;
 
@@ -28,7 +28,8 @@ const NewsPage: React.FC = () => {
 
   useEffect(() => {
     load();
-    const ws = createWebSocketManager('ws://localhost/ws/news');
+    const wsUrl = getWebSocketUrl('news', '/ws/news');
+    const ws = createWebSocketManager(wsUrl);
     ws.subscribe('news');
     return () => ws.disconnect();
   }, []);

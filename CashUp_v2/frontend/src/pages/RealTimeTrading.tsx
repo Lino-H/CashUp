@@ -3,7 +3,7 @@
  * Real-time Trading Monitoring Page - Connected to Real APIs
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Row,
@@ -14,8 +14,7 @@ import {
   Select,
   Space,
   Tag,
-  Alert,
-  Divider,
+  
   Typography,
   Spin,
   message,
@@ -24,27 +23,12 @@ import {
   InputNumber,
   Form,
   Badge,
-  Progress,
+  
   Popconfirm,
 } from 'antd';
 import { handleApiResponse, handleApiError, MarketDataResponse } from '../services/api';
 import { dataCache } from '../utils/cache';
-import {
-  RiseOutlined,
-  FallOutlined,
-  DollarCircleOutlined,
-  PercentageOutlined,
-  ClockCircleOutlined,
-  BarChartOutlined,
-  PlayCircleOutlined,
-  PauseCircleOutlined,
-  StopOutlined,
-  EyeOutlined,
-  SettingOutlined,
-  ReloadOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-} from '@ant-design/icons';
+import { ReloadOutlined, StopOutlined, EyeOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import {
   strategyAPI,
@@ -54,8 +38,15 @@ import {
   Position,
 } from '../services/api';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
+
+// 函数集注释：
+// 1) fetchStrategies：获取策略列表
+// 2) fetchMarketData：按选中交易对获取市场数据
+// 3) fetchRecentOrders / fetchPositions / fetchAccountInfo：获取订单、持仓、账户
+// 4) loadAllData：并行加载页面所需的全部数据
+// 5) handleCreateOrder / handleCancelOrder / handleControlStrategy：交易与策略操作
 
 // 实时交易监控组件
 const RealTimeTrading: React.FC = () => {
@@ -68,15 +59,15 @@ const RealTimeTrading: React.FC = () => {
   const [marketData, setMarketData] = useState<MarketDataResponse[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [marketOverview, setMarketOverview] = useState<any>(null);
+  
   
   // 详情显示
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [settingsVisible, setSettingsVisible] = useState(false);
+  
   
   // 选中的交易对
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTCUSDT', 'ETHUSDT']);
+  const [selectedSymbols] = useState<string[]>(['BTCUSDT', 'ETHUSDT']);
   
   // 交易控制
   const [tradeModalVisible, setTradeModalVisible] = useState(false);
@@ -86,7 +77,7 @@ const RealTimeTrading: React.FC = () => {
   const [accountInfo, setAccountInfo] = useState<any>(null);
   
   // 获取账户信息
-  const fetchAccountInfo = async () => {
+  const fetchAccountInfo = React.useCallback(async () => {
     try {
       const response = await tradingAPI.getAccountInfo();
       setAccountInfo(response);
@@ -95,7 +86,7 @@ const RealTimeTrading: React.FC = () => {
       const errorMessage = handleApiError(error as any);
       message.error(errorMessage);
     }
-  };
+  }, []);
   
   // 创建订单
   const handleCreateOrder = async (values: any) => {
@@ -104,7 +95,7 @@ const RealTimeTrading: React.FC = () => {
       message.success('订单创建成功');
       setTradeModalVisible(false);
       tradeForm.resetFields();
-      await fetchRecentOrders();
+      await fetchRecentOrdersCb();
     } catch (error) {
       console.error('创建订单失败:', error);
       message.error('创建订单失败');
@@ -116,7 +107,7 @@ const RealTimeTrading: React.FC = () => {
     try {
       await tradingAPI.cancelOrder(orderId);
       message.success('订单取消成功');
-      await fetchRecentOrders();
+      await fetchRecentOrdersCb();
     } catch (error) {
       console.error('取消订单失败:', error);
       message.error('取消订单失败');
@@ -128,7 +119,7 @@ const RealTimeTrading: React.FC = () => {
     try {
       await tradingAPI.closePosition(positionId);
       message.success('平仓成功');
-      await fetchPositions();
+      await fetchPositionsCb();
     } catch (error) {
       console.error('平仓失败:', error);
       message.error('平仓失败');
@@ -136,7 +127,7 @@ const RealTimeTrading: React.FC = () => {
   };
   
   // 获取策略列表
-  const fetchStrategies = async () => {
+  const fetchStrategiesCb = React.useCallback(async () => {
     try {
       const response = await dataCache.fetchWithCache(
         'strategies',
@@ -157,10 +148,10 @@ const RealTimeTrading: React.FC = () => {
       console.error('获取策略列表失败:', error);
       message.error(errorMessage);
     }
-  };
+  }, []);
   
   // 获取市场数据
-  const fetchMarketData = async () => {
+  const fetchMarketDataCb = React.useCallback(async () => {
     try {
       const promises = selectedSymbols.map(symbol => 
         strategyAPI.getRealTimeData(symbol)
@@ -173,22 +164,12 @@ const RealTimeTrading: React.FC = () => {
       const errorMessage = handleApiError(error as any);
       message.error(errorMessage);
     }
-  };
+  }, [selectedSymbols]);
   
-  // 获取市场概览
-  const fetchMarketOverview = async () => {
-    try {
-      const response = await strategyAPI.getMarketOverview();
-      setMarketOverview(response);
-    } catch (error) {
-      console.error('获取市场概览失败:', error);
-      const errorMessage = handleApiError(error as any);
-      message.error(errorMessage);
-    }
-  };
+  
   
   // 获取最近订单
-  const fetchRecentOrders = async () => {
+  const fetchRecentOrdersCb = React.useCallback(async () => {
     try {
       const response: any = await tradingAPI.getOrders({ 
         limit: 50, 
@@ -201,10 +182,10 @@ const RealTimeTrading: React.FC = () => {
       const errorMessage = handleApiError(error as any);
       message.error(errorMessage);
     }
-  };
+  }, []);
   
   // 获取持仓数据
-  const fetchPositions = async () => {
+  const fetchPositionsCb = React.useCallback(async () => {
     try {
       const response: any = await tradingAPI.getPositions();
       setPositions(response || []);
@@ -213,18 +194,17 @@ const RealTimeTrading: React.FC = () => {
       const errorMessage = handleApiError(error as any);
       message.error(errorMessage);
     }
-  };
+  }, []);
   
   // 加载所有数据
-  const loadAllData = async () => {
+  const loadAllDataCb = React.useCallback(async () => {
     setLoading(true);
     try {
       await Promise.all([
-        fetchStrategies(),
-        fetchMarketData(),
-        fetchMarketOverview(),
-        fetchRecentOrders(),
-        fetchPositions(),
+        fetchStrategiesCb(),
+        fetchMarketDataCb(),
+        fetchRecentOrdersCb(),
+        fetchPositionsCb(),
         fetchAccountInfo()
       ]);
     } catch (error) {
@@ -232,7 +212,7 @@ const RealTimeTrading: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchStrategiesCb, fetchMarketDataCb, fetchRecentOrdersCb, fetchPositionsCb, fetchAccountInfo]);
   
   // 策略控制
   const handleControlStrategy = async (strategyId: string, action: 'start' | 'stop' | 'reload') => {
@@ -247,7 +227,7 @@ const RealTimeTrading: React.FC = () => {
         await strategyAPI.reloadStrategy(strategyId);
         message.success('策略重载成功');
       }
-      await fetchStrategies();
+      await fetchStrategiesCb();
     } catch (error) {
       console.error('策略控制失败:', error);
       message.error('策略控制失败');
@@ -262,20 +242,20 @@ const RealTimeTrading: React.FC = () => {
   
   // 自动刷新
   useEffect(() => {
-    loadAllData();
+    loadAllDataCb();
     if (autoRefresh) {
       const interval = setInterval(async () => {
         const promises = [
-          fetchMarketData(),
-          fetchRecentOrders(),
-          fetchPositions(),
+          fetchMarketDataCb(),
+          fetchRecentOrdersCb(),
+          fetchPositionsCb(),
           fetchAccountInfo()
         ];
         await Promise.all(promises);
       }, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [autoRefresh, refreshInterval, selectedSymbols]);
+  }, [autoRefresh, refreshInterval, loadAllDataCb, fetchMarketDataCb, fetchRecentOrdersCb, fetchPositionsCb, fetchAccountInfo]);
   
   // 订单表格列
   const orderColumns = [
@@ -551,7 +531,7 @@ const RealTimeTrading: React.FC = () => {
                 <Option value={10000}>10秒</Option>
                 <Option value={30000}>30秒</Option>
               </Select>
-              <Button icon={<ReloadOutlined />} onClick={loadAllData}>
+              <Button icon={<ReloadOutlined />} onClick={loadAllDataCb}>
                 刷新
               </Button>
             </Space>

@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
+import os
 import logging
 from datetime import datetime, timezone
 
@@ -46,9 +47,10 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 启动CashUp核心服务...")
     
     try:
-        # 初始化数据库
-        db = get_database()
-        await db.connect()
+        # 初始化数据库（测试环境可跳过）
+        if str(os.getenv("TEST_SKIP_DB", "")).lower() not in ("1", "true", "yes"):
+            db = get_database()
+            await db.connect()
         logger.info("✅ 数据库连接成功")
         
         logger.info(f"🌍 调试模式: {settings.DEBUG}")
@@ -64,8 +66,9 @@ async def lifespan(app: FastAPI):
     
     try:
         # 清理资源
-        db = get_database()
-        await db.disconnect()
+        if str(os.getenv("TEST_SKIP_DB", "")).lower() not in ("1", "true", "yes"):
+            db = get_database()
+            await db.disconnect()
         logger.info("👋 核心服务已关闭")
     except Exception as e:
         logger.error(f"❌ 关闭服务时发生错误: {e}")

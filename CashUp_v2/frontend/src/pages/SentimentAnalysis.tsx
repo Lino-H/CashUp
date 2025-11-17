@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Alert, Spin, Progress, List, Tag, Typography, Divider, Timeline } from 'antd';
-import { ArrowUpOutlined, ArrowDownOutlined, EyeOutlined, MessageOutlined, LineChartOutlined, WarningOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, ArrowDownOutlined, EyeOutlined, MessageOutlined, LineChartOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;

@@ -22,7 +22,10 @@ class DataCache {
     if (!params) {
       return endpoint;
     }
-    return `${endpoint}_${JSON.stringify(params)}`;
+    const normalized = endpoint.startsWith('/')
+      ? '/' + endpoint.slice(1).replace(/\//g, '_')
+      : endpoint.replace(/\//g, '_');
+    return `${normalized}_${JSON.stringify(params)}`;
   }
 
   // 检查缓存是否过期

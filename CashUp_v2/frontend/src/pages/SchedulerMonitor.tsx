@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Row, Col, Statistic, Table, Button, Space, Form, InputNumber, Input, message, Tag, Select } from 'antd'
+import { Card, Row, Col, Table, Button, Space, Form, InputNumber, Input, message, Tag, Select } from 'antd'
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Line } from 'recharts'
 import { coreSchedulerAPI, coreRSSAPI, handleApiError } from '../services/api'
 /**
@@ -19,7 +19,7 @@ const SchedulerMonitor: React.FC = () => {
   const [selectedFeed, setSelectedFeed] = useState<string | undefined>(undefined)
   const [feedOptions, setFeedOptions] = useState<any[]>([])
 
-  const load = async () => {
+  const load = React.useCallback(async () => {
     setLoading(true)
     try {
       const resp = await coreSchedulerAPI.status({ params: { granularity, task: selectedTask, feed_id: selectedFeed } })
@@ -29,9 +29,9 @@ const SchedulerMonitor: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [granularity, selectedTask, selectedFeed])
 
-  useEffect(() => { load() }, [granularity, selectedTask, selectedFeed])
+  useEffect(() => { load() }, [load])
 
   useEffect(() => {
     coreRSSAPI.listFeeds().then((resp) => {

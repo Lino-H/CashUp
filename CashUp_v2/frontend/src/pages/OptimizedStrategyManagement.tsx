@@ -14,16 +14,11 @@ import {
   Form,
   Input,
   Select,
-  InputNumber,
-  Switch,
-  Divider,
   message,
   Popconfirm,
   Row,
   Col,
   Statistic,
-  Progress,
-  Badge,
 } from 'antd';
 import {
   PlusOutlined,
@@ -31,9 +26,7 @@ import {
   DeleteOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  StopOutlined,
   ReloadOutlined,
-  SettingOutlined,
 } from '@ant-design/icons';
 import { 
   strategyAPI, 
@@ -42,10 +35,16 @@ import {
 import { Typography } from 'antd';
 import { dataCache } from '../utils/cache';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
+// 函数集注释：
+// 1) fetchStrategies：获取策略列表（带缓存）
+// 2) handleCreateStrategy：创建策略后刷新列表
+// 3) handleEditStrategy / handleUpdateStrategy：编辑并更新策略
+// 4) handleDeleteStrategy / handleStartStrategy / handleStopStrategy / handleReloadStrategy：策略操作
+// 5) columns(useMemo)：依赖操作函数生成操作列
 // 策略性能卡片组件
 const StrategyPerformanceCard: React.FC<{ performance: Strategy['performance'] | undefined }> = React.memo(({ performance }) => {
   const winRate = ((performance?.winRate ?? 0)).toFixed(1);
@@ -257,61 +256,6 @@ const OptimizedStrategyManagement: React.FC = () => {
       : 0,
   }), [strategies]);
 
-  // 使用 useMemo 缓存表格列定义
-  const columns = useMemo(() => [
-    {
-      title: '策略名称',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: Strategy) => (
-        <div>
-          <div style={{ fontWeight: 'bold' }}>{name}</div>
-          <div style={{ fontSize: 12, color: '#666' }}>
-            {record.symbol} | {record.timeframe}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => <StrategyStatusTag status={status} />,
-    },
-    {
-      title: '盈亏',
-      dataIndex: 'performance',
-      key: 'performance',
-      render: (performance: Strategy['performance']) => (
-        <div>
-          <div style={{ 
-            color: performance?.totalPnl >= 0 ? '#3f8600' : '#cf1322',
-            fontWeight: 'bold'
-          }}>
-            {performance?.totalPnl ? `$${performance.totalPnl.toFixed(2)}` : '$0.00'}
-          </div>
-          <div style={{ fontSize: 12, color: '#666' }}>
-            {performance?.winRate ? `${performance.winRate.toFixed(1)}%` : '0%'}
-          </div>
-        </div>
-      ),
-      sorter: (a: Strategy, b: Strategy) => (a.performance?.totalPnl || 0) - (b.performance?.totalPnl || 0),
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      render: (_: any, record: Strategy) => (
-        <StrategyActionButtons
-          strategy={record}
-          onEdit={handleEditStrategy}
-          onDelete={handleDeleteStrategy}
-          onStart={handleStartStrategy}
-          onStop={handleStopStrategy}
-          onReload={handleReloadStrategy}
-        />
-      ),
-    },
-  ], []);
 
   // 使用 useCallback 缓存 API 调用函数
   const fetchStrategies = useCallback(async () => {
@@ -411,6 +355,62 @@ const OptimizedStrategyManagement: React.FC = () => {
   useEffect(() => {
     fetchStrategies();
   }, [fetchStrategies]);
+
+  // 使用 useMemo 缓存表格列定义（依赖操作函数，避免 use-before-define）
+  const columns = useMemo(() => [
+    {
+      title: '策略名称',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name: string, record: Strategy) => (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{name}</div>
+          <div style={{ fontSize: 12, color: '#666' }}>
+            {record.symbol} | {record.timeframe}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => <StrategyStatusTag status={status} />,
+    },
+    {
+      title: '盈亏',
+      dataIndex: 'performance',
+      key: 'performance',
+      render: (performance: Strategy['performance']) => (
+        <div>
+          <div style={{ 
+            color: performance?.totalPnl >= 0 ? '#3f8600' : '#cf1322',
+            fontWeight: 'bold'
+          }}>
+            {performance?.totalPnl ? `$${performance.totalPnl.toFixed(2)}` : '$0.00'}
+          </div>
+          <div style={{ fontSize: 12, color: '#666' }}>
+            {performance?.winRate ? `${performance.winRate.toFixed(1)}%` : '0%'}
+          </div>
+        </div>
+      ),
+      sorter: (a: Strategy, b: Strategy) => (a.performance?.totalPnl || 0) - (b.performance?.totalPnl || 0),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_: any, record: Strategy) => (
+        <StrategyActionButtons
+          strategy={record}
+          onEdit={handleEditStrategy}
+          onDelete={handleDeleteStrategy}
+          onStart={handleStartStrategy}
+          onStop={handleStopStrategy}
+          onReload={handleReloadStrategy}
+        />
+      ),
+    },
+  ], [handleEditStrategy, handleDeleteStrategy, handleStartStrategy, handleStopStrategy, handleReloadStrategy]);
 
   return (
     <div style={{ padding: 24 }}>

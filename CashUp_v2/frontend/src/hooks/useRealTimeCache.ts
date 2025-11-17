@@ -170,22 +170,60 @@ export const useBatchRealTimeCache = <T>(
   const [loadingMap, setLoadingMap] = useState<{ [key: string]: boolean }>({});
   const [errorMap, setErrorMap] = useState<{ [key: string]: string | null }>({});
 
-  // 为每个key创建缓存实例
-  const caches = keys.reduce((acc, key) => {
-    acc[key] = useRealTimeCache(key, fetchFunctions[key], options);
-    return acc;
-  }, {} as { [key: string]: ReturnType<typeof useRealTimeCache<T>> });
+  const fetchOne = useCallback(async (key: string, forceRefresh: boolean = false) => {
+    try {
+      setLoadingMap(prev => ({ ...prev, [key]: true }));
+      setErrorMap(prev => ({ ...prev, [key]: null }));
+      const data = await fetchFunctions[key]();
+      setDataMap(prev => ({ ...prev, [key]: data }));
+      return data;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setErrorMap(prev => ({ ...prev, [key]: msg }));
+      throw e;
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [key]: false }));
+    }
+  }, [fetchFunctions]);
 
-  // 批量刷新所有数据
   const refreshAll = useCallback(async () => {
-    const promises = keys.map(key => caches[key].refresh());
-    await Promise.allSettled(promises);
-  }, [keys, caches]);
+    const tasks = keys.map(key => fetchOne(key, true));
+    await Promise.allSettled(tasks);
+  }, [keys, fetchOne]);
 
-  // 批量清除所有缓存
   const clearAllCache = useCallback(() => {
-    keys.forEach(key => caches[key].clearCache());
-  }, [keys, caches]);
+    setDataMap(prev => {
+      const next = { ...prev };
+      keys.forEach(key => { next[key] = null; });
+      return next;
+    });
+    setErrorMap(prev => {
+      const next = { ...prev };
+      keys.forEach(key => { next[key] = null; });
+      return next;
+    });
+    setLoadingMap(prev => {
+      const next = { ...prev };
+      keys.forEach(key => { next[key] = false; });
+      return next;
+    });
+  }, [keys]);
+
+  const caches = keys.reduce((acc, key) => {
+    acc[key] = {
+      refresh: () => fetchOne(key, true),
+      clearCache: () => {
+        setDataMap(prev => ({ ...prev, [key]: null }));
+        setErrorMap(prev => ({ ...prev, [key]: null }));
+        setLoadingMap(prev => ({ ...prev, [key]: false }));
+      },
+    };
+    return acc;
+  }, {} as { [key: string]: { refresh: () => Promise<T>; clearCache: () => void } });
+
+  useEffect(() => {
+    keys.forEach(key => { fetchOne(key).catch(() => {}); });
+  }, [keys, fetchOne]);
 
   return {
     dataMap,
@@ -193,6 +231,6 @@ export const useBatchRealTimeCache = <T>(
     errorMap,
     caches,
     refreshAll,
-    clearAllCache
+    clearAllCache,
   };
 };

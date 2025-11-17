@@ -2,7 +2,7 @@
 核心服务配置管理
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
 
@@ -59,10 +59,12 @@ class Settings(BaseSettings):
     LOG_ROTATE_MB: int = int(os.getenv("LOG_ROTATE_MB", "20"))
     LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "5"))
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra='ignore',
+    )
 
 # 创建全局配置实例
 settings = Settings()

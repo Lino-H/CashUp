@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Alert, Spin, Progress, List, Tag, Typography, Divider, Table, Radio, DatePicker } from 'antd';
+import { Card, Row, Col, Statistic, Alert, Spin, Progress, List, Tag, Typography, Divider, Table, Radio } from 'antd';
 import { SafetyOutlined, WarningOutlined, ExclamationCircleOutlined, LineChartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
-const { RangePicker } = DatePicker;
+ 
 
 interface RiskMetrics {
   overall_risk_score: number;
@@ -68,13 +68,7 @@ const RiskAnalysis: React.FC = () => {
   } | null>(null);
   const [timeRange, setTimeRange] = useState('1M');
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchRiskAnalysis();
-    }
-  }, [isAuthenticated, timeRange]);
-
-  const fetchRiskAnalysis = async () => {
+  const fetchRiskAnalysisCb = React.useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/config/analysis/risk?range=${timeRange}`, {
@@ -90,7 +84,13 @@ const RiskAnalysis: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchRiskAnalysisCb();
+    }
+  }, [isAuthenticated, fetchRiskAnalysisCb]);
 
   const getRiskColor = (score: number) => {
     if (score <= 3) return '#52c41a';
@@ -99,15 +99,7 @@ const RiskAnalysis: React.FC = () => {
     return '#f5222d';
   };
 
-  const getRiskLevelColor = (level: string) => {
-    switch (level) {
-      case 'low': return '#52c41a';
-      case 'medium': return '#faad14';
-      case 'high': return '#ff7875';
-      case 'critical': return '#f5222d';
-      default: return '#faad14';
-    }
-  };
+  
 
   const getRiskLevelText = (level: string) => {
     switch (level) {

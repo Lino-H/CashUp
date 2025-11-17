@@ -12,8 +12,6 @@ import {
   Button,
   Select,
   Space,
-  Tag,
-  Alert,
   Typography,
   Spin,
   message,
@@ -21,22 +19,11 @@ import {
   Switch,
   InputNumber,
   Form,
-  Divider,
-  Badge,
-  Progress,
 } from 'antd';
 import { handleApiResponse, handleApiError, MarketDataResponse } from '../services/api';
 import { dataCache } from '../utils/cache';
 import {
-  RiseOutlined,
-  FallOutlined,
-  DollarCircleOutlined,
-  PercentageOutlined,
-  ClockCircleOutlined,
-  BarChartOutlined,
   ReloadOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons';
 import {
   strategyAPI,
@@ -49,8 +36,13 @@ import OptimizedOrderTable from '../components/RealTimeTrading/OptimizedOrderTab
 import OptimizedPositionTable from '../components/RealTimeTrading/OptimizedPositionTable';
 import OptimizedStrategyCard from '../components/RealTimeTrading/OptimizedStrategyCard';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
+
+// 函数集注释：
+// 1) fetchStrategies / fetchMarketData / fetchRecentOrders / fetchPositions / fetchAccountInfo
+// 2) loadAllData：并行加载页面所需数据
+// 3) handleCreateOrder / handleCancelOrder / handleClosePosition / handleControlStrategy
 
 // 优化后的实时交易监控组件
 const OptimizedRealTimeTrading: React.FC = () => {
@@ -63,15 +55,13 @@ const OptimizedRealTimeTrading: React.FC = () => {
   const [marketData, setMarketData] = useState<MarketDataResponse[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [marketOverview, setMarketOverview] = useState<any>(null);
   
   // 详情显示
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [settingsVisible, setSettingsVisible] = useState(false);
   
   // 选中的交易对
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTCUSDT', 'ETHUSDT']);
+  const [selectedSymbols] = useState<string[]>(['BTCUSDT', 'ETHUSDT']);
   
   // 交易控制
   const [tradeModalVisible, setTradeModalVisible] = useState(false);
@@ -90,6 +80,32 @@ const OptimizedRealTimeTrading: React.FC = () => {
     }
   }, []);
 
+  // 获取最近订单（提前声明以避免 no-use-before-define）
+  const fetchRecentOrders = useCallback(async () => {
+    try {
+      const response: any = await tradingAPI.getOrders({ 
+        limit: 50, 
+        sort_by: 'timestamp', 
+        sort_order: 'desc' 
+      });
+      setRecentOrders(response || []);
+    } catch (error) {
+      console.error('获取最近订单失败:', error);
+      message.error('获取最近订单失败');
+    }
+  }, []);
+
+  // 获取持仓数据（提前声明以避免 no-use-before-define）
+  const fetchPositions = useCallback(async () => {
+    try {
+      const response: any = await tradingAPI.getPositions();
+      setPositions(response || []);
+    } catch (error) {
+      console.error('获取持仓数据失败:', error);
+      message.error('获取持仓数据失败');
+    }
+  }, []);
+
   const handleCreateOrder = useCallback(async (values: any) => {
     try {
       await tradingAPI.createOrder(values);
@@ -101,7 +117,7 @@ const OptimizedRealTimeTrading: React.FC = () => {
       console.error('创建订单失败:', error);
       message.error('创建订单失败');
     }
-  }, [tradeForm]);
+  }, [tradeForm, fetchRecentOrders]);
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -112,7 +128,7 @@ const OptimizedRealTimeTrading: React.FC = () => {
       console.error('取消订单失败:', error);
       message.error('取消订单失败');
     }
-  }, []);
+  }, [fetchRecentOrders]);
 
   const handleClosePosition = useCallback(async (positionId: string) => {
     try {
@@ -123,7 +139,7 @@ const OptimizedRealTimeTrading: React.FC = () => {
       console.error('平仓失败:', error);
       message.error('平仓失败');
     }
-  }, []);
+  }, [fetchPositions]);
 
   const fetchStrategies = useCallback(async () => {
     try {
@@ -162,38 +178,8 @@ const OptimizedRealTimeTrading: React.FC = () => {
     }
   }, [selectedSymbols]);
 
-  const fetchMarketOverview = useCallback(async () => {
-    try {
-      const response = await strategyAPI.getMarketOverview();
-      setMarketOverview(response);
-    } catch (error) {
-      console.error('获取市场概览失败:', error);
-    }
-  }, []);
 
-  const fetchRecentOrders = useCallback(async () => {
-    try {
-      const response: any = await tradingAPI.getOrders({ 
-        limit: 50, 
-        sort_by: 'timestamp', 
-        sort_order: 'desc' 
-      });
-      setRecentOrders(response || []);
-    } catch (error) {
-      console.error('获取最近订单失败:', error);
-      message.error('获取最近订单失败');
-    }
-  }, []);
-
-  const fetchPositions = useCallback(async () => {
-    try {
-      const response: any = await tradingAPI.getPositions();
-      setPositions(response || []);
-    } catch (error) {
-      console.error('获取持仓数据失败:', error);
-      message.error('获取持仓数据失败');
-    }
-  }, []);
+  
 
   const loadAllData = useCallback(async () => {
     setLoading(true);
@@ -201,7 +187,6 @@ const OptimizedRealTimeTrading: React.FC = () => {
       await Promise.all([
         fetchStrategies(),
         fetchMarketData(),
-        fetchMarketOverview(),
         fetchRecentOrders(),
         fetchPositions(),
         fetchAccountInfo()
@@ -211,7 +196,7 @@ const OptimizedRealTimeTrading: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchStrategies, fetchMarketData, fetchMarketOverview, fetchRecentOrders, fetchPositions, fetchAccountInfo]);
+  }, [fetchStrategies, fetchMarketData, fetchRecentOrders, fetchPositions, fetchAccountInfo]);
 
   const handleControlStrategy = useCallback(async (strategyId: string, action: 'start' | 'stop' | 'reload') => {
     try {
@@ -291,7 +276,7 @@ const OptimizedRealTimeTrading: React.FC = () => {
         </Button>
       </Space>
     </Col>
-  ), [autoRefresh, refreshInterval, loadAllData, tradeModalVisible]);
+  ), [autoRefresh, refreshInterval, loadAllData]);
 
   const overviewCards = useMemo(() => (
     <>

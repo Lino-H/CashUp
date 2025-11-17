@@ -1,16 +1,19 @@
 import { dataCache, useCache } from '../cache';
 
-// Mock Date.now() for testing time-based operations
-const mockDateNow = jest.spyOn(Date, 'now');
+// 使用假定时器与系统时间确保 TTL 计算稳定
+beforeAll(() => {
+  jest.useFakeTimers();
+});
 
 describe('DataCache', () => {
   beforeEach(() => {
     dataCache.clear();
-    mockDateNow.mockReturnValue(1000000);
+    jest.setSystemTime(new Date(1000000));
   });
 
   afterEach(() => {
-    mockDateNow.mockRestore();
+    jest.useRealTimers();
+    jest.useFakeTimers();
   });
 
   describe('Basic Operations', () => {
@@ -49,12 +52,12 @@ describe('DataCache', () => {
   describe('TTL Functionality', () => {
     test('should expire data after TTL', () => {
       dataCache.set('test-key', { value: 'test-data' }, 1000); // 1 second TTL
-      
-      mockDateNow.mockReturnValue(1000000 + 500); // 500ms later, not expired
+
+      jest.setSystemTime(new Date(1000000 + 500)); // 500ms later, not expired
       let result = dataCache.get('test-key');
       expect(result).toEqual({ value: 'test-data' });
       
-      mockDateNow.mockReturnValue(1000000 + 1500); // 1500ms later, expired
+      jest.setSystemTime(new Date(1000000 + 1500)); // 1500ms later, expired
       result = dataCache.get('test-key');
       expect(result).toBeNull();
     });
@@ -62,7 +65,7 @@ describe('DataCache', () => {
     test('should not expire data if TTL is not set', () => {
       dataCache.set('test-key', { value: 'test-data' });
       
-      mockDateNow.mockReturnValue(1000000 + 100000); // Much later
+      jest.setSystemTime(new Date(1000000 + 100000)); // Much later
       const result = dataCache.get('test-key');
       expect(result).toEqual({ value: 'test-data' });
     });

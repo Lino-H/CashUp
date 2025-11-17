@@ -44,7 +44,7 @@ interface AnalysisScores {
 }
 
 // 主应用组件
-const AppContent: React.FC = () => {
+export const AppContent: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [services, setServices] = useState<ServiceStatus[]>([
     { name: '核心服务', status: 'unknown', url: '/api/core/health' },

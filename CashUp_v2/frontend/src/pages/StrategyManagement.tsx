@@ -23,11 +23,8 @@ import {
   Row,
   Col,
   Statistic,
-  Progress,
-  Alert,
   Drawer,
-  Typography,
-  Divider
+  Typography
 } from 'antd';
 import {
   PlusOutlined,
@@ -35,20 +32,14 @@ import {
   DeleteOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  ReloadOutlined,
   SettingOutlined,
   EyeOutlined,
   LineChartOutlined,
   BarChartOutlined,
-  DollarCircleOutlined,
   RiseOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
   DownloadOutlined,
-  ShareAltOutlined,
   FilterOutlined,
   TableOutlined,
-  PieChartOutlined,
   BarChartOutlined as BarChartOutlined2,
   AreaChartOutlined as AreaChartOutlined2
 } from '@ant-design/icons';
@@ -66,17 +57,13 @@ import {
   Bar,
   PieChart,
   Pie,
-  Cell,
-  ComposedChart,
-  Scatter,
-  ZAxis
+  ComposedChart
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { coreStrategyAPI, strategyAPI, handleApiError, Strategy } from '../services/api';
-import { useDataCache } from '../hooks/useDataCache';
 import { SmartLoading } from '../components/SmartLoading';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -104,13 +91,17 @@ const StrategyManagement: React.FC = () => {
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<number>(30);
+  const [factorConfig] = useState({
+    rsi: { enabled: true, weight: 1.0, params: { period: 14, overbought: 70, oversold: 30 } },
+    ma: { enabled: true, weight: 1.0, params: { period: 20 } },
+    macd: { enabled: false, weight: 1.0, params: { fast: 12, slow: 26, signal: 9 } },
+    ema: { enabled: false, weight: 1.0, params: { period: 20 } },
+    boll: { enabled: false, weight: 1.0, params: { period: 20, mult: 2.0 } },
+  });
+  const [combinationMode] = useState<'weighted' | 'vote'>('weighted');
   const [form] = Form.useForm();
 
-  // 使用数据缓存
-  const { data: cachedStrategies, getData: fetchStrategies } = useDataCache<Strategy[]>(
-    'strategies',
-    { ttl: 2 * 60 * 1000 } // 2分钟缓存
-  );
+  
 
   // 策略类型选项
   const strategyTypes = [
@@ -164,7 +155,7 @@ const StrategyManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchStrategies, apiCallWithRetry]);
+  }, []);
 
   // 获取策略性能数据
   const loadPerformanceData = useCallback(async (strategyId: string) => {
@@ -1043,51 +1034,3 @@ const StrategyManagement: React.FC = () => {
 };
 
 export default StrategyManagement;
-  const [factorConfig, setFactorConfig] = useState({
-    rsi: { enabled: true, weight: 1.0, params: { period: 14, overbought: 70, oversold: 30 } },
-    ma: { enabled: true, weight: 1.0, params: { period: 20 } },
-    macd: { enabled: false, weight: 1.0, params: { fast: 12, slow: 26, signal: 9 } },
-    ema: { enabled: false, weight: 1.0, params: { period: 20 } },
-    boll: { enabled: false, weight: 1.0, params: { period: 20, mult: 2.0 } },
-  });
-  const [combinationMode, setCombinationMode] = useState<'weighted' | 'vote'>('weighted');
-          <Row gutter={16}>
-            <Col span={24}>
-              <Card title="因子与组合配置" size="small">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Space>
-                    <Switch checked={factorConfig.rsi.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, rsi: { ...factorConfig.rsi, enabled: v } })} />
-                    <Text>RSI 权重</Text>
-                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.rsi.weight} onChange={(v) => setFactorConfig({ ...factorConfig, rsi: { ...factorConfig.rsi, weight: Number(v) } })} />
-                  </Space>
-                  <Space>
-                    <Switch checked={factorConfig.ma.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, ma: { ...factorConfig.ma, enabled: v } })} />
-                    <Text>MA 权重</Text>
-                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.ma.weight} onChange={(v) => setFactorConfig({ ...factorConfig, ma: { ...factorConfig.ma, weight: Number(v) } })} />
-                  </Space>
-                  <Space>
-                    <Switch checked={factorConfig.macd.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, macd: { ...factorConfig.macd, enabled: v } })} />
-                    <Text>MACD 权重</Text>
-                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.macd.weight} onChange={(v) => setFactorConfig({ ...factorConfig, macd: { ...factorConfig.macd, weight: Number(v) } })} />
-                  </Space>
-                  <Space>
-                    <Switch checked={factorConfig.ema.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, ema: { ...factorConfig.ema, enabled: v } })} />
-                    <Text>EMA 权重</Text>
-                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.ema.weight} onChange={(v) => setFactorConfig({ ...factorConfig, ema: { ...factorConfig.ema, weight: Number(v) } })} />
-                  </Space>
-                  <Space>
-                    <Switch checked={factorConfig.boll.enabled} onChange={(v) => setFactorConfig({ ...factorConfig, boll: { ...factorConfig.boll, enabled: v } })} />
-                    <Text>BOLL 权重</Text>
-                    <InputNumber min={0} max={2} step={0.1} value={factorConfig.boll.weight} onChange={(v) => setFactorConfig({ ...factorConfig, boll: { ...factorConfig.boll, weight: Number(v) } })} />
-                  </Space>
-                  <Space>
-                    <Text>组合模式</Text>
-                    <Select value={combinationMode} onChange={(v) => setCombinationMode(v)} style={{ width: 200 }}>
-                      <Option value="weighted">加权</Option>
-                      <Option value="vote">投票</Option>
-                    </Select>
-                  </Space>
-                </Space>
-              </Card>
-            </Col>
-          </Row>

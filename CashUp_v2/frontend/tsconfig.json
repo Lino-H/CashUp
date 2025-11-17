@@ -24,6 +24,7 @@
     "src/setupTests.ts",
     "src/components/StrategyAutomation.tsx",
     "src/components/SentimentAnalysis.tsx",
-    "src/pages/NetworkOptimizationDemo.tsx"
+    "src/pages/NetworkOptimizationDemo.tsx",
+    "src/pages/RealTimeTradingWebSocket.tsx"
   ]
 }

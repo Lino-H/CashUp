@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Card, message, Tabs, Typography, Row, Col, Spin, Checkbox } from 'antd';
+import { Form, Input, Button, Card, message, Tabs, Typography, Row, Col, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { authAPI, handleApiError } from '../services/api';
+import { authAPI } from '../services/api';
 
 const { Title, Text } = Typography;
 
@@ -19,6 +19,11 @@ interface RegisterForm {
   confirm_password: string;
   full_name?: string;
 }
+
+// 函数集注释：
+// 1) handleLogin：提交登录表单，处理记住用户名与导航
+// 2) handleRegister：提交注册表单，处理注册成功切换到登录
+// 3) useEffect 初始化：读取本地记住的用户名填充初始值
 
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -54,7 +59,9 @@ const LoginPage: React.FC = () => {
       message.success('登录成功！');
       navigate('/');
     } catch (error: any) {
-      const errorMessage = handleApiError(error);
+      const errorMessage = error?.response?.status === 401
+        ? '用户名或密码错误'
+        : (error?.message || '请求失败');
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -73,8 +80,10 @@ const LoginPage: React.FC = () => {
         message.success('注册成功！请登录');
         setActiveTab('login');
       }
-    } catch (error) {
-      const errorMessage = handleApiError(error);
+    } catch (error: any) {
+      const errorMessage = error?.response?.status === 400
+        ? '注册信息有误'
+        : (error?.message || '注册失败');
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -107,6 +116,7 @@ const LoginPage: React.FC = () => {
                     initialValues={initialValues}
                     autoComplete="off"
                     size="large"
+                    data-testid="login-form"
                   >
                     <Form.Item
                       name="username"
@@ -144,6 +154,8 @@ const LoginPage: React.FC = () => {
                         type="primary" 
                         htmlType="submit" 
                         loading={loading}
+                        disabled={loading}
+                        aria-disabled={loading}
                         style={{ width: '100%' }}
                       >
                         登录
@@ -161,6 +173,7 @@ const LoginPage: React.FC = () => {
                     onFinish={handleRegister}
                     autoComplete="off"
                     size="large"
+                    data-testid="register-form"
                   >
                     <Form.Item
                       name="username"
@@ -231,6 +244,8 @@ const LoginPage: React.FC = () => {
                         type="primary" 
                         htmlType="submit" 
                         loading={loading}
+                        disabled={loading}
+                        aria-disabled={loading}
                         style={{ width: '100%' }}
                       >
                         注册

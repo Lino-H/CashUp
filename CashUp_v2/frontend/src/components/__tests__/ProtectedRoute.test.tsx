@@ -1,143 +1,127 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Navigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from '../ProtectedRoute';
-import { AuthProvider, useAuth } from '../../contexts/AuthContext';
+/**
+ * 函数集注释：
+ * - 使用顶层 jest.mock 伪造 useAuth，按场景返回不同认证状态
+ * - 使用 MemoryRouter + Routes 正确验证导航与重定向查询参数
+ */
+import { useAuth } from '../../contexts/AuthContext';
 
-// Mock the AuthContext
-const MockAuthProvider: React.FC<{ children: React.ReactNode; isAuthenticated?: boolean; loading?: boolean }> = ({ 
-  children, 
-  isAuthenticated = false, 
-  loading = false 
-}) => {
-  const mockUseAuth = jest.fn(() => ({
-    isAuthenticated,
-    loading,
-    login: jest.fn(),
-    logout: jest.fn(),
-    user: null,
-  }));
-
-  jest.mock('../../contexts/AuthContext', () => ({
-    ...jest.requireActual('../../contexts/AuthContext'),
-    useAuth: mockUseAuth,
-  }));
-
-  return <>{children}</>;
-};
+jest.mock('../../contexts/AuthContext', () => {
+  const actual = jest.requireActual('../../contexts/AuthContext');
+  return {
+    ...actual,
+    useAuth: jest.fn(),
+  };
+});
 
 const TestChild: React.FC = () => <div>Test Content</div>;
 
+const LoginProbe: React.FC = () => {
+  const location = useLocation();
+  return (
+    <div>
+      <div>Login Page</div>
+      <div data-testid="search">{location.search}</div>
+    </div>
+  );
+};
+
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    // Reset mocks before each test
     jest.clearAllMocks();
   });
 
-  test('should render loading state when authentication is loading', () => {
+  test('显示加载态：loading=true', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAuthenticated: false, loading: true });
     render(
-      <MemoryRouter>
-        <MockAuthProvider loading={true}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+      <MemoryRouter initialEntries={['/protected']}>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  test('should redirect to login when not authenticated', () => {
+  test('未登录重定向到 /login', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAuthenticated: false, loading: false });
     render(
       <MemoryRouter initialEntries={['/protected']}>
-        <MockAuthProvider isAuthenticated={false}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
-    // Should not render the child content
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-    
-    // Should have navigated to login
-    expect(window.location.pathname).toBe('/login');
   });
 
-  test('should render children when authenticated', () => {
+  test('登录后可访问受保护内容', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAuthenticated: true, loading: false });
     render(
       <MemoryRouter initialEntries={['/protected']}>
-        <MockAuthProvider isAuthenticated={true}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
     expect(screen.getByText('Test Content')).toBeInTheDocument();
   });
 
-  test('should preserve route state when redirecting', () => {
+  test('重定向携带来源路由查询参数', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAuthenticated: false, loading: false });
     render(
       <MemoryRouter initialEntries={['/protected?param=value']}>
-        <MockAuthProvider isAuthenticated={false}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
-    // Check that the redirect happened and state was preserved
-    expect(window.location.pathname).toBe('/login');
-    expect(window.location.search).toBe('?redirect=/protected%3Fparam%3Dvalue');
+    expect(screen.getByTestId('search').textContent).toBe('?redirect=%2Fprotected%3Fparam%3Dvalue');
   });
 
-  test('should handle authentication state changes', () => {
-    const { rerender } = render(
+  test('认证状态变化后渲染受保护内容', () => {
+    const mock = useAuth as jest.Mock;
+    mock.mockReturnValue({ isAuthenticated: false, loading: false });
+    render(
       <MemoryRouter initialEntries={['/protected']}>
-        <MockAuthProvider isAuthenticated={false}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
-    // Initially should redirect
     expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-
-    // Rerender with authenticated state
-    rerender(
+    mock.mockReturnValue({ isAuthenticated: true, loading: false });
+    render(
       <MemoryRouter initialEntries={['/protected']}>
-        <MockAuthProvider isAuthenticated={true}>
-          <ProtectedRoute>
-            <TestChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><TestChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
-    // Now should render children
     expect(screen.getByText('Test Content')).toBeInTheDocument();
   });
 
-  test('should handle different child components', () => {
+  test('不同子组件正常渲染', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isAuthenticated: true, loading: false });
     const DifferentChild: React.FC = () => <div>Different Content</div>;
-    
     render(
       <MemoryRouter initialEntries={['/protected']}>
-        <MockAuthProvider isAuthenticated={true}>
-          <ProtectedRoute>
-            <DifferentChild />
-          </ProtectedRoute>
-        </MockAuthProvider>
+        <Routes>
+          <Route path="/protected" element={<ProtectedRoute><DifferentChild /></ProtectedRoute>} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
       </MemoryRouter>
     );
-
     expect(screen.getByText('Different Content')).toBeInTheDocument();
   });
 });

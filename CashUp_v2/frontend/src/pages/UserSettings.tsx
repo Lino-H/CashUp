@@ -3,7 +3,7 @@
  * System Settings Page - Connected to Real APIs
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Row,
@@ -26,61 +26,38 @@ import {
   InputNumber,
   Slider,
   Table,
-  Badge,
   Popconfirm,
   Statistic,
   Spin,
   QRCode,
   Progress,
-  Tooltip,
   Timeline,
   Descriptions,
 } from 'antd';
 import {
   UserOutlined,
   SecurityScanOutlined,
-  BellOutlined,
-  SettingOutlined,
-  DatabaseOutlined,
-  ApiOutlined,
-  MonitorOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
   DownloadOutlined,
   UploadOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
   MailOutlined,
   PhoneOutlined,
-  LockOutlined,
-  KeyOutlined,
-  SafetyCertificateOutlined,
-  CloudUploadOutlined,
-  CloudDownloadOutlined,
+  ReloadOutlined,
+  DashboardOutlined,
   SyncOutlined,
   WarningOutlined,
-  ReloadOutlined,
-  BarChartOutlined,
-  LineChartOutlined,
-  PieChartOutlined,
-  AreaChartOutlined,
   TrophyOutlined,
   RocketOutlined,
-  IeOutlined as ShieldOutlined,
-  CloudSyncOutlined,
-  FileTextOutlined,
-  DashboardOutlined,
-ClockCircleOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
-import type { UploadFile } from 'antd/es/upload';
+ 
 import dayjs from 'dayjs';
 import { configAPI, userAPI } from '../services/api';
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
 
 const { Title, Text, Paragraph } = Typography;
@@ -165,13 +142,13 @@ const UserSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
   const [systemConfigs, setSystemConfigs] = useState<SystemConfig[]>([]);
-  const [passwordVisible, setPasswordVisible] = useState(false);
+  
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeData, setQrCodeData] = useState('');
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [performanceData, setPerformanceData] = useState<any[]>([]);
-  const [systemStats, setSystemStats] = useState({
+  const [systemStats] = useState({
     uptime: '24小时',
     cpuUsage: 45,
     memoryUsage: 60,
@@ -179,8 +156,27 @@ const UserSettings: React.FC = () => {
     activeConnections: 156,
   });
 
-  // 获取用户配置
-  const fetchUserConfig = async () => {
+  /** 函数集：数据加载与刷新 - 生成性能数据 */
+  const generatePerformanceData = useCallback(() => {
+    const data = [];
+    const now = dayjs();
+    
+    for (let i = 23; i >= 0; i--) {
+      const time = now.subtract(i, 'hour');
+      data.push({
+        time: time.format('HH:mm'),
+        cpu: Math.floor(Math.random() * 30) + 30,
+        memory: Math.floor(Math.random() * 20) + 50,
+        disk: Math.floor(Math.random() * 10) + 70,
+        connections: Math.floor(Math.random() * 50) + 130,
+      });
+    }
+    
+    setPerformanceData(data);
+  }, []);
+
+  /** 函数集：数据加载与刷新 - 获取用户配置 */
+  const fetchUserConfig = useCallback(async () => {
     try {
       // 获取用户信息
       const userResponse: any = await userAPI.getCurrentUser();
@@ -251,10 +247,10 @@ const UserSettings: React.FC = () => {
       console.error('获取用户配置失败:', error);
       message.error('获取用户配置失败');
     }
-  };
+  }, [form]);
 
-  // 获取系统配置
-  const fetchSystemConfigs = async () => {
+  /** 函数集：数据加载与刷新 - 获取系统配置 */
+  const fetchSystemConfigs = useCallback(async () => {
     try {
       const response: any = await configAPI.getConfigs();
       setSystemConfigs(response || []);
@@ -262,7 +258,7 @@ const UserSettings: React.FC = () => {
       console.error('获取系统配置失败:', error);
       message.error('获取系统配置失败');
     }
-  };
+  }, []);
 
   // 保存用户配置
   const handleSaveUserConfig = async (values: any) => {
@@ -391,26 +387,8 @@ const UserSettings: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeTab, autoRefresh, refreshInterval]);
+  }, [activeTab, autoRefresh, refreshInterval, fetchUserConfig, fetchSystemConfigs, generatePerformanceData]);
   
-  // 生成性能数据
-  const generatePerformanceData = () => {
-    const data = [];
-    const now = dayjs();
-    
-    for (let i = 23; i >= 0; i--) {
-      const time = now.subtract(i, 'hour');
-      data.push({
-        time: time.format('HH:mm'),
-        cpu: Math.floor(Math.random() * 30) + 30,
-        memory: Math.floor(Math.random() * 20) + 50,
-        disk: Math.floor(Math.random() * 10) + 70,
-        connections: Math.floor(Math.random() * 50) + 130,
-      });
-    }
-    
-    setPerformanceData(data);
-  };
 
   // 渲染个人资料设置
   const renderProfileSettings = () => (

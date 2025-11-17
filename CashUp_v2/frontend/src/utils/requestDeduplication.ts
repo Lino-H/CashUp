@@ -95,7 +95,6 @@ export class RequestDeduplicationManager {
    * 清理过期请求
    */
   private cleanupExpired(): void {
-    const now = Date.now();
     const expiredKeys: string[] = [];
 
     for (const [key, entry] of this.activeRequests.entries()) {
@@ -178,7 +177,6 @@ export class RequestDeduplicationManager {
 
       return result;
     } catch (error) {
-      const responseTime = Date.now() - startTime;
       this.metrics.totalRequests++;
       
       if (error instanceof Error && error.message === 'Request timeout') {

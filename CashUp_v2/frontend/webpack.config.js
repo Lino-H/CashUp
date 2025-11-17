@@ -301,6 +301,11 @@ module.exports = (env) => {
           REACT_APP_TRADING_URL: JSON.stringify('/api/trading'),
           REACT_APP_STRATEGY_URL: JSON.stringify('/api/strategy'),
           REACT_APP_NOTIFICATION_URL: JSON.stringify('/api/notification'),
+          REACT_APP_WS_BASE_URL: JSON.stringify(process.env.REACT_APP_WS_BASE_URL || ''),
+          REACT_APP_WS_TRADING_URL: JSON.stringify(process.env.REACT_APP_WS_TRADING_URL || '/ws/trading'),
+          REACT_APP_WS_NEWS_URL: JSON.stringify(process.env.REACT_APP_WS_NEWS_URL || '/ws/news'),
+          REACT_APP_WS_STRATEGY_URL: JSON.stringify(process.env.REACT_APP_WS_STRATEGY_URL || '/ws/strategy'),
+          REACT_APP_WS_NOTIFICATION_URL: JSON.stringify(process.env.REACT_APP_WS_NOTIFICATION_URL || '/ws/notification'),
         },
       }),
     ],
@@ -355,6 +360,35 @@ module.exports = (env) => {
           pathRewrite: {
             '^/api/notification': ''
           },
+          secure: false,
+        }));
+
+        // WebSocket代理
+        devServer.app.use('/ws/trading', createProxyMiddleware({
+          target: 'http://localhost:8002',
+          changeOrigin: true,
+          ws: true,
+          secure: false,
+        }));
+
+        devServer.app.use('/ws/news', createProxyMiddleware({
+          target: 'http://localhost:8004',
+          changeOrigin: true,
+          ws: true,
+          secure: false,
+        }));
+
+        devServer.app.use('/ws/strategy', createProxyMiddleware({
+          target: 'http://localhost:8003',
+          changeOrigin: true,
+          ws: true,
+          secure: false,
+        }));
+
+        devServer.app.use('/ws/notification', createProxyMiddleware({
+          target: 'http://localhost:8004',
+          changeOrigin: true,
+          ws: true,
           secure: false,
         }));
       },

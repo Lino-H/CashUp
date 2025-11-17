@@ -120,54 +120,40 @@ describe('useDebouncedValue', () => {
   });
 
   test('should return debounced value', () => {
-    const { result } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
+    const { result, rerender } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
       initialProps: { value: 'initial', delay: 300 }
     });
 
-    // Initial value should be returned immediately
     expect(result.current).toBe('initial');
 
-    // Update value
-    act(() => {
-      result.current = 'updated';
-    });
+    rerender({ value: 'updated', delay: 300 });
 
-    // Value should not have changed yet
     expect(result.current).toBe('initial');
 
-    // Fast forward time by 300ms
     act(() => {
       jest.advanceTimersByTime(300);
     });
 
-    // Now value should have been updated
     expect(result.current).toBe('updated');
   });
 
   test('should handle multiple value changes', () => {
-    const { result } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
+    const { result, rerender } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
       initialProps: { value: 'value1', delay: 300 }
     });
 
-    // Initial value
     expect(result.current).toBe('value1');
 
-    // Update value multiple times quickly
-    act(() => {
-      result.current = 'value2';
-      result.current = 'value3';
-      result.current = 'value4';
-    });
+    rerender({ value: 'value2', delay: 300 });
+    rerender({ value: 'value3', delay: 300 });
+    rerender({ value: 'value4', delay: 300 });
 
-    // Value should still be the initial value
     expect(result.current).toBe('value1');
 
-    // Fast forward time by 300ms
     act(() => {
       jest.advanceTimersByTime(300);
     });
 
-    // Value should now be the last updated value
     expect(result.current).toBe('value4');
   });
 
@@ -176,53 +162,38 @@ describe('useDebouncedValue', () => {
       initialProps: { value: 'initial', delay: 300 }
     });
 
-    // Update value
-    act(() => {
-      result.current = 'updated';
-    });
+    rerender({ value: 'updated', delay: 300 });
 
-    // Change delay
     rerender({ value: 'updated', delay: 100 });
 
-    // Fast forward time by 200ms (should be enough with new delay)
     act(() => {
       jest.advanceTimersByTime(200);
     });
 
-    // Value should have been updated
     expect(result.current).toBe('updated');
   });
 
   test('should handle different value types', () => {
-    const { result } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
+    const { result, rerender } = renderHook(({ value, delay }) => useDebouncedValue(value, delay), {
       initialProps: { value: 42, delay: 300 }
     });
 
-    // Test with number
     expect(result.current).toBe(42);
 
-    // Update to string
-    act(() => {
-      result.current = 'test';
-    });
+    rerender({ value: 'test', delay: 300 });
 
     expect(result.current).toBe(42);
 
-    // Fast forward time
     act(() => {
       jest.advanceTimersByTime(300);
     });
 
     expect(result.current).toBe('test');
 
-    // Update to object
-    act(() => {
-      result.current = { key: 'value' };
-    });
+    rerender({ value: { key: 'value' }, delay: 300 });
 
     expect(result.current).toBe('test');
 
-    // Fast forward time
     act(() => {
       jest.advanceTimersByTime(300);
     });

@@ -6,7 +6,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Form,
-  Input,
   Select,
   DatePicker,
   Button,
@@ -18,11 +17,9 @@ import {
   Row,
   Col,
   Tabs,
-  Alert,
   Modal,
-  Result,
-  Typography,
   Divider,
+  Typography,
   Tooltip,
   Badge,
   Switch,
@@ -33,53 +30,31 @@ import {
   PlayCircleOutlined,
   BarChartOutlined,
   LineChartOutlined,
-  PieChartOutlined,
-  DownloadOutlined,
   SettingOutlined,
   ReloadOutlined,
   EyeOutlined,
   StopOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  TrophyOutlined,
   RiseOutlined,
-  DollarCircleOutlined,
   FilterOutlined,
   TableOutlined,
-  LineChartOutlined as LineChartOutlined2,
-  AreaChartOutlined,
-  ShareAltOutlined,
   CloudDownloadOutlined
 } from '@ant-design/icons';
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip as RechartsTooltip, 
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
   AreaChart,
-  Area,
-  ComposedChart,
-  Scatter
+  Area
 } from 'recharts';
 import moment from 'moment';
 import { useAuth } from '../contexts/AuthContext';
 import { coreStrategyAPI, handleApiError } from '../services/api';
-import { useDataCache } from '../hooks/useDataCache';
 import { SmartLoading } from '../components/SmartLoading';
-import { PageSkeleton } from '../components/PageSkeleton';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
 const { RangePicker } = DatePicker;
 
 interface BacktestConfig {
@@ -151,15 +126,11 @@ const BacktestPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [backtestHistory, setBacktestHistory] = useState<BacktestResult[]>([]);
   const [currentBacktest, setCurrentBacktest] = useState<BacktestResult | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [resultModalVisible, setResultModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('config');
-  const [chartType, setChartType] = useState('line');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(10);
-  const [selectedResult, setSelectedResult] = useState<BacktestResult | null>(null);
-  const [performanceData, setPerformanceData] = useState<any[]>([]);
-  const [tradeAnalysis, setTradeAnalysis] = useState<any[]>([]);
+  // 移除冗余的性能数据状态，统一使用 currentBacktest.equityCurve
 
   // 策略选项
   const [strategies, setStrategies] = useState<any[]>([]);
@@ -192,7 +163,7 @@ const BacktestPage: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
+  }, []);
 
   // 获取回测历史
   const loadBacktestHistory = useCallback(async () => {
@@ -205,25 +176,9 @@ const BacktestPage: React.FC = () => {
       const errorMessage = handleApiError(error);
       message.error(errorMessage);
     }
-  }, [apiCallWithRetry]);
-
-  // 获取性能数据
-  const fetchPerformanceData = useCallback(async (backtestId: string) => {
-    const response = await fetch(`/api/backtest/${backtestId}/performance`);
-    if (!response.ok) {
-      throw new Error(`性能数据API错误: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
   }, []);
 
-  // 获取交易分析数据
-  const fetchTradeAnalysis = useCallback(async (backtestId: string) => {
-    const response = await fetch(`/api/backtest/${backtestId}/trades`);
-    if (!response.ok) {
-      throw new Error(`交易分析API错误: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
-  }, []);
+  // 详情数据按需加载，已移除未使用的性能与交易分析函数
 
   // 数据导出功能
   const exportBacktestData = (type: 'csv' | 'json' | 'pdf') => {
@@ -268,73 +223,10 @@ const BacktestPage: React.FC = () => {
     message.success(`数据导出成功！`);
   };
 
-  // 图表渲染函数
-  const renderChart = (type: string) => {
-    switch (type) {
-      case 'line':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Line type="monotone" dataKey="equity" stroke="#8884d8" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        );
-      case 'area':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Area type="monotone" dataKey="equity" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-      case 'bar':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Bar dataKey="trades" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      case 'drawdown':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Area type="monotone" dataKey="drawdown" stroke="#ff7300" fill="#ff7300" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-      case 'sharpe':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <RechartsTooltip />
-              <Line type="monotone" dataKey="sharpe" stroke="#ff0000" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        );
-      default:
-        return null;
-    }
-  };
+  // 函数集注释：
+  // 1) loadStrategies / loadBacktestHistory：加载策略与历史列表
+  // 2) handleStartBacktest：启动回测并设置当前回测结果
+  // 3) fetchPerformanceData / fetchTradeAnalysis：加载回测详情数据
 
   // 自动刷新功能
   useEffect(() => {
@@ -380,7 +272,6 @@ const BacktestPage: React.FC = () => {
       
       if (result) {
         message.success('回测任务已启动');
-        setModalVisible(false);
         form.resetFields();
         
         // 开始轮询回测状态
@@ -419,34 +310,7 @@ const BacktestPage: React.FC = () => {
     }
   };
 
-  // 轮询回测状态
-  const pollBacktestStatus = (backtestId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/backtest/${backtestId}/status`);
-        if (!response.ok) {
-          throw new Error(`回测状态API错误: ${response.status} ${response.statusText}`);
-        }
-        const result = await response.json();
-        
-        setCurrentBacktest(result);
-        
-        if (result.status === 'completed' || result.status === 'failed') {
-          clearInterval(interval);
-          if (result.status === 'completed') {
-            message.success('回测完成！');
-          } else {
-            message.error('回测失败！');
-          }
-          loadBacktestHistory();
-        }
-      } catch (error) {
-        console.error('Failed to poll backtest status:', error);
-        clearInterval(interval);
-        message.error('轮询回测状态失败');
-      }
-    }, 2000);
-  };
+  // 轮询功能暂不使用，当前回测数据由后端触发更新或手动刷新
 
 
 
@@ -607,8 +471,7 @@ const BacktestPage: React.FC = () => {
     }
   ];
 
-  // 图表颜色
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  // 图表颜色常量已移除，统一使用组件默认样式
 
   return (
     <div style={{ padding: '24px' }}>
@@ -907,37 +770,7 @@ const BacktestPage: React.FC = () => {
                     )}
                     <Button 
                       icon={<EyeOutlined />}
-                      onClick={async () => {
-                        setSelectedResult(currentBacktest);
-                        if (currentBacktest) {
-                          try {
-                            const [performanceData, tradeData] = await Promise.allSettled([
-                              fetchPerformanceData(currentBacktest.id),
-                              fetchTradeAnalysis(currentBacktest.id)
-                            ]);
-                            
-                            if (performanceData.status === 'fulfilled') {
-                              setPerformanceData(performanceData.value);
-                            } else {
-                              message.error(`性能数据加载失败: ${performanceData.reason.message}`);
-                              setPerformanceData([]);
-                            }
-                            
-                            if (tradeData.status === 'fulfilled') {
-                              setTradeAnalysis(tradeData.value);
-                            } else {
-                              message.error(`交易数据加载失败: ${tradeData.reason.message}`);
-                              setTradeAnalysis([]);
-                            }
-                          } catch (error) {
-                            console.error('Failed to load backtest details:', error);
-                            message.error('加载回测详情失败');
-                            setPerformanceData([]);
-                            setTradeAnalysis([]);
-                          }
-                        }
-                        setResultModalVisible(true);
-                      }}
+                      onClick={() => setResultModalVisible(true)}
                     >
                       查看详情
                     </Button>

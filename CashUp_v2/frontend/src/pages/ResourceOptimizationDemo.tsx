@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Row, Col, Button, Upload, Space, Alert, Statistic, Progress, Typography } from 'antd';
-import OptimizedImage, { OptimizedImageBatch } from '../components/OptimizedImage';
+import OptimizedImage from '../components/OptimizedImage';
 import ResourceOptimizationManager from '../utils/resourceOptimization';
 import ResourceOptimizationMonitor from '../components/ResourceOptimizationMonitor';
 import {
@@ -8,7 +8,6 @@ import {
   PictureOutlined,
   EyeOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;

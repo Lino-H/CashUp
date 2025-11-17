@@ -1,6 +1,10 @@
 /**
- * WebSocket连接管理器
- * WebSocket Connection Manager
+ * WebSocket连接管理与URL解析
+ * WebSocket Connection Manager & URL Resolution
+ * 函数集注释：
+ * - WebSocketManager: 管理连接、重连、心跳、订阅与消息收发
+ * - createWebSocketManager/getGlobalWebSocketManager/destroyGlobalWebSocketManager: 全局实例管理
+ * - resolveWebSocketUrl/getWebSocketUrl: 统一动态解析WS地址（优先使用 window.ENV，回退同源）
  */
 
 export interface WebSocketMessage {
@@ -453,6 +457,34 @@ export class WebSocketManager {
       console.log('[WebSocket Manager]', ...args);
     }
   }
+}
+
+/**
+ * 解析WebSocket地址（支持绝对与相对路径）
+ */
+export function resolveWebSocketUrl(pathOrUrl: string): string {
+  const isAbsolute = /^wss?:\/\//i.test(pathOrUrl);
+  if (isAbsolute) return pathOrUrl;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return `${protocol}//${host}${path}`;
+}
+
+/**
+ * 根据类型获取WebSocket地址，优先读取构建注入的 window.ENV
+ */
+export function getWebSocketUrl(kind: 'trading' | 'news' | 'strategy' | 'notification', fallbackPath?: string): string {
+  const env = (window as any).ENV || {};
+  const keyMap: Record<string, string | undefined> = {
+    trading: env.REACT_APP_WS_TRADING_URL,
+    news: env.REACT_APP_WS_NEWS_URL,
+    strategy: env.REACT_APP_WS_STRATEGY_URL,
+    notification: env.REACT_APP_WS_NOTIFICATION_URL,
+  };
+  const value = keyMap[kind];
+  const defaultPath = fallbackPath || `/ws/${kind}`;
+  return resolveWebSocketUrl(value || defaultPath);
 }
 
 /**

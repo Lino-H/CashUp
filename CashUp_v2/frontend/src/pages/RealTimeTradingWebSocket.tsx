@@ -13,53 +13,24 @@ import {
   Button,
   Space,
   Statistic,
-  Alert,
   Typography,
   Spin,
   Badge,
   Drawer,
   Form,
-  Input,
   InputNumber,
   Select,
   message,
-  Divider,
-  Tooltip,
-  Progress,
-  Timeline,
-  List,
-  Avatar,
 } from 'antd';
 import {
   LineChartOutlined,
-  BarChartOutlined,
-  AreaChartOutlined,
-  PieChartOutlined,
-  RiseOutlined,
-  FallOutlined,
-  DollarCircleOutlined,
-  PercentageOutlined,
-  ClockCircleOutlined,
   PlayCircleOutlined,
-  DownloadOutlined,
-  FilterOutlined,
-  TableOutlined,
   SettingOutlined,
   ReloadOutlined,
-  EyeOutlined,
   StopOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-  CloudDownloadOutlined,
-  LineChartOutlined as LineChartOutlined2,
-  AreaChartOutlined as AreaChartOutlined2,
   WifiOutlined,
   DisconnectOutlined,
   SyncOutlined,
-  HeartOutlined,
-  BulbOutlined,
-  ThunderboltOutlined,
-  RocketOutlined,
 } from '@ant-design/icons';
 
 import { 
@@ -71,10 +42,11 @@ import {
   OrderUpdate,
   createTradingWebSocketClient,
 } from '../utils/tradingWebSocket';
+import { getWebSocketUrl } from '../utils/websocketManager';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
+
 
 const RealTimeTradingWebSocket: React.FC = () => {
   // WebSocket连接状态
@@ -87,21 +59,18 @@ const RealTimeTradingWebSocket: React.FC = () => {
   // 市场数据
   const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [trades, setTrades] = useState<TradeData[]>([]);
-  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
-  const [positions, setPositions] = useState<PositionUpdate[]>([]);
+  
   const [orders, setOrders] = useState<OrderUpdate[]>([]);
 
   // 交易表单
   const [tradeForm] = Form.useForm();
   const [isTradeModalVisible, setIsTradeModalVisible] = useState(false);
-  const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC/USDT');
 
   // 图表数据
-  const [priceData, setPriceData] = useState<any[]>([]);
-  const [volumeData, setVolumeData] = useState<any[]>([]);
+  
 
   // 配置
-  const [symbols, setSymbols] = useState<string[]>(['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT']);
+  const [symbols] = useState<string[]>(['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT']);
   const [autoReconnect, setAutoReconnect] = useState<boolean>(true);
   const [enableLogging, setEnableLogging] = useState<boolean>(false);
 
@@ -109,54 +78,11 @@ const RealTimeTradingWebSocket: React.FC = () => {
   const marketDataRef = useRef<MarketData[]>([]);
   const tradesRef = useRef<TradeData[]>([]);
   const priceDataRef = useRef<any[]>([]);
+  const wsClientRef = useRef<TradingWebSocketClient | null>(null);
 
-  // 初始化WebSocket
-  useEffect(() => {
-    initializeWebSocket();
-    return () => {
-      if (wsClient) {
-        wsClient.disconnect();
-      }
-    };
-  }, []);
+  
 
-  // 初始化WebSocket连接
-  const initializeWebSocket = useCallback(() => {
-    try {
-      // 动态生成WebSocket URL，根据当前协议和环境
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws/trading`;
-      
-      const client = createTradingWebSocketClient(
-        {
-          url: wsUrl,
-          enableReconnect: autoReconnect,
-          reconnectInterval: 5000,
-          maxReconnectAttempts: 10,
-          enableHeartbeat: true,
-          heartbeatInterval: 30000,
-          enableLogging: enableLogging,
-          symbols: symbols,
-        },
-        {
-          onMarketData: handleMarketData,
-          onTrade: handleTrade,
-          onOrderBook: handleOrderBook,
-          onPositionUpdate: handlePositionUpdate,
-          onOrderUpdate: handleOrderUpdate,
-          onConnectionStatus: handleConnectionStatus,
-          onError: handleError,
-        }
-      );
-
-      setWsClient(client);
-      client.initialize();
-      client.connect();
-    } catch (error) {
-      message.error('WebSocket初始化失败');
-    }
-  }, [autoReconnect, enableLogging, symbols]);
+  
 
   // 处理市场数据
   const handleMarketData = useCallback((data: MarketData) => {
@@ -261,6 +187,50 @@ const RealTimeTradingWebSocket: React.FC = () => {
     message.error(`WebSocket错误: ${error.message}`);
   }, []);
 
+  /** 函数集：连接管理 - 初始化WebSocket连接 */
+  const initializeWebSocket = useCallback(() => {
+    try {
+      const wsUrl = getWebSocketUrl('trading', '/ws/trading');
+      const client = createTradingWebSocketClient(
+        {
+          url: wsUrl,
+          enableReconnect: autoReconnect,
+          reconnectInterval: 5000,
+          maxReconnectAttempts: 10,
+          enableHeartbeat: true,
+          heartbeatInterval: 30000,
+          enableLogging: enableLogging,
+          symbols: symbols,
+        },
+        {
+          onMarketData: handleMarketData,
+          onTrade: handleTrade,
+          onOrderBook: handleOrderBook,
+          onPositionUpdate: handlePositionUpdate,
+          onOrderUpdate: handleOrderUpdate,
+          onConnectionStatus: handleConnectionStatus,
+          onError: handleError,
+        }
+      );
+      setWsClient(client);
+      wsClientRef.current = client;
+      client.initialize();
+      client.connect();
+    } catch (error) {
+      message.error('WebSocket初始化失败');
+    }
+  }, [autoReconnect, enableLogging, symbols, handleMarketData, handleTrade, handleOrderBook, handlePositionUpdate, handleOrderUpdate, handleConnectionStatus, handleError]);
+
+  // 初始化WebSocket
+  useEffect(() => {
+    initializeWebSocket();
+    return () => {
+      if (wsClientRef.current) {
+        wsClientRef.current.disconnect();
+      }
+    };
+  }, [initializeWebSocket]);
+
   // 订阅数据
   const subscribeToData = useCallback(() => {
     if (!wsClient) return;
@@ -317,21 +287,7 @@ const RealTimeTradingWebSocket: React.FC = () => {
     }
   };
 
-  // 取消订单
-  const handleCancelOrder = async (orderId: string) => {
-    if (!wsClient || !wsClient.isConnected()) {
-      message.error('WebSocket未连接');
-      return;
-    }
-
-    try {
-      await wsClient.cancelOrder(orderId);
-      message.success('订单取消成功');
-    } catch (error) {
-      const msg2 = (error as any)?.message || '订单取消失败';
-      message.error(`订单取消失败: ${msg2}`);
-    }
-  };
+  
 
   // 重新连接
   const handleReconnect = () => {
