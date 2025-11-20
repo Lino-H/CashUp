@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert } from 'antd'
 import { coreKeysAPI, coreExchangesAPI, handleApiError } from '../services/api'
+/**
+ * 函数集注释：
+ * - load：加载现有密钥列表
+ * - onSubmit：提交密钥并触发交易所重载
+ * - handleSeedFromConfigs：从配置文件初始化密钥，错误友好提示
+ * - handleReloadExchanges：重载交易所模块，错误友好提示
+ */
 
 const KeysManagement: React.FC = () => {
   const [items, setItems] = useState<any[]>([])
@@ -38,6 +45,26 @@ const KeysManagement: React.FC = () => {
     { title: '启用', dataIndex: 'is_active', key: 'is_active', render: (v: boolean) => v ? '是' : '否' },
   ]
 
+  const handleSeedFromConfigs = async () => {
+    try {
+      await coreKeysAPI.seedFromConfigs()
+      await coreKeysAPI.reloadExchanges()
+      await load()
+      message.success('初始化完成')
+    } catch (e) {
+      message.error(handleApiError(e))
+    }
+  }
+
+  const handleReloadExchanges = async () => {
+    try {
+      await coreKeysAPI.reloadExchanges()
+      message.success('重载成功')
+    } catch (e) {
+      message.error(handleApiError(e))
+    }
+  }
+
   const onSubmit = async () => {
     try {
       const v = await form.validateFields()
@@ -46,7 +73,11 @@ const KeysManagement: React.FC = () => {
       setApplyAdvice((resp as any)?.apply || null)
       setVisible(false)
       form.resetFields()
-      await coreKeysAPI.reloadExchanges()
+      try {
+        await coreKeysAPI.reloadExchanges()
+      } catch (e) {
+        message.warning('密钥已保存，但重载交易所失败，请稍后重试')
+      }
       load()
     } catch (e) {
       message.error(handleApiError(e))
@@ -58,8 +89,8 @@ const KeysManagement: React.FC = () => {
       <Card title="交易所密钥管理">
         <Space style={{ marginBottom: 16 }}>
           <Button type="primary" onClick={() => setVisible(true)}>新增/更新密钥</Button>
-          <Button onClick={async () => { await coreKeysAPI.seedFromConfigs(); await coreKeysAPI.reloadExchanges(); load(); }}>从配置初始化</Button>
-          <Button onClick={async () => { await coreKeysAPI.reloadExchanges(); message.success('重载成功'); }}>重载交易所</Button>
+          <Button onClick={handleSeedFromConfigs}>从配置初始化</Button>
+          <Button onClick={handleReloadExchanges}>重载交易所</Button>
           <Button onClick={load} loading={loading}>刷新</Button>
         </Space>
         {applyAdvice && applyAdvice.type === 'reload' && (

@@ -67,12 +67,15 @@ const RealTimeTradingWebSocket: React.FC = () => {
   const [isTradeModalVisible, setIsTradeModalVisible] = useState(false);
 
   // 图表数据
-  
+  const [priceData, setPriceData] = useState<any[]>([]);
+  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
+  const [positions, setPositions] = useState<PositionUpdate[]>([]);
 
   // 配置
   const [symbols] = useState<string[]>(['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT']);
   const [autoReconnect, setAutoReconnect] = useState<boolean>(true);
   const [enableLogging, setEnableLogging] = useState<boolean>(false);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC/USDT');
 
   // 使用ref来存储最新的数据
   const marketDataRef = useRef<MarketData[]>([]);

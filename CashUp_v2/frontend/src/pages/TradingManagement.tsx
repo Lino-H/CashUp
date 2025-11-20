@@ -723,19 +723,20 @@ const TradingManagement: React.FC = () => {
   ];
   
   // 计算统计数据
+  const positionsSafe = Array.isArray(positions) ? positions : [];
   const stats = {
     totalOrders: orders.length,
     pendingOrders: orders.filter(o => o.status === 'pending').length,
     filledOrders: orders.filter(o => o.status === 'filled').length,
     totalPnl: orders.reduce((sum, order) => sum + (order.pnl || 0), 0),
-    totalPositions: positions.length,
-    longPositions: positions.filter(p => p.side === 'long').length,
-    shortPositions: positions.filter(p => p.side === 'short').length,
-    positionsPnl: positions.reduce((sum, pos) => sum + pos.pnl, 0),
-    totalMargin: positions.reduce((sum, pos) => sum + pos.margin, 0),
+    totalPositions: positionsSafe.length,
+    longPositions: positionsSafe.filter(p => p.side === 'long').length,
+    shortPositions: positionsSafe.filter(p => p.side === 'short').length,
+    positionsPnl: positionsSafe.reduce((sum, pos) => sum + pos.pnl, 0),
+    totalMargin: positionsSafe.reduce((sum, pos) => sum + pos.margin, 0),
     accountBalance: accountInfo?.total_balance || 0,
     availableBalance: accountInfo?.available_balance || 0,
-    totalExposure: positions.reduce((sum, pos) => sum + pos.margin * pos.leverage, 0),
+    totalExposure: positionsSafe.reduce((sum, pos) => sum + pos.margin * pos.leverage, 0),
   };
   
   // 最近交易表格列
